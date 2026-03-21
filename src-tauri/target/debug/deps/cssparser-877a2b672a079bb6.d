@@ -1,0 +1,17 @@
+/Users/sky/Documents/mysqlClient/src-tauri/target/debug/deps/cssparser-877a2b672a079bb6.d: /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cssparser-0.27.2/src/lib.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cssparser-0.27.2/src/macros.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cssparser-0.27.2/src/rules_and_declarations.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cssparser-0.27.2/src/color.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cssparser-0.27.2/src/cow_rc_str.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cssparser-0.27.2/src/from_bytes.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cssparser-0.27.2/src/nth.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cssparser-0.27.2/src/parser.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cssparser-0.27.2/src/serializer.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cssparser-0.27.2/src/unicode_range.rs /Users/sky/Documents/mysqlClient/src-tauri/target/debug/build/cssparser-0c8fb87a421098ba/out/tokenizer.rs
+
+/Users/sky/Documents/mysqlClient/src-tauri/target/debug/deps/libcssparser-877a2b672a079bb6.rmeta: /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cssparser-0.27.2/src/lib.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cssparser-0.27.2/src/macros.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cssparser-0.27.2/src/rules_and_declarations.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cssparser-0.27.2/src/color.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cssparser-0.27.2/src/cow_rc_str.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cssparser-0.27.2/src/from_bytes.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cssparser-0.27.2/src/nth.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cssparser-0.27.2/src/parser.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cssparser-0.27.2/src/serializer.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cssparser-0.27.2/src/unicode_range.rs /Users/sky/Documents/mysqlClient/src-tauri/target/debug/build/cssparser-0c8fb87a421098ba/out/tokenizer.rs
+
+/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cssparser-0.27.2/src/lib.rs:
+/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cssparser-0.27.2/src/macros.rs:
+/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cssparser-0.27.2/src/rules_and_declarations.rs:
+/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cssparser-0.27.2/src/color.rs:
+/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cssparser-0.27.2/src/cow_rc_str.rs:
+/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cssparser-0.27.2/src/from_bytes.rs:
+/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cssparser-0.27.2/src/nth.rs:
+/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cssparser-0.27.2/src/parser.rs:
+/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cssparser-0.27.2/src/serializer.rs:
+/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cssparser-0.27.2/src/unicode_range.rs:
+/Users/sky/Documents/mysqlClient/src-tauri/target/debug/build/cssparser-0c8fb87a421098ba/out/tokenizer.rs:
+
+# env-dep:OUT_DIR=/Users/sky/Documents/mysqlClient/src-tauri/target/debug/build/cssparser-0c8fb87a421098ba/out

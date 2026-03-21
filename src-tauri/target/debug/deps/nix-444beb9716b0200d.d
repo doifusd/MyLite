@@ -1,0 +1,14 @@
+/Users/sky/Documents/mysqlClient/src-tauri/target/debug/deps/nix-444beb9716b0200d.d: /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.30.1/src/lib.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.30.1/src/macros.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.30.1/src/errno.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.30.1/src/fcntl.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.30.1/src/sys/mod.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.30.1/src/sys/signal.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.30.1/src/sys/time.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.30.1/src/unistd.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.30.1/src/features.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.30.1/src/sys/utsname.rs
+
+/Users/sky/Documents/mysqlClient/src-tauri/target/debug/deps/libnix-444beb9716b0200d.rmeta: /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.30.1/src/lib.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.30.1/src/macros.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.30.1/src/errno.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.30.1/src/fcntl.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.30.1/src/sys/mod.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.30.1/src/sys/signal.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.30.1/src/sys/time.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.30.1/src/unistd.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.30.1/src/features.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.30.1/src/sys/utsname.rs
+
+/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.30.1/src/lib.rs:
+/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.30.1/src/macros.rs:
+/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.30.1/src/errno.rs:
+/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.30.1/src/fcntl.rs:
+/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.30.1/src/sys/mod.rs:
+/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.30.1/src/sys/signal.rs:
+/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.30.1/src/sys/time.rs:
+/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.30.1/src/unistd.rs:
+/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.30.1/src/features.rs:
+/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nix-0.30.1/src/sys/utsname.rs:

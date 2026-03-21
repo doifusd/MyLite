@@ -1,0 +1,11 @@
+/Users/sky/Documents/mysqlClient/src-tauri/target/debug/deps/tauri_macros-dfec149ca9094dfb.d: /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-macros-1.4.7/src/lib.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-macros-1.4.7/src/command/mod.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-macros-1.4.7/src/command/handler.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-macros-1.4.7/src/command/wrapper.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-macros-1.4.7/src/command_module.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-macros-1.4.7/src/runtime.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-macros-1.4.7/src/context.rs
+
+/Users/sky/Documents/mysqlClient/src-tauri/target/debug/deps/libtauri_macros-dfec149ca9094dfb.dylib: /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-macros-1.4.7/src/lib.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-macros-1.4.7/src/command/mod.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-macros-1.4.7/src/command/handler.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-macros-1.4.7/src/command/wrapper.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-macros-1.4.7/src/command_module.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-macros-1.4.7/src/runtime.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-macros-1.4.7/src/context.rs
+
+/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-macros-1.4.7/src/lib.rs:
+/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-macros-1.4.7/src/command/mod.rs:
+/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-macros-1.4.7/src/command/handler.rs:
+/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-macros-1.4.7/src/command/wrapper.rs:
+/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-macros-1.4.7/src/command_module.rs:
+/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-macros-1.4.7/src/runtime.rs:
+/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-macros-1.4.7/src/context.rs:
