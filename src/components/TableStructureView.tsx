@@ -171,15 +171,7 @@ export const TableStructureView: React.FC<TableStructureViewProps> = ({
         </div>
       </div>
       
-      {/* DDL */}
-      {info.create_sql && (
-        <div className="mt-8">
-          <h3 className="text-lg font-semibold mb-4">Create Statement (DDL)</h3>
-          <div className="bg-[#0f172a] text-blue-50 p-6 rounded-2xl shadow-inner border border-slate-800 overflow-x-auto font-mono text-sm leading-relaxed whitespace-pre-wrap">
-            {info.create_sql}
-          </div>
-        </div>
-      )}
+      {/* DDL removed: Show via right click context menu */}
 
       {/* Columns */}
       <div>

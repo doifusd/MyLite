@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DatabasePropertiesDialog } from './DatabasePropertiesDialog';
+import { TableDDLDialog } from './TableDDLDialog';
 
 interface SchemaTreeItem {
   id: string;
@@ -143,6 +144,9 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
 
   const [dbPropertiesOpen, setDbPropertiesOpen] = useState(false);
   const [selectedDbForProps, setSelectedDbForProps] = useState<string | null>(null);
+
+  const [ddlDialogOpen, setDdlDialogOpen] = useState(false);
+  const [selectedTableForDdl, setSelectedTableForDdl] = useState<{ database: string; table: string } | null>(null);
 
   const handleContextMenu = (e: React.MouseEvent, node: SchemaTreeItem) => {
     if (node.type !== 'table' && node.type !== 'database') return;
@@ -296,6 +300,21 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
           >
             Show Data
           </button>
+          {contextMenu.node.type === 'table' && (
+            <button
+              className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800"
+              onClick={() => {
+                const parts = contextMenu.node.id.replace('table_', '').split('.');
+                if (parts.length === 2) {
+                  setSelectedTableForDdl({ database: parts[0], table: parts[1] });
+                  setDdlDialogOpen(true);
+                }
+                setContextMenu(null);
+              }}
+            >
+              Show DDL
+            </button>
+          )}
           <button
             className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800"
             onClick={() => {
@@ -336,6 +355,19 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
           connectionId={connectionId}
           databaseName={selectedDbForProps}
           onRefresh={fetchDatabases}
+        />
+      )}
+
+      {selectedTableForDdl && (
+        <TableDDLDialog
+          isOpen={ddlDialogOpen}
+          onClose={() => {
+            setDdlDialogOpen(false);
+            setSelectedTableForDdl(null);
+          }}
+          connectionId={connectionId}
+          database={selectedTableForDdl.database}
+          tableName={selectedTableForDdl.table}
         />
       )}
     </div>

@@ -1,7 +1,7 @@
 use crate::models::connection::{ConnectionConfig, ConnectionInfo};
 use crate::models::schema::{ColumnDefinition, IndexInfo, SchemaTreeItem, TableInfo};
 use crate::AppState;
-use sqlx::Row;
+use sqlx::{Executor, Row};
 use std::sync::Arc;
 use tauri::State;
 
@@ -261,9 +261,15 @@ pub async fn get_table_info(
     .into_iter()
     .fold(std::collections::HashMap::new(), |mut acc, row| {
         let name: String = row.get("index_name");
+        
+        let non_unique = row.try_get::<i64, _>("non_unique")
+            .or_else(|_| row.try_get::<i32, _>("non_unique").map(|v| v as i64))
+            .or_else(|_| row.try_get::<u32, _>("non_unique").map(|v| v as i64))
+            .unwrap_or(0);
+
         let entry = acc.entry(name.clone()).or_insert_with(|| IndexInfo {
             name: name.clone(),
-            is_unique: row.get::<i64, _>("non_unique") == 0,
+            is_unique: non_unique == 0,
             is_primary: name == "PRIMARY",
             columns: Vec::new(),
             index_type: row.get("index_type"),
@@ -306,13 +312,13 @@ pub async fn alter_table(
         .map_err(|e| e.to_string())?;
 
     // Use the specified database
-    sqlx::query(&format!("USE `{}`", database))
-        .execute(&pool)
+    let mut conn = pool.acquire().await.map_err(|e| e.to_string())?;
+
+    conn.execute(format!("USE `{}`", database).as_str())
         .await
         .map_err(|e| e.to_string())?;
 
-    sqlx::query(&sql)
-        .execute(&pool)
+    conn.execute(sql.as_str())
         .await
         .map_err(|e| e.to_string())?;
 
@@ -535,7 +541,14 @@ pub async fn get_charsets(
             map.insert("charset".to_string(), serde_json::Value::String(row.get("Charset")));
             map.insert("description".to_string(), serde_json::Value::String(row.get("Description")));
             map.insert("default_collation".to_string(), serde_json::Value::String(row.get("Default collation")));
-            map.insert("maxlen".to_string(), serde_json::Value::Number(row.get::<i64, _>("Maxlen").into()));
+            
+            let maxlen = row.try_get::<i64, _>("Maxlen")
+                .or_else(|_| row.try_get::<u32, _>("Maxlen").map(|v| v as i64))
+                .or_else(|_| row.try_get::<i32, _>("Maxlen").map(|v| v as i64))
+                .or_else(|_| row.try_get::<u64, _>("Maxlen").map(|v| v as i64))
+                .unwrap_or(0);
+            map.insert("maxlen".to_string(), serde_json::Value::Number(maxlen.into()));
+            
             serde_json::Value::Object(map)
         })
         .collect();
@@ -570,10 +583,24 @@ pub async fn get_collations(
             let mut map = serde_json::Map::new();
             map.insert("collation".to_string(), serde_json::Value::String(row.get("Collation")));
             map.insert("charset".to_string(), serde_json::Value::String(row.get("Charset")));
-            map.insert("id".to_string(), serde_json::Value::Number(row.get::<i64, _>("Id").into()));
+            
+            let id = row.try_get::<i64, _>("Id")
+                .or_else(|_| row.try_get::<u32, _>("Id").map(|v| v as i64))
+                .or_else(|_| row.try_get::<i32, _>("Id").map(|v| v as i64))
+                .or_else(|_| row.try_get::<u64, _>("Id").map(|v| v as i64))
+                .unwrap_or(0);
+            map.insert("id".to_string(), serde_json::Value::Number(id.into()));
+            
             map.insert("is_default".to_string(), serde_json::Value::String(row.get("Default")));
             map.insert("is_compiled".to_string(), serde_json::Value::String(row.get("Compiled")));
-            map.insert("sortlen".to_string(), serde_json::Value::Number(row.get::<i64, _>("Sortlen").into()));
+            
+            let sortlen = row.try_get::<i64, _>("Sortlen")
+                .or_else(|_| row.try_get::<u32, _>("Sortlen").map(|v| v as i64))
+                .or_else(|_| row.try_get::<i32, _>("Sortlen").map(|v| v as i64))
+                .or_else(|_| row.try_get::<u64, _>("Sortlen").map(|v| v as i64))
+                .unwrap_or(0);
+            map.insert("sortlen".to_string(), serde_json::Value::Number(sortlen.into()));
+            
             serde_json::Value::Object(map)
         })
         .collect();
