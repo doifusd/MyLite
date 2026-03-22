@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QueryRequest {
     pub connection_id: String,
@@ -28,6 +29,7 @@ pub struct ColumnInfo {
     pub max_length: Option<i32>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QueryHistoryItem {
     pub id: String,

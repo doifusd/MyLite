@@ -7,7 +7,7 @@
     "withGlobalTauri": true
   },
   "package": {
-    "productName": "mysql-client",
+    "productName": "MyLite",
     "version": "0.1.0"
   },
   "tauri": {
@@ -17,7 +17,7 @@
     "bundle": {
       "active": true,
       "targets": "all",
-      "identifier": "com.mysql-client.app",
+      "identifier": "com.mylite.app",
       "icon": []
     },
     "security": {
@@ -28,7 +28,7 @@
         "fullscreen": false,
         "height": 600,
         "resizable": true,
-        "title": "MySQL Client",
+        "title": "MyLite",
         "width": 800
       }
     ]

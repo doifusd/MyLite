@@ -11,6 +11,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { DatabasePropertiesDialog } from './DatabasePropertiesDialog';
 
 interface SchemaTreeItem {
   id: string;
@@ -25,7 +26,7 @@ interface SchemaTreeItem {
 
 interface SchemaBrowserProps {
   connectionId: string;
-  onTableSelect?: (database: string, table: string) => void;
+  onTableSelect?: (database: string, table: string, tab?: string) => void;
   className?: string;
 }
 
@@ -134,6 +135,31 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
     });
   };
 
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    node: SchemaTreeItem;
+  } | null>(null);
+
+  const [dbPropertiesOpen, setDbPropertiesOpen] = useState(false);
+  const [selectedDbForProps, setSelectedDbForProps] = useState<string | null>(null);
+
+  const handleContextMenu = (e: React.MouseEvent, node: SchemaTreeItem) => {
+    if (node.type !== 'table' && node.type !== 'database') return;
+    e.preventDefault();
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      node,
+    });
+  };
+
+  useEffect(() => {
+    const handleClick = () => setContextMenu(null);
+    window.addEventListener('click', handleClick);
+    return () => window.removeEventListener('click', handleClick);
+  }, []);
+
   const handleNodeClick = (node: SchemaTreeItem) => {
     if (node.type === 'database' || node.type === 'table' || node.type === 'folder') {
       toggleNode(node);
@@ -179,6 +205,7 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
           )}
           style={{ paddingLeft }}
           onClick={() => handleNodeClick(node)}
+          onContextMenu={(e) => handleContextMenu(e, node)}
         >
           {node.isLoading ? (
             <Loader2 className="h-3 w-3 animate-spin text-gray-400" />
@@ -230,7 +257,7 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
   }
 
   return (
-    <div className={cn('overflow-auto', className)}>
+    <div className={cn('overflow-auto relative', className)}>
       <div className="flex items-center justify-between p-2 border-b">
         <h3 className="text-sm font-medium">Schema Browser</h3>
         <button
@@ -251,6 +278,66 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
           treeData.map((node) => renderTreeNode(node))
         )}
       </div>
+
+      {contextMenu && (
+        <div
+          className="fixed z-50 bg-white dark:bg-gray-900 border rounded shadow-lg py-1 w-48 text-sm"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+        >
+          <button
+            className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800"
+            onClick={() => {
+              const parts = contextMenu.node.id.replace('table_', '').split('.');
+              if (parts.length === 2 && onTableSelect) {
+                onTableSelect(parts[0], parts[1], 'data');
+              }
+              setContextMenu(null);
+            }}
+          >
+            Show Data
+          </button>
+          <button
+            className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800"
+            onClick={() => {
+              if (contextMenu.node.type === 'database') {
+                setSelectedDbForProps(contextMenu.node.name);
+                setDbPropertiesOpen(true);
+              } else {
+                const parts = contextMenu.node.id.replace('table_', '').split('.');
+                if (parts.length === 2 && onTableSelect) {
+                  onTableSelect(parts[0], parts[1], 'structure');
+                }
+              }
+              setContextMenu(null);
+            }}
+          >
+            {contextMenu.node.type === 'database' ? 'Database Properties' : 'View Structure'}
+          </button>
+          <div className="border-t my-1" />
+          <button
+            className="w-full text-left px-4 py-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+            onClick={() => {
+              // TODO: Implement drop table
+              setContextMenu(null);
+            }}
+          >
+            Drop Table
+          </button>
+        </div>
+      )}
+
+      {selectedDbForProps && (
+        <DatabasePropertiesDialog
+          isOpen={dbPropertiesOpen}
+          onClose={() => {
+            setDbPropertiesOpen(false);
+            setSelectedDbForProps(null);
+          }}
+          connectionId={connectionId}
+          databaseName={selectedDbForProps}
+          onRefresh={fetchDatabases}
+        />
+      )}
     </div>
   );
 };

@@ -34,7 +34,6 @@ pub async fn save_connection(
 
     let connections = get_connections_from_store(&store)?;
     
-    let info: ConnectionInfo = config.clone().into();
     let id = config.id.clone().unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
     
     // Update or add connection

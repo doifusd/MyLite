@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DatabaseSchema {
     pub name: String,
@@ -16,9 +17,11 @@ pub struct TableInfo {
     pub row_count: Option<i64>,
     pub data_length: Option<i64>,
     pub index_length: Option<i64>,
+    pub collation: Option<String>,
     pub created_at: Option<String>,
     pub updated_at: Option<String>,
     pub comment: Option<String>,
+    pub create_sql: Option<String>,
     pub columns: Vec<ColumnDefinition>,
     pub indexes: Vec<IndexInfo>,
 }
@@ -32,10 +35,12 @@ pub struct ColumnDefinition {
     pub is_primary_key: bool,
     pub is_auto_increment: bool,
     pub comment: Option<String>,
-    pub ordinal_position: i32,
-    pub max_length: Option<i32>,
-    pub numeric_precision: Option<i32>,
-    pub numeric_scale: Option<i32>,
+    pub character_set: Option<String>,
+    pub collation: Option<String>,
+    pub ordinal_position: u32,
+    pub max_length: Option<u64>,
+    pub numeric_precision: Option<u32>,
+    pub numeric_scale: Option<u32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

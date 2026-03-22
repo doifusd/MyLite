@@ -4,3 +4,4 @@ TEAM.md
 dist/
 node_modules/
 .vscode/
+src-tauri/target/debug/

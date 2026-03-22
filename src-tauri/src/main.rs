@@ -59,9 +59,13 @@ async fn main() -> anyhow::Result<()> {
             get_databases_v2,
             get_tables,
             get_table_schema,
+            get_database_info,
             execute_query,
             execute_raw_query,
             get_table_preview,
+            alter_table,
+            get_charsets,
+            get_collations,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

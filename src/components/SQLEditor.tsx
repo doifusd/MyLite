@@ -118,7 +118,17 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
   };
 
   const executeQuery = useCallback(async () => {
-    const currentSql = editorRef.current?.getValue() || sql;
+    let currentSql = sql;
+    if (editorRef.current) {
+      const selection = editorRef.current.getSelection();
+      if (selection && !selection.isEmpty()) {
+        const model = editorRef.current.getModel();
+        currentSql = model?.getValueInRange(selection) || sql;
+      } else {
+        currentSql = editorRef.current.getValue();
+      }
+    }
+    
     if (!currentSql.trim() || !connectionId) return;
 
     setIsExecuting(true);
@@ -127,19 +137,11 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
     setActiveTab('result');
 
     try {
-      // Add database prefix if specified
-      let finalSql = currentSql.trim();
-      if (database && !finalSql.toLowerCase().startsWith('use ')) {
-        // Check if query needs database context
-        const needsDb = !finalSql.toLowerCase().includes(database.toLowerCase());
-        if (needsDb && finalSql.toLowerCase().startsWith('select')) {
-          // Wrap with database context
-          finalSql = finalSql.replace(/from\s+(\w+)/i, `from \`${database}\`.\`$1\``);
-        }
-      }
+      const finalSql = currentSql.trim();
 
       const data = await invoke<QueryResultData>('execute_query', {
         connectionId,
+        database: database || null,
         sql: finalSql,
       });
 

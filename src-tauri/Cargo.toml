@@ -1,7 +1,7 @@
 [package]
-name = "mysql-client"
+name = "mylite"
 version = "0.1.0"
-description = "MySQL Client Desktop App"
+description = "MyLite Desktop App"
 authors = ["sky"]
 license = "MIT"
 repository = ""

@@ -89,9 +89,8 @@ pub async fn get_schema_tree(
             let table_id = format!("table_{}.{}", db_name, table_name);
             let mut table_children = Vec::new();
 
-            // Get columns for this table
-            let columns: Vec<SchemaTreeItem> = sqlx::query(&format!(
-                "SELECT column_name, data_type FROM information_schema.columns 
+        let columns: Vec<SchemaTreeItem> = sqlx::query(&format!(
+                "SELECT column_name AS column_name, data_type AS data_type FROM information_schema.columns 
                  WHERE table_schema = '{}' AND table_name = '{}' 
                  ORDER BY ordinal_position",
                 db_name, table_name
@@ -122,9 +121,8 @@ pub async fn get_schema_tree(
                 table_children.push(columns_node);
             }
 
-            // Get indexes for this table
             let indexes: Vec<SchemaTreeItem> = sqlx::query(&format!(
-                "SELECT DISTINCT index_name FROM information_schema.statistics 
+                "SELECT DISTINCT index_name AS index_name FROM information_schema.statistics 
                  WHERE table_schema = '{}' AND table_name = '{}'",
                 db_name, table_name
             ))
@@ -194,8 +192,10 @@ pub async fn get_table_info(
 
     // Get table metadata
     let table_row = sqlx::query(&format!(
-        "SELECT engine, table_rows, data_length, index_length, 
-                create_time, update_time, table_comment 
+        "SELECT engine AS engine, table_rows AS table_rows, data_length AS data_length, 
+                index_length AS index_length, table_collation AS table_collation, 
+                create_time AS create_time, update_time AS update_time, 
+                table_comment AS table_comment 
          FROM information_schema.tables 
          WHERE table_schema = '{}' AND table_name = '{}'",
         database, table
@@ -204,11 +204,23 @@ pub async fn get_table_info(
     .await
     .map_err(|e| e.to_string())?;
 
-    // Get columns
+    // Get CREATE TABLE SQL
+    let create_sql_row: (String, String) = sqlx::query_as(&format!(
+        "SHOW CREATE TABLE `{}`.`{}`",
+        database, table
+    ))
+    .fetch_one(&pool)
+    .await
+    .map_err(|e| e.to_string())?;
+
     let columns: Vec<ColumnDefinition> = sqlx::query(&format!(
-        "SELECT column_name, data_type, is_nullable, column_default, 
-                column_key, extra, column_comment, ordinal_position,
-                character_maximum_length, numeric_precision, numeric_scale
+        "SELECT column_name AS column_name, data_type AS data_type, 
+                is_nullable AS is_nullable, column_default AS column_default, 
+                column_key AS column_key, extra AS extra, 
+                column_comment AS column_comment, ordinal_position AS ordinal_position,
+                character_maximum_length AS character_maximum_length, 
+                numeric_precision AS numeric_precision, numeric_scale AS numeric_scale,
+                character_set_name AS character_set_name, collation_name AS collation_name
          FROM information_schema.columns 
          WHERE table_schema = '{}' AND table_name = '{}' 
          ORDER BY ordinal_position",
@@ -226,6 +238,8 @@ pub async fn get_table_info(
         is_primary_key: row.get::<String, _>("column_key") == "PRI",
         is_auto_increment: row.get::<String, _>("extra").contains("auto_increment"),
         comment: row.try_get("column_comment").ok(),
+        character_set: row.try_get("character_set_name").ok(),
+        collation: row.try_get("collation_name").ok(),
         ordinal_position: row.get("ordinal_position"),
         max_length: row.try_get("character_maximum_length").ok(),
         numeric_precision: row.try_get("numeric_precision").ok(),
@@ -233,9 +247,9 @@ pub async fn get_table_info(
     })
     .collect();
 
-    // Get indexes
     let indexes: Vec<IndexInfo> = sqlx::query(&format!(
-        "SELECT index_name, non_unique, index_type, column_name 
+        "SELECT index_name AS index_name, non_unique AS non_unique, 
+                index_type AS index_type, column_name AS column_name 
          FROM information_schema.statistics 
          WHERE table_schema = '{}' AND table_name = '{}' 
          ORDER BY index_name, seq_in_index",
@@ -267,12 +281,42 @@ pub async fn get_table_info(
         row_count: table_row.try_get("table_rows").ok(),
         data_length: table_row.try_get("data_length").ok(),
         index_length: table_row.try_get("index_length").ok(),
+        collation: table_row.try_get("table_collation").ok(),
         created_at: table_row.try_get::<chrono::NaiveDateTime, _>("create_time").ok().map(|dt| dt.to_string()),
         updated_at: table_row.try_get::<chrono::NaiveDateTime, _>("update_time").ok().map(|dt| dt.to_string()),
         comment: table_row.try_get("table_comment").ok(),
+        create_sql: Some(create_sql_row.1),
         columns,
         indexes,
     })
+}
+
+#[tauri::command]
+pub async fn alter_table(
+    state: State<'_, Arc<AppState>>,
+    connection_id: String,
+    database: String,
+    _table: String,
+    sql: String,
+) -> Result<(), String> {
+    let pool = state
+        .pool
+        .get_or_create_pool(&connection_id, &get_connection_config(&state, &connection_id).await?)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // Use the specified database
+    sqlx::query(&format!("USE `{}`", database))
+        .execute(&pool)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    sqlx::query(&sql)
+        .execute(&pool)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
 }
 
 #[tauri::command]
@@ -292,6 +336,36 @@ pub async fn get_databases(
         .map_err(|e| e.to_string())?;
 
     Ok(databases)
+}
+
+#[tauri::command]
+pub async fn get_database_info(
+    state: State<'_, Arc<AppState>>,
+    connection_id: String,
+    database: String,
+) -> Result<serde_json::Value, String> {
+    let pool = state
+        .pool
+        .get_or_create_pool(&connection_id, &get_connection_config(&state, &connection_id).await?)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let row = sqlx::query(&format!(
+        "SELECT default_character_set_name, default_collation_name 
+         FROM information_schema.schemata 
+         WHERE schema_name = '{}'",
+        database
+    ))
+    .fetch_one(&pool)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    let mut map = serde_json::Map::new();
+    map.insert("name".to_string(), serde_json::Value::String(database));
+    map.insert("charset".to_string(), serde_json::Value::String(row.get("default_character_set_name")));
+    map.insert("collation".to_string(), serde_json::Value::String(row.get("default_collation_name")));
+
+    Ok(serde_json::Value::Object(map))
 }
 
 #[tauri::command]
@@ -338,7 +412,7 @@ pub async fn get_tables(
         .map_err(|e| e.to_string())?;
 
     let tables: Vec<String> = sqlx::query_scalar(&format!(
-        "SELECT table_name FROM information_schema.tables WHERE table_schema = '{}'",
+        "SELECT table_name AS table_name FROM information_schema.tables WHERE table_schema = '{}'",
         database
     ))
     .fetch_all(&pool)
@@ -376,9 +450,8 @@ pub async fn get_table_schema(
     let mut children = Vec::new();
     let table_id = format!("table_{}.{}", database, table);
 
-    // Get columns
     let columns: Vec<SchemaTreeItem> = sqlx::query(&format!(
-        "SELECT column_name, data_type FROM information_schema.columns 
+        "SELECT column_name AS column_name, data_type AS data_type FROM information_schema.columns 
          WHERE table_schema = '{}' AND table_name = '{}' 
          ORDER BY ordinal_position",
         database, table
@@ -408,9 +481,8 @@ pub async fn get_table_schema(
         });
     }
 
-    // Get indexes
     let indexes: Vec<SchemaTreeItem> = sqlx::query(&format!(
-        "SELECT DISTINCT index_name FROM information_schema.statistics 
+        "SELECT DISTINCT index_name AS index_name FROM information_schema.statistics 
          WHERE table_schema = '{}' AND table_name = '{}'",
         database, table
     ))
@@ -440,4 +512,71 @@ pub async fn get_table_schema(
     }
 
     Ok(children)
+}
+
+#[tauri::command]
+pub async fn get_charsets(
+    state: State<'_, Arc<AppState>>,
+    connection_id: String,
+) -> Result<Vec<serde_json::Value>, String> {
+    let pool = state
+        .pool
+        .get_or_create_pool(&connection_id, &get_connection_config(&state, &connection_id).await?)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let rows: Vec<serde_json::Value> = sqlx::query("SHOW CHARACTER SET")
+        .fetch_all(&pool)
+        .await
+        .map_err(|e| e.to_string())?
+        .into_iter()
+        .map(|row| {
+            let mut map = serde_json::Map::new();
+            map.insert("charset".to_string(), serde_json::Value::String(row.get("Charset")));
+            map.insert("description".to_string(), serde_json::Value::String(row.get("Description")));
+            map.insert("default_collation".to_string(), serde_json::Value::String(row.get("Default collation")));
+            map.insert("maxlen".to_string(), serde_json::Value::Number(row.get::<i64, _>("Maxlen").into()));
+            serde_json::Value::Object(map)
+        })
+        .collect();
+
+    Ok(rows)
+}
+
+#[tauri::command]
+pub async fn get_collations(
+    state: State<'_, Arc<AppState>>,
+    connection_id: String,
+    charset: Option<String>,
+) -> Result<Vec<serde_json::Value>, String> {
+    let pool = state
+        .pool
+        .get_or_create_pool(&connection_id, &get_connection_config(&state, &connection_id).await?)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let sql = if let Some(cs) = charset {
+        format!("SHOW COLLATION WHERE Charset = '{}'", cs)
+    } else {
+        "SHOW COLLATION".to_string()
+    };
+
+    let rows: Vec<serde_json::Value> = sqlx::query(&sql)
+        .fetch_all(&pool)
+        .await
+        .map_err(|e| e.to_string())?
+        .into_iter()
+        .map(|row| {
+            let mut map = serde_json::Map::new();
+            map.insert("collation".to_string(), serde_json::Value::String(row.get("Collation")));
+            map.insert("charset".to_string(), serde_json::Value::String(row.get("Charset")));
+            map.insert("id".to_string(), serde_json::Value::Number(row.get::<i64, _>("Id").into()));
+            map.insert("is_default".to_string(), serde_json::Value::String(row.get("Default")));
+            map.insert("is_compiled".to_string(), serde_json::Value::String(row.get("Compiled")));
+            map.insert("sortlen".to_string(), serde_json::Value::Number(row.get::<i64, _>("Sortlen").into()));
+            serde_json::Value::Object(map)
+        })
+        .collect();
+
+    Ok(rows)
 }

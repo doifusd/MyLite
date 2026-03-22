@@ -131,7 +131,7 @@ function App() {
       <header className="h-14 border-b bg-white flex items-center px-4 justify-between">
         <div className="flex items-center gap-2">
           <Database className="h-6 w-6 text-blue-600" />
-          <h1 className="text-lg font-semibold">MySQL Client</h1>
+          <h1 className="text-lg font-semibold">MyLite</h1>
         </div>
         
         <div className="flex items-center gap-2">

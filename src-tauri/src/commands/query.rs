@@ -2,7 +2,7 @@ use crate::models::connection::{ConnectionConfig, ConnectionInfo};
 use crate::models::query::{ColumnInfo, QueryResult};
 use crate::AppState;
 use serde_json::Value;
-use sqlx::Column;
+use sqlx::{Column, Executor};
 use sqlx::Row;
 use std::sync::Arc;
 use tauri::State;
@@ -58,26 +58,78 @@ async fn get_connection_config(
 pub async fn execute_query(
     state: State<'_, Arc<AppState>>,
     connection_id: String,
+    database: Option<String>,
     sql: String,
 ) -> Result<QueryResult, String> {
+    let pool_id = if let Some(ref db) = database {
+        format!("{}_{}", connection_id, db)
+    } else {
+        connection_id.clone()
+    };
+    
+    let mut config = get_connection_config(&state, &connection_id).await?;
+    if let Some(ref db) = database {
+        config.database = Some(db.clone());
+    }
+
     let pool = state
         .pool
         .get_or_create_pool(
-            &connection_id,
-            &get_connection_config(&state, &connection_id).await?,
+            &pool_id,
+            &config,
         )
         .await
         .map_err(|e| e.to_string())?;
 
     let start_time = std::time::Instant::now();
 
-    // Check if it's a SELECT query or other type
-    let trimmed_sql = sql.trim().to_uppercase();
-    let is_select = trimmed_sql.starts_with("SELECT")
-        || trimmed_sql.starts_with("SHOW")
-        || trimmed_sql.starts_with("DESCRIBE")
-        || trimmed_sql.starts_with("EXPLAIN")
-        || trimmed_sql.starts_with("DESC");
+    // Helper to check if a query is a SELECT query ignoring leading comments and whitespace
+    fn is_select_query(sql: &str) -> bool {
+        let mut chars = sql.chars().peekable();
+        while let Some(&c) = chars.peek() {
+            if c.is_whitespace() {
+                chars.next();
+            } else if c == '-' {
+                chars.next();
+                if chars.peek() == Some(&'-') {
+                    while let Some(c) = chars.next() {
+                        if c == '\n' { break; }
+                    }
+                } else {
+                    return false;
+                }
+            } else if c == '/' {
+                chars.next();
+                if chars.peek() == Some(&'*') {
+                    chars.next();
+                    let mut prev = ' ';
+                    while let Some(curr) = chars.next() {
+                        if prev == '*' && curr == '/' { break; }
+                        prev = curr;
+                    }
+                } else {
+                    return false;
+                }
+            } else {
+                break;
+            }
+        }
+        
+        let mut first_word = String::new();
+        while let Some(c) = chars.next() {
+            if c.is_alphabetic() {
+                first_word.push(c.to_ascii_uppercase());
+            } else if c.is_whitespace() && !first_word.is_empty() {
+                break;
+            } else if !c.is_whitespace() {
+                break;
+            }
+        }
+        
+        matches!(first_word.as_str(), "SELECT" | "SHOW" | "DESCRIBE" | "EXPLAIN" | "DESC" | "WITH")
+    }
+
+    let is_select = is_select_query(&sql);
 
     if is_select {
         // Execute SELECT query
@@ -86,29 +138,40 @@ pub async fn execute_query(
             .await
             .map_err(|e| e.to_string())?;
 
-        if rows.is_empty() {
-            return Ok(QueryResult {
-                columns: vec![],
-                rows: vec![],
-                row_count: 0,
-                execution_time_ms: start_time.elapsed().as_millis() as u64,
-                affected_rows: None,
-                last_insert_id: None,
-            });
-        }
 
-        // Get column info from first row
-        let first_row = &rows[0];
-        let columns: Vec<ColumnInfo> = first_row
-            .columns()
-            .iter()
-            .map(|col| ColumnInfo {
-                name: col.name().to_string(),
-                data_type: col.type_info().to_string(),
-                is_nullable: None,
-                max_length: None,
-            })
-            .collect();
+
+        // Get column info
+        let columns: Vec<ColumnInfo> = if !rows.is_empty() {
+            // Get from first row
+            rows[0]
+                .columns()
+                .iter()
+                .map(|col| ColumnInfo {
+                    name: col.name().to_string(),
+                    data_type: col.type_info().to_string(),
+                    is_nullable: None,
+                    max_length: None,
+                })
+                .collect()
+        } else {
+            // Try to describe the query to get columns even if no rows
+            match pool.describe(&sql).await {
+                Ok(describe) => {
+                    let describe: sqlx::Describe<sqlx::MySql> = describe;
+                    describe
+                        .columns
+                        .iter()
+                        .map(|col| ColumnInfo {
+                            name: col.name().to_string(),
+                            data_type: col.type_info().to_string(),
+                            is_nullable: None,
+                            max_length: None,
+                        })
+                        .collect::<Vec<ColumnInfo>>()
+                }
+                Err(_) => vec![], // Fallback to empty if describe fails
+            }
+        };
 
         // Convert rows to Vec<Value>
         let query_rows: Vec<Vec<Value>> = rows
@@ -118,13 +181,34 @@ pub async fn execute_query(
                     .iter()
                     .enumerate()
                     .map(|(idx, _)| {
-                        // Try to get value as different types
-                        if let Ok(val) = row.try_get::<String, _>(idx) {
+                        use sqlx::ValueRef;
+                        let is_null = row.try_get_raw(idx).map(|v| v.is_null()).unwrap_or(true);
+                        if is_null {
+                            Value::Null
+                        } else if let Ok(val) = row.try_get::<String, _>(idx) {
                             Value::String(val)
                         } else if let Ok(val) = row.try_get::<i64, _>(idx) {
                             Value::Number(val.into())
+                        } else if let Ok(val) = row.try_get::<u64, _>(idx) {
+                            Value::Number(val.into())
+                        } else if let Ok(val) = row.try_get::<i32, _>(idx) {
+                            Value::Number(val.into())
+                        } else if let Ok(val) = row.try_get::<u32, _>(idx) {
+                            Value::Number(val.into())
+                        } else if let Ok(val) = row.try_get::<i16, _>(idx) {
+                            Value::Number(val.into())
+                        } else if let Ok(val) = row.try_get::<u16, _>(idx) {
+                            Value::Number(val.into())
+                        } else if let Ok(val) = row.try_get::<i8, _>(idx) {
+                            Value::Number(val.into())
+                        } else if let Ok(val) = row.try_get::<u8, _>(idx) {
+                            Value::Number(val.into())
                         } else if let Ok(val) = row.try_get::<f64, _>(idx) {
                             serde_json::Number::from_f64(val)
+                                .map(Value::Number)
+                                .unwrap_or(Value::Null)
+                        } else if let Ok(val) = row.try_get::<f32, _>(idx) {
+                            serde_json::Number::from_f64(val as f64)
                                 .map(Value::Number)
                                 .unwrap_or(Value::Null)
                         } else if let Ok(val) = row.try_get::<bool, _>(idx) {
@@ -133,13 +217,18 @@ pub async fn execute_query(
                             Value::String(val.to_string())
                         } else if let Ok(val) = row.try_get::<chrono::NaiveDate, _>(idx) {
                             Value::String(val.to_string())
-                        } else if row.try_get::<Option<String>, _>(idx).unwrap_or(None).is_none() {
-                            Value::Null
+                        } else if let Ok(val) = row.try_get::<chrono::NaiveTime, _>(idx) {
+                            Value::String(val.to_string())
+                        } else if let Ok(val) = row.try_get::<serde_json::Value, _>(idx) {
+                            val
+                        } else if let Ok(val) = row.try_get::<Vec<u8>, _>(idx) {
+                            if let Ok(s) = String::from_utf8(val) {
+                                Value::String(s)
+                            } else {
+                                Value::Null
+                            }
                         } else {
-                            // Try as string as fallback
-                            row.try_get::<String, _>(idx)
-                                .map(Value::String)
-                                .unwrap_or(Value::Null)
+                            Value::Null
                         }
                     })
                     .collect()
@@ -200,12 +289,34 @@ pub async fn execute_raw_query(
 
         for (idx, column) in row.columns().iter().enumerate() {
             let col_name = column.name();
-            let value = if let Ok(val) = row.try_get::<String, _>(idx) {
+            use sqlx::ValueRef;
+            let is_null = row.try_get_raw(idx).map(|v| v.is_null()).unwrap_or(true);
+            let value = if is_null {
+                Value::Null
+            } else if let Ok(val) = row.try_get::<String, _>(idx) {
                 Value::String(val)
             } else if let Ok(val) = row.try_get::<i64, _>(idx) {
                 Value::Number(val.into())
+            } else if let Ok(val) = row.try_get::<u64, _>(idx) {
+                Value::Number(val.into())
+            } else if let Ok(val) = row.try_get::<i32, _>(idx) {
+                Value::Number(val.into())
+            } else if let Ok(val) = row.try_get::<u32, _>(idx) {
+                Value::Number(val.into())
+            } else if let Ok(val) = row.try_get::<i16, _>(idx) {
+                Value::Number(val.into())
+            } else if let Ok(val) = row.try_get::<u16, _>(idx) {
+                Value::Number(val.into())
+            } else if let Ok(val) = row.try_get::<i8, _>(idx) {
+                Value::Number(val.into())
+            } else if let Ok(val) = row.try_get::<u8, _>(idx) {
+                Value::Number(val.into())
             } else if let Ok(val) = row.try_get::<f64, _>(idx) {
                 serde_json::Number::from_f64(val)
+                    .map(Value::Number)
+                    .unwrap_or(Value::Null)
+            } else if let Ok(val) = row.try_get::<f32, _>(idx) {
+                serde_json::Number::from_f64(val as f64)
                     .map(Value::Number)
                     .unwrap_or(Value::Null)
             } else if let Ok(val) = row.try_get::<bool, _>(idx) {
@@ -214,12 +325,18 @@ pub async fn execute_raw_query(
                 Value::String(val.to_string())
             } else if let Ok(val) = row.try_get::<chrono::NaiveDate, _>(idx) {
                 Value::String(val.to_string())
-            } else if row.try_get::<Option<String>, _>(idx).unwrap_or(None).is_none() {
-                Value::Null
+            } else if let Ok(val) = row.try_get::<chrono::NaiveTime, _>(idx) {
+                Value::String(val.to_string())
+            } else if let Ok(val) = row.try_get::<serde_json::Value, _>(idx) {
+                val
+            } else if let Ok(val) = row.try_get::<Vec<u8>, _>(idx) {
+                if let Ok(s) = String::from_utf8(val) {
+                    Value::String(s)
+                } else {
+                    Value::Null
+                }
             } else {
-                row.try_get::<String, _>(idx)
-                    .map(Value::String)
-                    .unwrap_or(Value::Null)
+                Value::Null
             };
             obj.insert(col_name.to_string(), value);
         }
@@ -240,5 +357,5 @@ pub async fn get_table_preview(
 ) -> Result<QueryResult, String> {
     let limit = limit.unwrap_or(100);
     let sql = format!("SELECT * FROM `{}`.`{}` LIMIT {}", database, table, limit);
-    execute_query(state, connection_id, sql).await
+    execute_query(state, connection_id, Some(database), sql).await
 }

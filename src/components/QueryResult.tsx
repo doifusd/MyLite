@@ -131,8 +131,8 @@ export const QueryResult: React.FC<QueryResultProps> = ({
     }
   };
 
-  // Handle non-SELECT results
-  if (data.columns.length === 0 && data.affected_rows !== undefined) {
+  // Handle non-SELECT results (INSERT, UPDATE, DELETE, etc.)
+  if (data.columns.length === 0 && typeof data.affected_rows === 'number') {
     return (
       <div className={cn('p-8 text-center', className)}>
         <p className="text-lg font-medium text-green-600">
@@ -153,7 +153,7 @@ export const QueryResult: React.FC<QueryResultProps> = ({
     );
   }
 
-  if (data.rows.length === 0) {
+  if (data.rows.length === 0 && data.columns.length === 0) {
     return (
       <div className={cn('p-8 text-center', className)}>
         <p className="text-gray-500">Query returned no results</p>
@@ -322,24 +322,35 @@ export const QueryResult: React.FC<QueryResultProps> = ({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {currentRows.map((row, rowIndex) => (
-                <TableRow key={rowIndex} className="hover:bg-gray-50">
-                  {row.map((cell, cellIndex) => (
-                    <TableCell
-                      key={cellIndex}
-                      className="text-sm font-mono whitespace-nowrap"
-                    >
-                      {cell === null ? (
-                        <span className="text-gray-400 italic">NULL</span>
-                      ) : typeof cell === 'object' ? (
-                        JSON.stringify(cell)
-                      ) : (
-                        String(cell)
-                      )}
-                    </TableCell>
-                  ))}
+              {currentRows.length > 0 ? (
+                currentRows.map((row, rowIndex) => (
+                  <TableRow key={rowIndex} className="hover:bg-gray-50">
+                    {row.map((cell, cellIndex) => (
+                      <TableCell
+                        key={cellIndex}
+                        className="text-sm font-mono whitespace-nowrap"
+                      >
+                        {cell === null ? (
+                          <span className="text-gray-400 italic">NULL</span>
+                        ) : typeof cell === 'object' ? (
+                          JSON.stringify(cell)
+                        ) : (
+                          String(cell)
+                        )}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell
+                    colSpan={data.columns.length}
+                    className="h-24 text-center text-gray-500"
+                  >
+                    No data in this table
+                  </TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
         </div>

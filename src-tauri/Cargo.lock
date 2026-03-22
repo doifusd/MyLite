@@ -2419,7 +2419,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "mysql-client"
+name = "mylite"
 version = "0.1.0"
 dependencies = [
  "anyhow",

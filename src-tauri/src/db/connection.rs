@@ -31,6 +31,9 @@ impl ConnectionPool {
             options = options.database(database);
         }
 
+        // Set character set and collation for the connection
+        options = options.charset("utf8mb4").collation("utf8mb4_unicode_ci");
+
         if config.use_ssl {
             // SSL configuration would go here
             // options = options.ssl_mode(sqlx::mysql::MySqlSslMode::Required);

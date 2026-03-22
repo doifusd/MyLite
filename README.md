@@ -1,4 +1,4 @@
-# MySQL Client - 桌面数据库管理工具
+# MyLite - 桌面数据库管理工具
 
 基于 Rust + Tauri + React + TypeScript 开发的现代化 MySQL 客户端，类似于 Navicat。
 
@@ -12,7 +12,7 @@
 ## 📁 项目结构
 
 ```
-mysqlClient/
+mylite/
 ├── src/                          # 前端代码
 │   ├── App.tsx                   # 主应用组件
 │   ├── main.tsx                  # 入口文件
@@ -60,7 +60,7 @@ mysqlClient/
 ## 🛠️ 安装依赖
 
 ```bash
-cd mysqlClient
+cd mylite
 npm install
 ```
 
