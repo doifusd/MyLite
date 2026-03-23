@@ -243,9 +243,9 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
       </div>
 
       {/* Results */}
-      <div className="flex-1 min-h-0 border-t">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full">
-          <TabsList className="w-full justify-start rounded-none border-b bg-gray-50 px-2">
+      <div className="flex-1 min-h-0 border-t flex flex-col">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
+          <TabsList className="w-full justify-start rounded-none border-b bg-gray-50 px-2 shrink-0">
             <TabsTrigger value="result" className="gap-1">
               <Table2 className="h-4 w-4" />
               Results
@@ -258,7 +258,8 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="result" className="h-full m-0">
+          <div className="flex-1 overflow-hidden relative">
+            <TabsContent value="result" className="absolute inset-0 m-0 data-[state=inactive]:hidden">
             {isExecuting ? (
               <div className="flex items-center justify-center h-full">
                 <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
@@ -282,7 +283,7 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
             )}
           </TabsContent>
 
-          <TabsContent value="history" className="h-full m-0">
+          <TabsContent value="history" className="absolute inset-0 m-0 data-[state=inactive]:hidden overflow-auto">
             {history.length === 0 ? (
               <div className="flex items-center justify-center h-full text-gray-400">
                 <p>No query history</p>
@@ -311,6 +312,7 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
               </div>
             )}
           </TabsContent>
+          </div>
         </Tabs>
       </div>
 
