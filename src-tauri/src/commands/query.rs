@@ -246,8 +246,7 @@ pub async fn execute_query(
         })
     } else {
         // Execute non-SELECT query (INSERT, UPDATE, DELETE, etc.)
-        let result = sqlx::query(&sql)
-            .execute(&pool)
+        let result = pool.execute(sql.as_str())
             .await
             .map_err(|e| e.to_string())?;
 

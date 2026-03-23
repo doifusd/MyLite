@@ -275,7 +275,12 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
                 </div>
               </div>
             ) : result ? (
-              <QueryResult data={result} />
+              <QueryResult 
+                data={result}
+                connectionId={connectionId}
+                databaseName={database}
+                onRefresh={executeQuery}
+              />
             ) : (
               <div className="flex items-center justify-center h-full text-gray-400">
                 <p>Execute a query to see results</p>

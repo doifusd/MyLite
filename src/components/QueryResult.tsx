@@ -24,6 +24,14 @@ import {
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import {
+  ContextMenu,
+  ContextMenuTrigger,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+} from '@/components/ui/context-menu';
+import { invoke } from '@tauri-apps/api/tauri';
 
 interface ColumnInfo {
   name: string;
@@ -44,6 +52,10 @@ interface QueryResultData {
 interface QueryResultProps {
   data: QueryResultData;
   className?: string;
+  tableName?: string;
+  databaseName?: string;
+  connectionId?: string;
+  onRefresh?: () => void;
 }
 
 const ROWS_PER_PAGE_OPTIONS = [50, 100, 200, 500, 1000];
@@ -51,6 +63,10 @@ const ROWS_PER_PAGE_OPTIONS = [50, 100, 200, 500, 1000];
 export const QueryResult: React.FC<QueryResultProps> = ({
   data,
   className,
+  tableName,
+  databaseName,
+  connectionId,
+  onRefresh,
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(100);
@@ -84,6 +100,108 @@ export const QueryResult: React.FC<QueryResultProps> = ({
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleCopyRow = (row: any[]) => {
+    const text = row.map(cell => cell === null ? 'NULL' : String(cell)).join('\t');
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleCopyRowWithColumns = (row: any[]) => {
+    const cols = data.columns.map(c => c.name).join('\t');
+    const text = row.map(cell => cell === null ? 'NULL' : String(cell)).join('\t');
+    navigator.clipboard.writeText(`${cols}\n${text}`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const generateInsertSQL = (row: any[], excludeAutoInc: boolean) => {
+    const table = tableName || 'table_name';
+    const cols: string[] = [];
+    const vals: string[] = [];
+    
+    data.columns.forEach((col, idx) => {
+      if (excludeAutoInc && col.name.toLowerCase() === 'id') return;
+      cols.push(`\`${col.name}\``);
+      
+      const val = row[idx];
+      if (val === null) {
+        vals.push('NULL');
+      } else if (typeof val === 'number' || typeof val === 'boolean') {
+        vals.push(String(val));
+      } else {
+        vals.push(`'${String(val).replace(/'/g, "''")}'`);
+      }
+    });
+
+    return `INSERT INTO \`${table}\` (${cols.join(', ')}) VALUES (${vals.join(', ')});`;
+  };
+
+  const handleCopyInsert = (row: any[], excludeAutoInc: boolean) => {
+    const sql = generateInsertSQL(row, excludeAutoInc);
+    navigator.clipboard.writeText(sql);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const generateDeleteSQL = (row: any[]) => {
+    const table = tableName || 'table_name';
+    const conditions: string[] = [];
+    
+    data.columns.forEach((col, idx) => {
+      const val = row[idx];
+      if (val === null) {
+        conditions.push(`\`${col.name}\` IS NULL`);
+      } else if (typeof val === 'number' || typeof val === 'boolean') {
+        conditions.push(`\`${col.name}\` = ${val}`);
+      } else {
+        conditions.push(`\`${col.name}\` = '${String(val).replace(/'/g, "''")}'`);
+      }
+    });
+
+    return `DELETE FROM \`${table}\` WHERE ${conditions.join(' AND ')} LIMIT 1;`;
+  };
+
+  const handleDeleteRow = async (row: any[]) => {
+    if (!tableName || !databaseName || !connectionId) {
+      alert("Table information is missing, cannot delete row directly.");
+      return;
+    }
+    
+    if (!confirm("Are you sure you want to delete this row?")) return;
+    
+    const sql = generateDeleteSQL(row);
+    try {
+      await invoke('execute_query', {
+        connectionId,
+        database: databaseName || null,
+        sql,
+      });
+      onRefresh?.();
+    } catch (err: any) {
+      alert(`Error deleting row: ${err}`);
+    }
+  };
+
+  const handleDuplicateRow = async (row: any[]) => {
+    if (!tableName || !databaseName || !connectionId) {
+      alert("Table information is missing, cannot duplicate row directly.");
+      return;
+    }
+    
+    const sql = generateInsertSQL(row, true);
+    try {
+      await invoke('execute_query', {
+        connectionId,
+        database: databaseName || null,
+        sql,
+      });
+      onRefresh?.();
+    } catch (err: any) {
+      alert(`Error duplicating row: ${err}`);
+    }
   };
 
   const handleExport = (format: 'csv' | 'json') => {
@@ -324,22 +442,57 @@ export const QueryResult: React.FC<QueryResultProps> = ({
             <TableBody>
               {currentRows.length > 0 ? (
                 currentRows.map((row, rowIndex) => (
-                  <TableRow key={rowIndex} className="hover:bg-gray-50">
-                    {row.map((cell, cellIndex) => (
-                      <TableCell
-                        key={cellIndex}
-                        className="text-sm font-mono whitespace-nowrap"
+                  <ContextMenu key={rowIndex}>
+                    <ContextMenuTrigger asChild>
+                      <TableRow className="hover:bg-gray-50 data-[state=open]:bg-gray-100">
+                        {row.map((cell, cellIndex) => (
+                          <TableCell
+                            key={cellIndex}
+                            className="text-sm font-mono whitespace-nowrap"
+                          >
+                            {cell === null ? (
+                              <span className="text-gray-400 italic">NULL</span>
+                            ) : typeof cell === 'object' ? (
+                              JSON.stringify(cell)
+                            ) : (
+                              String(cell)
+                            )}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    </ContextMenuTrigger>
+                    <ContextMenuContent className="w-64">
+                      <ContextMenuItem onClick={() => handleCopyRow(row)}>
+                        Copy
+                      </ContextMenuItem>
+                      <ContextMenuItem onClick={() => handleCopyRowWithColumns(row)}>
+                        Copy with Column Names
+                      </ContextMenuItem>
+                      <ContextMenuItem onClick={() => handleCopyInsert(row, false)}>
+                        Copy as SQL INSERT
+                      </ContextMenuItem>
+                      <ContextMenuItem onClick={() => handleCopyInsert(row, true)}>
+                        Copy as SQL INSERT (no auto_inc)
+                      </ContextMenuItem>
+                      <ContextMenuSeparator />
+                      <ContextMenuItem disabled>
+                        Add New Row
+                      </ContextMenuItem>
+                      <ContextMenuItem 
+                        onClick={() => handleDuplicateRow(row)}
+                        disabled={!tableName}
                       >
-                        {cell === null ? (
-                          <span className="text-gray-400 italic">NULL</span>
-                        ) : typeof cell === 'object' ? (
-                          JSON.stringify(cell)
-                        ) : (
-                          String(cell)
-                        )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
+                        Duplicate Row
+                      </ContextMenuItem>
+                      <ContextMenuItem 
+                        onClick={() => handleDeleteRow(row)}
+                        disabled={!tableName}
+                        className="text-red-600 focus:text-red-700 focus:bg-red-50"
+                      >
+                        Delete Row
+                      </ContextMenuItem>
+                    </ContextMenuContent>
+                  </ContextMenu>
                 ))
               ) : (
                 <TableRow>

@@ -70,7 +70,14 @@ export const TableDataView: React.FC<TableDataViewProps> = ({
 
   return (
     <div className={cn('flex flex-col h-full', className)}>
-      <QueryResult data={data} className="flex-1" />
+      <QueryResult 
+        data={data} 
+        className="flex-1" 
+        tableName={table}
+        databaseName={database}
+        connectionId={connectionId}
+        onRefresh={fetchData}
+      />
     </div>
   );
 };
