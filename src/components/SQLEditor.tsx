@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/tauri';
 import { 
   Play, 
@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { QueryResult } from '@/components/QueryResult';
 import Editor, { OnMount } from '@monaco-editor/react';
+import { format } from 'sql-formatter';
 
 interface ColumnInfo {
   name: string;
@@ -35,21 +36,45 @@ interface QueryResultData {
 interface SQLEditorProps {
   connectionId: string;
   database?: string;
+  initialSql?: string;
+  onSqlChange?: (sql: string) => void;
   className?: string;
+}
+
+// 单个查询结果
+interface QueryExecutionResult {
+  id: string;
+  sql: string;
+  result: QueryResultData | null;
+  error: string | null;
+  executionTime: number;
+  isExecuting: boolean;
 }
 
 export const SQLEditor: React.FC<SQLEditorProps> = ({
   connectionId,
   database,
+  initialSql = '',
+  onSqlChange,
   className,
 }) => {
-  const [sql, setSql] = useState('');
+  const [sql, setSql] = useState(initialSql);
   const [isExecuting, setIsExecuting] = useState(false);
-  const [result, setResult] = useState<QueryResultData | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState('result');
+  const [results, setResults] = useState<QueryExecutionResult[]>([]);
+  const [activeResultTab, setActiveResultTab] = useState<string>('');
   const [history, setHistory] = useState<Array<{ sql: string; timestamp: Date }>>([]);
   const editorRef = useRef<any>(null);
+  const resultIdCounter = useRef(0);
+
+  // Sync with initialSql prop when it changes (e.g., when switching tabs back)
+  useEffect(() => {
+    if (initialSql !== undefined && initialSql !== sql) {
+      setSql(initialSql);
+      if (editorRef.current) {
+        editorRef.current.setValue(initialSql);
+      }
+    }
+  }, [initialSql]);
 
   const handleEditorMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
@@ -117,6 +142,62 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
     });
   };
 
+  // 解析多 SQL 语句（按分号分割，但忽略字符串中的分号）
+  const parseMultipleStatements = (sqlText: string): string[] => {
+    const statements: string[] = [];
+    let current = '';
+    let inString = false;
+    let stringChar = '';
+    let escaped = false;
+
+    for (const char of sqlText) {
+      if (escaped) {
+        current += char;
+        escaped = false;
+        continue;
+      }
+
+      if (char === '\\') {
+        current += char;
+        escaped = true;
+        continue;
+      }
+
+      if (!inString && (char === "'" || char === '"' || char === '`')) {
+        inString = true;
+        stringChar = char;
+        current += char;
+        continue;
+      }
+
+      if (inString && char === stringChar) {
+        inString = false;
+        stringChar = '';
+        current += char;
+        continue;
+      }
+
+      if (!inString && char === ';') {
+        const trimmed = current.trim();
+        if (trimmed) {
+          statements.push(trimmed);
+        }
+        current = '';
+        continue;
+      }
+
+      current += char;
+    }
+
+    // 添加最后一条语句
+    const trimmed = current.trim();
+    if (trimmed) {
+      statements.push(trimmed);
+    }
+
+    return statements;
+  };
+
   const executeQuery = useCallback(async () => {
     let currentSql = sql;
     if (editorRef.current) {
@@ -131,49 +212,90 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
     
     if (!currentSql.trim() || !connectionId) return;
 
+    // 解析多语句
+    const statements = parseMultipleStatements(currentSql);
+    
+    // 如果没有语句，直接返回
+    if (statements.length === 0) return;
+
     setIsExecuting(true);
-    setError(null);
-    setResult(null);
-    setActiveTab('result');
+    
+    // 清空之前的结果
+    setResults([]);
+    resultIdCounter.current = 0;
 
-    try {
-      const finalSql = currentSql.trim();
+    // 为每个语句创建结果占位
+    const initialResults: QueryExecutionResult[] = statements.map((stmt, index) => ({
+      id: `result-${index}`,
+      sql: stmt,
+      result: null,
+      error: null,
+      executionTime: 0,
+      isExecuting: true,
+    }));
+    setResults(initialResults);
+    setActiveResultTab('result-0');
 
-      const data = await invoke<QueryResultData>('execute_query', {
-        connectionId,
-        database: database || null,
-        sql: finalSql,
-      });
+    // 顺序执行每个语句
+    for (let i = 0; i < statements.length; i++) {
+      const stmt = statements[i];
+      const startTime = Date.now();
 
-      setResult(data);
-      
-      // Add to history
-      setHistory((prev) => [
-        { sql: finalSql.slice(0, 100) + (finalSql.length > 100 ? '...' : ''), timestamp: new Date() },
-        ...prev.slice(0, 49), // Keep last 50 queries
-      ]);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Query execution failed');
-    } finally {
-      setIsExecuting(false);
+      try {
+        const data = await invoke<QueryResultData>('execute_query', {
+          connectionId,
+          database: database || null,
+          sql: stmt,
+        });
+
+        setResults(prev => prev.map(r => 
+          r.id === `result-${i}` 
+            ? { ...r, result: data, executionTime: Date.now() - startTime, isExecuting: false }
+            : r
+        ));
+        
+        // 添加到历史
+        if (i === statements.length - 1) {
+          setHistory((prev) => [
+            { sql: currentSql.slice(0, 100) + (currentSql.length > 100 ? '...' : ''), timestamp: new Date() },
+            ...prev.slice(0, 49),
+          ]);
+        }
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : 'Query execution failed';
+        setResults(prev => prev.map(r => 
+          r.id === `result-${i}` 
+            ? { ...r, error: errorMsg, executionTime: Date.now() - startTime, isExecuting: false }
+            : r
+        ));
+        // 出错后继续执行其他语句
+      }
     }
+
+    setIsExecuting(false);
   }, [sql, connectionId, database]);
 
   const formatSql = () => {
     const currentSql = editorRef.current?.getValue() || sql;
-    // Simple SQL formatting
-    const formatted = currentSql
-      .replace(/\s+/g, ' ')
-      .replace(/\s*,\s*/g, ', ')
-      .replace(/\s*\(\s*/g, ' (')
-      .replace(/\s*\)\s*/g, ') ')
-      .replace(/\s*;\s*/g, ';')
-      .trim();
     
-    if (editorRef.current) {
-      editorRef.current.setValue(formatted);
+    try {
+      // 使用 sql-formatter 进行专业格式化
+      const formatted = format(currentSql, {
+        language: 'mysql',
+        keywordCase: 'upper',
+        indentStyle: 'standard',
+        linesBetweenQueries: 2,
+      });
+      
+      if (editorRef.current) {
+        editorRef.current.setValue(formatted);
+      }
+      setSql(formatted);
+      onSqlChange?.(formatted);
+    } catch (err) {
+      // 格式化失败时静默处理，保持原样
+      console.warn('SQL format failed:', err);
     }
-    setSql(formatted);
   };
 
   return (
@@ -222,7 +344,11 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
           height="100%"
           language="sql"
           value={sql}
-          onChange={(value) => setSql(value || '')}
+          onChange={(value) => {
+            const newValue = value || '';
+            setSql(newValue);
+            onSqlChange?.(newValue);
+          }}
           onMount={handleEditorMount}
           theme="vs-light"
           options={{
@@ -244,14 +370,43 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
 
       {/* Results */}
       <div className="flex-1 min-h-0 border-t flex flex-col">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="w-full justify-start rounded-none border-b bg-gray-50 px-2 shrink-0">
-            <TabsTrigger value="result" className="gap-1">
-              <Table2 className="h-4 w-4" />
-              Results
-              {result && <span className="ml-1 text-xs">({result.row_count})</span>}
-            </TabsTrigger>
-            <TabsTrigger value="history" className="gap-1">
+        <Tabs value={activeResultTab} onValueChange={setActiveResultTab} className="flex-1 flex flex-col overflow-hidden">
+          <TabsList className="w-full justify-start rounded-none border-b bg-gray-50 px-2 shrink-0 overflow-x-auto">
+            {results.length > 0 ? (
+              results.map((res, index) => (
+                <TabsTrigger 
+                  key={res.id} 
+                  value={res.id}
+                  className={cn(
+                    "gap-1 min-w-fit",
+                    res.error && "text-red-600"
+                  )}
+                >
+                  <span className="text-xs">{index + 1}</span>
+                  {res.isExecuting ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : res.error ? (
+                    <AlertCircle className="h-3 w-3" />
+                  ) : (
+                    <Table2 className="h-3 w-3" />
+                  )}
+                  <span className="max-w-[100px] truncate text-xs">
+                    {res.sql.slice(0, 20)}...
+                  </span>
+                  {res.result && (
+                    <span className="text-xs text-gray-500">
+                      ({res.result.row_count || res.result.affected_rows || 0})
+                    </span>
+                  )}
+                </TabsTrigger>
+              ))
+            ) : (
+              <TabsTrigger value="placeholder" disabled className="gap-1">
+                <Table2 className="h-4 w-4" />
+                Results
+              </TabsTrigger>
+            )}
+            <TabsTrigger value="history" className="gap-1 ml-auto">
               <Clock className="h-4 w-4" />
               History
               {history.length > 0 && <span className="ml-1 text-xs">({history.length})</span>}
@@ -259,87 +414,104 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
           </TabsList>
 
           <div className="flex-1 overflow-hidden relative">
-            <TabsContent value="result" className="absolute inset-0 m-0 data-[state=inactive]:hidden">
-            {isExecuting ? (
-              <div className="flex items-center justify-center h-full">
-                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-              </div>
-            ) : error ? (
-              <div className="p-4">
-                <div className="flex items-start gap-2 text-red-600">
-                  <AlertCircle className="h-5 w-5 mt-0.5" />
-                  <div>
-                    <p className="font-medium">Query Error</p>
-                    <p className="text-sm mt-1">{error}</p>
+            {results.map((res) => (
+              <TabsContent 
+                key={res.id} 
+                value={res.id} 
+                className="absolute inset-0 m-0 data-[state=inactive]:hidden"
+              >
+                {res.isExecuting ? (
+                  <div className="flex items-center justify-center h-full">
+                    <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                    <span className="ml-2 text-gray-500">Executing...</span>
                   </div>
+                ) : res.error ? (
+                  <div className="p-4">
+                    <div className="flex items-start gap-2 text-red-600">
+                      <AlertCircle className="h-5 w-5 mt-0.5" />
+                      <div>
+                        <p className="font-medium">Query Error</p>
+                        <p className="text-sm mt-1">{res.error}</p>
+                        <code className="text-xs bg-red-50 p-2 rounded mt-2 block">
+                          {res.sql}
+                        </code>
+                      </div>
+                    </div>
+                  </div>
+                ) : res.result ? (
+                  <QueryResult 
+                    data={res.result}
+                    connectionId={connectionId}
+                    databaseName={database}
+                    onRefresh={executeQuery}
+                  />
+                ) : null}
+              </TabsContent>
+            ))}
+
+            <TabsContent value="history" className="absolute inset-0 m-0 data-[state=inactive]:hidden overflow-auto">
+              {history.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-gray-400">
+                  <p>No query history</p>
                 </div>
-              </div>
-            ) : result ? (
-              <QueryResult 
-                data={result}
-                connectionId={connectionId}
-                databaseName={database}
-                onRefresh={executeQuery}
-              />
-            ) : (
+              ) : (
+                <div className="divide-y">
+                  {history.map((item, index) => (
+                    <div
+                      key={index}
+                      className="p-3 hover:bg-gray-50 cursor-pointer"
+                      onClick={() => {
+                        setSql(item.sql);
+                        if (editorRef.current) {
+                          editorRef.current.setValue(item.sql);
+                        }
+                      }}
+                    >
+                      <code className="text-sm font-mono text-gray-700 block truncate">
+                        {item.sql}
+                      </code>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {item.timestamp.toLocaleString()}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            {results.length === 0 && activeResultTab !== 'history' && (
               <div className="flex items-center justify-center h-full text-gray-400">
                 <p>Execute a query to see results</p>
               </div>
             )}
-          </TabsContent>
-
-          <TabsContent value="history" className="absolute inset-0 m-0 data-[state=inactive]:hidden overflow-auto">
-            {history.length === 0 ? (
-              <div className="flex items-center justify-center h-full text-gray-400">
-                <p>No query history</p>
-              </div>
-            ) : (
-              <div className="divide-y">
-                {history.map((item, index) => (
-                  <div
-                    key={index}
-                    className="p-3 hover:bg-gray-50 cursor-pointer"
-                    onClick={() => {
-                      setSql(item.sql);
-                      if (editorRef.current) {
-                        editorRef.current.setValue(item.sql);
-                      }
-                    }}
-                  >
-                    <code className="text-sm font-mono text-gray-700 block truncate">
-                      {item.sql}
-                    </code>
-                    <p className="text-xs text-gray-400 mt-1">
-                      {item.timestamp.toLocaleString()}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </TabsContent>
           </div>
         </Tabs>
       </div>
 
       {/* Status Bar */}
       <div className="flex items-center gap-4 px-3 py-1.5 border-t bg-gray-50 text-xs text-gray-500">
-        {result && (
+        {results.length > 0 && (
           <>
             <span className="flex items-center gap-1">
               <CheckCircle2 className="h-3 w-3 text-green-500" />
-              {result.execution_time_ms}ms
+              {results.filter(r => !r.isExecuting).length}/{results.length} executed
             </span>
-            {result.row_count > 0 && <span>{result.row_count} rows</span>}
-            {result.affected_rows !== undefined && (
-              <span>{result.affected_rows} affected</span>
+            <span>
+              {results.reduce((sum, r) => sum + (r.result?.row_count || 0), 0)} total rows
+            </span>
+            <span>
+              {results.reduce((sum, r) => sum + (r.result?.affected_rows || 0), 0)} affected
+            </span>
+            <span>
+              {results.reduce((sum, r) => sum + r.executionTime, 0)}ms total
+            </span>
+            {results.some(r => r.error) && (
+              <span className="flex items-center gap-1 text-red-500">
+                <AlertCircle className="h-3 w-3" />
+                {results.filter(r => r.error).length} errors
+              </span>
             )}
           </>
-        )}
-        {error && (
-          <span className="flex items-center gap-1 text-red-500">
-            <AlertCircle className="h-3 w-3" />
-            Error
-          </span>
         )}
       </div>
     </div>

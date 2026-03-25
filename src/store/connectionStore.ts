@@ -2,14 +2,49 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { invoke } from "@tauri-apps/api/tauri";
 
+export type ConnectionType = 'direct' | 'ssh' | 'ssl' | 'http';
+
+export interface SshConfig {
+  ssh_host: string;
+  ssh_port: number;
+  ssh_username: string;
+  ssh_password?: string;
+  ssh_private_key?: string;
+  ssh_private_key_passphrase?: string;
+  local_bind_port: number;
+}
+
+export interface SslConfig {
+  ssl_mode: string;
+  ssl_ca?: string;
+  ssl_cert?: string;
+  ssl_key?: string;
+  ssl_cipher?: string;
+}
+
+export interface HttpConfig {
+  http_url: string;
+  http_auth_type: string;
+  http_username?: string;
+  http_password?: string;
+  http_bearer_token?: string;
+}
+
+export type ConnectionColor = 'blue' | 'green' | 'purple' | 'orange' | 'red' | 'cyan' | 'pink' | 'indigo';
+
 export interface Connection {
   id: string;
   name: string;
+  connection_type: ConnectionType;
   host: string;
   port: number;
   username: string;
   password: string;
   database?: string;
+  color?: ConnectionColor;
+  ssh_config?: SshConfig;
+  ssl_config?: SslConfig;
+  http_config?: HttpConfig;
 }
 
 interface ConnectionState {

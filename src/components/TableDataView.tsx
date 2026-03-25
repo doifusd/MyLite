@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/tauri';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { Loader2, RefreshCw, Upload, Download } from 'lucide-react';
 import { QueryResult } from './QueryResult';
+import { ImportExportDialog } from './ImportExportDialog';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 interface TableDataViewProps {
@@ -20,6 +22,7 @@ export const TableDataView: React.FC<TableDataViewProps> = ({
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [importExportOpen, setImportExportOpen] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -70,6 +73,26 @@ export const TableDataView: React.FC<TableDataViewProps> = ({
 
   return (
     <div className={cn('flex flex-col h-full', className)}>
+      <div className="flex items-center justify-end px-4 py-2 border-b bg-gray-50 gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setImportExportOpen(true)}
+          className="gap-1"
+        >
+          <Upload className="h-4 w-4" />
+          Import
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setImportExportOpen(true)}
+          className="gap-1"
+        >
+          <Download className="h-4 w-4" />
+          Export
+        </Button>
+      </div>
       <QueryResult 
         data={data} 
         className="flex-1" 
@@ -77,6 +100,13 @@ export const TableDataView: React.FC<TableDataViewProps> = ({
         databaseName={database}
         connectionId={connectionId}
         onRefresh={fetchData}
+      />
+      <ImportExportDialog
+        isOpen={importExportOpen}
+        onClose={() => setImportExportOpen(false)}
+        connectionId={connectionId}
+        database={database}
+        table={table}
       />
     </div>
   );

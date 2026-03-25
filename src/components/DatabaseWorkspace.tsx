@@ -6,22 +6,27 @@ import { TableDataView } from './TableDataView';
 import { TableStructureView } from './TableStructureView';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
-import { Database, Table, Code } from 'lucide-react';
+import { Database, Table, Code, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface DatabaseWorkspaceProps {
   connectionId: string;
   connectionName: string;
   className?: string;
+  onClose?: () => void;
 }
 
 export const DatabaseWorkspace: React.FC<DatabaseWorkspaceProps> = ({
   connectionId,
   connectionName,
   className,
+  onClose,
 }) => {
   const [selectedDatabase, setSelectedDatabase] = useState<string | undefined>();
   const [selectedTable, setSelectedTable] = useState<string | undefined>();
   const [activeTab, setActiveTab] = useState('query');
+  // Persist SQL editor content across tab switches
+  const [sqlContent, setSqlContent] = useState<string>('');
 
   const handleTableSelect = (database: string, table: string, tab?: string) => {
     setSelectedDatabase(database);
@@ -33,7 +38,7 @@ export const DatabaseWorkspace: React.FC<DatabaseWorkspaceProps> = ({
   return (
     <div className={cn('flex flex-col h-full bg-white', className)}>
       {/* Header */}
-      <div className="flex items-center px-4 py-2 border-b bg-gray-50">
+      <div className="flex items-center justify-between px-4 py-2 border-b bg-gray-50">
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-green-500" />
           <span className="text-sm font-medium">{connectionName}</span>
@@ -50,6 +55,17 @@ export const DatabaseWorkspace: React.FC<DatabaseWorkspaceProps> = ({
             </>
           )}
         </div>
+        {onClose && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <X className="h-4 w-4 mr-1" />
+            Close
+          </Button>
+        )}
       </div>
 
       {/* Main Content */}
@@ -101,6 +117,8 @@ export const DatabaseWorkspace: React.FC<DatabaseWorkspaceProps> = ({
                   <SQLEditor
                     connectionId={connectionId}
                     database={selectedDatabase}
+                    initialSql={sqlContent}
+                    onSqlChange={setSqlContent}
                     className="h-full"
                   />
                 </TabsContent>

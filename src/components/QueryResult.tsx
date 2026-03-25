@@ -10,7 +10,9 @@ import {
   Maximize2,
   Minimize2,
   Search,
-  X
+  X,
+  Plus,
+  Save
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -33,6 +35,82 @@ import {
 } from '@/components/ui/context-menu';
 import { invoke } from '@tauri-apps/api/tauri';
 
+interface InsertDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (sql: string) => void;
+  columns: ColumnInfo[];
+  tableName: string;
+  databaseName: string;
+}
+
+const InsertDialog: React.FC<InsertDialogProps> = ({
+  isOpen,
+  onClose,
+  onSave,
+  columns,
+  tableName,
+  databaseName,
+}) => {
+  const [values, setValues] = useState<Record<string, string>>({});
+
+  const handleSave = () => {
+    const cols: string[] = [];
+    const vals: string[] = [];
+    
+    columns.forEach(col => {
+      if (values[col.name] !== undefined && values[col.name] !== '') {
+        cols.push(`\`${col.name}\``);
+        if (values[col.name] === 'NULL') {
+          vals.push('NULL');
+        } else if (['int', 'bigint', 'smallint', 'tinyint', 'decimal', 'float', 'double'].some(t => col.data_type.toLowerCase().includes(t))) {
+          vals.push(values[col.name]);
+        } else {
+          vals.push(`'${values[col.name].replace(/'/g, "''")}'`);
+        }
+      }
+    });
+
+    if (cols.length === 0) {
+      alert('Please fill in at least one column');
+      return;
+    }
+
+    const sql = `INSERT INTO \`${databaseName}\`.\`${tableName}\` (${cols.join(', ')}) VALUES (${vals.join(', ')});`;
+    onSave(sql);
+    setValues({});
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-lg w-[600px] max-h-[80vh] overflow-auto p-6">
+        <h3 className="text-lg font-semibold mb-4">Insert New Row</h3>
+        <div className="space-y-3">
+          {columns.map(col => (
+            <div key={col.name} className="grid grid-cols-[150px_1fr] items-center gap-2">
+              <label className="text-sm font-medium">
+                {col.name}
+                <span className="text-gray-400 text-xs ml-1">({col.data_type})</span>
+              </label>
+              <Input
+                placeholder={col.is_nullable ? 'NULL' : 'Required'}
+                value={values[col.name] || ''}
+                onChange={(e) => setValues({ ...values, [col.name]: e.target.value })}
+              />
+            </div>
+          ))}
+        </div>
+        <div className="flex justify-end gap-2 mt-6">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleSave}>Insert</Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 interface ColumnInfo {
   name: string;
   data_type: string;
@@ -40,7 +118,7 @@ interface ColumnInfo {
   max_length?: number;
 }
 
-interface QueryResultData {
+export interface QueryResultData {
   columns: ColumnInfo[];
   rows: any[][];
   row_count: number;
@@ -74,6 +152,70 @@ export const QueryResult: React.FC<QueryResultProps> = ({
   const [expanded, setExpanded] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'table' | 'json'>('table');
+
+  const [editingCell, setEditingCell] = useState<{rowIndex: number; colIndex: number} | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const handleCellClick = (rowIndex: number, colIndex: number, value: any) => {
+    if (!tableName || !databaseName || !connectionId) return;
+    setEditingCell({ rowIndex, colIndex });
+    setEditValue(value === null ? 'NULL' : String(value));
+  };
+
+  const handleCellSave = async () => {
+    if (!editingCell || !tableName || !databaseName || !connectionId) return;
+    
+    const { rowIndex, colIndex } = editingCell;
+    const row = currentRows[rowIndex];
+    const col = data.columns[colIndex];
+    const originalValue = row[colIndex];
+    
+    // Skip if no change
+    const newValue = editValue === 'NULL' ? null : editValue;
+    if (newValue === originalValue) {
+      setEditingCell(null);
+      return;
+    }
+    
+    // Build UPDATE SQL
+    const setClause = editValue === 'NULL' 
+      ? `\`${col.name}\` = NULL`
+      : `\`${col.name}\` = '${editValue.replace(/'/g, "''")}'`;
+    
+    // Build WHERE clause using primary key or all columns
+    const whereConditions: string[] = [];
+    data.columns.forEach((c, idx) => {
+      const val = row[idx];
+      if (val === null) {
+        whereConditions.push(`\`${c.name}\` IS NULL`);
+      } else if (typeof val === 'number' || typeof val === 'boolean') {
+        whereConditions.push(`\`${c.name}\` = ${val}`);
+      } else {
+        whereConditions.push(`\`${c.name}\` = '${String(val).replace(/'/g, "''")}'`);
+      }
+    });
+    
+    const sql = `UPDATE \`${databaseName}\`.\`${tableName}\` SET ${setClause} WHERE ${whereConditions.join(' AND ')} LIMIT 1;`;
+    
+    try {
+      await invoke('execute_query', {
+        connectionId,
+        database: databaseName,
+        sql,
+      });
+      onRefresh?.();
+    } catch (err: any) {
+      alert(`Error updating cell: ${err}`);
+    }
+    
+    setEditingCell(null);
+  };
+
+  const handleCellCancel = () => {
+    setEditingCell(null);
+    setEditValue('');
+  };
+
+  const [insertDialogOpen, setInsertDialogOpen] = useState(false);
 
   // Filter rows based on search term
   const filteredRows = useMemo(() => {
@@ -448,9 +590,45 @@ export const QueryResult: React.FC<QueryResultProps> = ({
                         {row.map((cell, cellIndex) => (
                           <TableCell
                             key={cellIndex}
-                            className="text-sm font-mono whitespace-nowrap"
+                            className="text-sm font-mono whitespace-nowrap cursor-pointer hover:bg-blue-50"
+                            onClick={() => handleCellClick(rowIndex, cellIndex, cell)}
                           >
-                            {cell === null ? (
+                            {editingCell?.rowIndex === rowIndex && editingCell?.colIndex === cellIndex ? (
+                              <div className="flex items-center gap-1">
+                                <Input
+                                  value={editValue}
+                                  onChange={(e) => setEditValue(e.target.value)}
+                                  className="h-7 w-32 text-xs"
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleCellSave();
+                                    if (e.key === 'Escape') handleCellCancel();
+                                  }}
+                                  autoFocus
+                                />
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCellSave();
+                                  }}
+                                >
+                                  <Save className="h-3 w-3 text-green-600" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCellCancel();
+                                  }}
+                                >
+                                  <X className="h-3 w-3 text-red-600" />
+                                </Button>
+                              </div>
+                            ) : cell === null ? (
                               <span className="text-gray-400 italic">NULL</span>
                             ) : typeof cell === 'object' ? (
                               JSON.stringify(cell)
@@ -475,8 +653,12 @@ export const QueryResult: React.FC<QueryResultProps> = ({
                         Copy as SQL INSERT (no auto_inc)
                       </ContextMenuItem>
                       <ContextMenuSeparator />
-                      <ContextMenuItem disabled>
-                        Add New Row
+                      <ContextMenuItem 
+                        onClick={() => setInsertDialogOpen(true)}
+                        disabled={!tableName}
+                      >
+                        <Plus className="h-3 w-3 mr-2" />
+                        Insert New Row
                       </ContextMenuItem>
                       <ContextMenuItem 
                         onClick={() => handleDuplicateRow(row)}
@@ -534,6 +716,27 @@ export const QueryResult: React.FC<QueryResultProps> = ({
           Execution time: {data.execution_time_ms}ms
         </span>
       </div>
+
+      <InsertDialog
+        isOpen={insertDialogOpen}
+        onClose={() => setInsertDialogOpen(false)}
+        onSave={async (sql) => {
+          try {
+            await invoke('execute_query', {
+              connectionId,
+              database: databaseName,
+              sql,
+            });
+            setInsertDialogOpen(false);
+            onRefresh?.();
+          } catch (err: any) {
+            alert(`Error inserting row: ${err}`);
+          }
+        }}
+        columns={data.columns}
+        tableName={tableName || ''}
+        databaseName={databaseName || ''}
+      />
     </div>
   );
 };

@@ -54,4 +54,4 @@ ARFLAGS_aarch64_apple_darwin = None
 cargo:rerun-if-env-changed=ARFLAGS_aarch64-apple-darwin
 ARFLAGS_aarch64-apple-darwin = None
 cargo:rustc-link-lib=static=exception
-cargo:rustc-link-search=native=/Users/sky/Documents/mysqlClient/src-tauri/target/debug/build/objc_exception-cea75963382edbf3/out
+cargo:rustc-link-search=native=/Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri/target/debug/build/objc_exception-cea75963382edbf3/out

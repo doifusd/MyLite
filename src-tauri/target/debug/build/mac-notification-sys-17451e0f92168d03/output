@@ -54,7 +54,7 @@ ARFLAGS_aarch64_apple_darwin = None
 cargo:rerun-if-env-changed=ARFLAGS_aarch64-apple-darwin
 ARFLAGS_aarch64-apple-darwin = None
 cargo:rustc-link-lib=static=notify
-cargo:rustc-link-search=native=/Users/sky/Documents/mysqlClient/src-tauri/target/debug/build/mac-notification-sys-17451e0f92168d03/out
+cargo:rustc-link-search=native=/Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri/target/debug/build/mac-notification-sys-17451e0f92168d03/out
 cargo:rustc-link-lib=framework=AppKit
 cargo:rerun-if-env-changed=MACOSX_DEPLOYMENT_TARGET
 cargo:rerun-if-changed=build.rs

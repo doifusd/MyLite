@@ -49,7 +49,11 @@ pub async fn save_connection(
         username: config.username.clone(),
         password: config.password.clone(),
         database: config.database.clone(),
-        use_ssl: config.use_ssl,
+        color: config.color.clone(),
+        connection_type: config.connection_type.clone(),
+        ssh_config: config.ssh_config.clone(),
+        ssl_config: config.ssl_config.clone(),
+        http_config: config.http_config.clone(),
     });
 
     {
@@ -66,7 +70,11 @@ pub async fn save_connection(
         username: config.username,
         password: config.password,
         database: config.database,
-        use_ssl: config.use_ssl,
+        color: config.color,
+        connection_type: config.connection_type,
+        ssh_config: config.ssh_config,
+        ssl_config: config.ssl_config,
+        http_config: config.http_config,
     })
 }
 
@@ -102,7 +110,7 @@ pub async fn delete_connection(
         store_lock.save().map_err(|e| e.to_string())?;
     }
 
-    // Also remove the connection pool
+    // Also remove the connection pool and SSH tunnel
     state.pool.remove_pool(&connection_id).await;
 
     Ok(())
@@ -119,8 +127,7 @@ pub async fn get_connection_detail(
 
     let connections = get_connections_from_store(&store)?;
     
-    // This is a placeholder - in a real implementation, you'd store the full config including password
-    // For now, we return a simplified version
+    // Find the connection and return full config
     connections
         .into_iter()
         .find(|c| c.id == connection_id)
@@ -132,10 +139,11 @@ pub async fn get_connection_detail(
             username: info.username,
             password: info.password,
             database: info.database,
-            use_ssl: info.use_ssl,
-            ssl_ca: None,
-            ssl_cert: None,
-            ssl_key: None,
+            color: info.color,
+            connection_type: info.connection_type,
+            ssh_config: info.ssh_config,
+            ssl_config: info.ssl_config,
+            http_config: info.http_config,
         })
         .ok_or_else(|| "Connection not found".to_string())
 }

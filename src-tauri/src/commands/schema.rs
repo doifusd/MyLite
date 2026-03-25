@@ -45,10 +45,11 @@ async fn get_connection_config(
         username: info.username,
         password: info.password,
         database: info.database,
-        use_ssl: info.use_ssl,
-        ssl_ca: None,
-        ssl_cert: None,
-        ssl_key: None,
+        color: info.color.clone(),
+        connection_type: info.connection_type.clone(),
+        ssh_config: info.ssh_config.clone(),
+        ssl_config: info.ssl_config.clone(),
+        http_config: info.http_config.clone(),
     })
 }
 

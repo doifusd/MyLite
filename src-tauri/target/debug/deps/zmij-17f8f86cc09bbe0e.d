@@ -1,8 +1,8 @@
-/Users/sky/Documents/mysqlClient/src-tauri/target/debug/deps/zmij-17f8f86cc09bbe0e.d: /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zmij-1.0.21/src/lib.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zmij-1.0.21/src/traits.rs
+/Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri/target/debug/deps/zmij-17f8f86cc09bbe0e.d: /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zmij-1.0.21/src/lib.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zmij-1.0.21/src/traits.rs
 
-/Users/sky/Documents/mysqlClient/src-tauri/target/debug/deps/libzmij-17f8f86cc09bbe0e.rlib: /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zmij-1.0.21/src/lib.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zmij-1.0.21/src/traits.rs
+/Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri/target/debug/deps/libzmij-17f8f86cc09bbe0e.rlib: /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zmij-1.0.21/src/lib.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zmij-1.0.21/src/traits.rs
 
-/Users/sky/Documents/mysqlClient/src-tauri/target/debug/deps/libzmij-17f8f86cc09bbe0e.rmeta: /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zmij-1.0.21/src/lib.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zmij-1.0.21/src/traits.rs
+/Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri/target/debug/deps/libzmij-17f8f86cc09bbe0e.rmeta: /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zmij-1.0.21/src/lib.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zmij-1.0.21/src/traits.rs
 
 /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zmij-1.0.21/src/lib.rs:
 /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zmij-1.0.21/src/traits.rs:

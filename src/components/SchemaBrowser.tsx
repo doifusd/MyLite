@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/tauri';
+import { cn } from '@/lib/utils';
 import { 
   ChevronRight, 
   ChevronDown, 
@@ -10,9 +11,9 @@ import {
   Loader2,
   RefreshCw
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { DatabasePropertiesDialog } from './DatabasePropertiesDialog';
 import { TableDDLDialog } from './TableDDLDialog';
+import { CreateTableDialog } from './CreateTableDialog';
 
 interface SchemaTreeItem {
   id: string;
@@ -147,6 +148,9 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
 
   const [ddlDialogOpen, setDdlDialogOpen] = useState(false);
   const [selectedTableForDdl, setSelectedTableForDdl] = useState<{ database: string; table: string } | null>(null);
+
+  const [createTableOpen, setCreateTableOpen] = useState(false);
+  const [selectedDbForCreateTable, setSelectedDbForCreateTable] = useState<string | null>(null);
 
   const handleContextMenu = (e: React.MouseEvent, node: SchemaTreeItem) => {
     if (node.type !== 'table' && node.type !== 'database') return;
@@ -319,24 +323,33 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
             className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800"
             onClick={() => {
               if (contextMenu.node.type === 'database') {
-                setSelectedDbForProps(contextMenu.node.name);
-                setDbPropertiesOpen(true);
-              } else {
-                const parts = contextMenu.node.id.replace('table_', '').split('.');
-                if (parts.length === 2 && onTableSelect) {
-                  onTableSelect(parts[0], parts[1], 'structure');
-                }
+                setSelectedDbForCreateTable(contextMenu.node.name);
+                setCreateTableOpen(true);
               }
               setContextMenu(null);
             }}
           >
-            {contextMenu.node.type === 'database' ? 'Database Properties' : 'View Structure'}
+            Create New Table
           </button>
+          <div className="border-t my-1" />
           <div className="border-t my-1" />
           <button
             className="w-full text-left px-4 py-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
-            onClick={() => {
-              // TODO: Implement drop table
+            onClick={async () => {
+              const parts = contextMenu.node.id.replace('table_', '').split('.');
+              if (parts.length === 2) {
+                if (confirm(`Are you sure you want to drop table "${parts[1]}"?\n\nThis action cannot be undone!`)) {
+                  try {
+                    await invoke('execute_sql', {
+                      connectionId,
+                      sql: `DROP TABLE \`${parts[0]}\`.\`${parts[1]}\``,
+                    });
+                    fetchDatabases();
+                  } catch (err: any) {
+                    alert(`Failed to drop table: ${err}`);
+                  }
+                }
+              }
               setContextMenu(null);
             }}
           >
@@ -368,6 +381,28 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
           connectionId={connectionId}
           database={selectedTableForDdl.database}
           tableName={selectedTableForDdl.table}
+        />
+      )}
+
+      {selectedDbForCreateTable && (
+        <CreateTableDialog
+          isOpen={createTableOpen}
+          onClose={() => {
+            setCreateTableOpen(false);
+            setSelectedDbForCreateTable(null);
+          }}
+          onSave={async (sql) => {
+            try {
+              await invoke('execute_sql', { connectionId, sql });
+              setCreateTableOpen(false);
+              setSelectedDbForCreateTable(null);
+              fetchDatabases();
+            } catch (err: any) {
+              alert(`Failed to create table: ${err}`);
+            }
+          }}
+          connectionId={connectionId}
+          database={selectedDbForCreateTable}
         />
       )}
     </div>

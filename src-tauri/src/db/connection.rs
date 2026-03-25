@@ -1,29 +1,52 @@
-use sqlx::mysql::{MySqlConnectOptions, MySqlPoolOptions};
+use sqlx::mysql::{MySqlConnectOptions, MySqlPoolOptions, MySqlSslMode};
 use sqlx::{MySql, Pool};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-use crate::models::connection::ConnectionConfig;
+use crate::models::connection::{ConnectionConfig, ConnectionType, SslConfig};
+use crate::db::ssh_tunnel::SshTunnelManager;
 
 pub type DbPool = Pool<MySql>;
 
 #[derive(Clone)]
 pub struct ConnectionPool {
     pools: Arc<RwLock<HashMap<String, DbPool>>>,
+    ssh_manager: Arc<SshTunnelManager>,
 }
 
 impl ConnectionPool {
     pub async fn new() -> anyhow::Result<Self> {
         Ok(Self {
             pools: Arc::new(RwLock::new(HashMap::new())),
+            ssh_manager: Arc::new(SshTunnelManager::new()),
         })
     }
 
     pub async fn create_pool(&self, config: &ConnectionConfig) -> anyhow::Result<DbPool> {
+        let (host, port) = match config.connection_type {
+            ConnectionType::SshTunnel => {
+                if let Some(ref ssh_config) = config.ssh_config {
+                    // Establish SSH tunnel
+                    let local_port = self.ssh_manager
+                        .get_or_create_tunnel(
+                            config.id.as_deref().unwrap_or("temp"),
+                            ssh_config,
+                            config.host.clone(),
+                            config.port,
+                        )
+                        .await?;
+                    ("127.0.0.1".to_string(), local_port)
+                } else {
+                    return Err(anyhow::anyhow!("SSH configuration missing"));
+                }
+            }
+            _ => (config.host.clone(), config.port),
+        };
+
         let mut options = MySqlConnectOptions::new()
-            .host(&config.host)
-            .port(config.port)
+            .host(&host)
+            .port(port)
             .username(&config.username)
             .password(&config.password);
 
@@ -34,9 +57,22 @@ impl ConnectionPool {
         // Set character set and collation for the connection
         options = options.charset("utf8mb4").collation("utf8mb4_unicode_ci");
 
-        if config.use_ssl {
-            // SSL configuration would go here
-            // options = options.ssl_mode(sqlx::mysql::MySqlSslMode::Required);
+        // Configure SSL if needed
+        match config.connection_type {
+            ConnectionType::Ssl => {
+                if let Some(ref ssl_config) = config.ssl_config {
+                    options = configure_ssl(options, ssl_config)?;
+                }
+            }
+            ConnectionType::Direct => {
+                // Check if SSL config exists even for direct connections
+                if let Some(ref ssl_config) = config.ssl_config {
+                    if ssl_config.ssl_mode != "disabled" {
+                        options = configure_ssl(options, ssl_config)?;
+                    }
+                }
+            }
+            _ => {}
         }
 
         let pool = MySqlPoolOptions::new()
@@ -77,6 +113,9 @@ impl ConnectionPool {
         if let Some(pool) = pools.remove(connection_id) {
             let _ = pool.close().await;
         }
+        
+        // Also close SSH tunnel if exists
+        let _ = self.ssh_manager.close_tunnel(connection_id).await;
     }
 
     pub async fn test_connection(&self, config: &ConnectionConfig) -> anyhow::Result<String> {
@@ -85,6 +124,42 @@ impl ConnectionPool {
             .fetch_one(&pool)
             .await?;
         pool.close().await;
+        
+        // Clean up temporary SSH tunnel if created
+        if config.connection_type == ConnectionType::SshTunnel {
+            if let Some(ref id) = config.id {
+                let _ = self.ssh_manager.close_tunnel(id).await;
+            }
+        }
+        
         Ok(row.0)
     }
+}
+
+fn configure_ssl(
+    options: MySqlConnectOptions,
+    ssl_config: &SslConfig,
+) -> anyhow::Result<MySqlConnectOptions> {
+    let ssl_mode = match ssl_config.ssl_mode.as_str() {
+        "disabled" => MySqlSslMode::Disabled,
+        "preferred" => MySqlSslMode::Preferred,
+        "required" => MySqlSslMode::Required,
+        "verify_ca" => MySqlSslMode::VerifyCa,
+        "verify_identity" => MySqlSslMode::VerifyIdentity,
+        _ => MySqlSslMode::Preferred,
+    };
+
+        let options = options.ssl_mode(ssl_mode);
+
+    // Note: sqlx doesn't directly support setting CA/Cert/Key files in the same way as native drivers
+    // In a production app, you might need to use native-tls or rustls directly
+    // For now, we set the SSL mode which enables basic SSL encryption
+    
+    if let Some(ref cipher) = ssl_config.ssl_cipher {
+        // Cipher configuration would require lower-level SSL context manipulation
+        // This is a placeholder for future implementation
+        println!("SSL Cipher requested: {}", cipher);
+    }
+
+    Ok(options)
 }
