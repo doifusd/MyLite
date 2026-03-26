@@ -34,6 +34,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { Connection as ConnectionConfig, SshConfig, SslConfig, HttpConfig, ConnectionColor } from '@/store/connectionStore';
+import type { ConnectionGroup } from './ConnectionGroupManager';
 
 // Form config without id for new connections
 type ConnectionFormConfig = Omit<ConnectionConfig, 'id'> & { id?: string };
@@ -55,6 +56,7 @@ interface ConnectionDialogProps {
   onOpenChange: (open: boolean) => void;
   onSave: (config: ConnectionFormConfig) => void;
   initialConfig?: ConnectionConfig;
+  groups?: ConnectionGroup[];
 }
 
 export function ConnectionDialog({
@@ -62,6 +64,7 @@ export function ConnectionDialog({
   onOpenChange,
   onSave,
   initialConfig,
+  groups = [],
 }: ConnectionDialogProps) {
   const [config, setConfig] = useState<ConnectionFormConfig>({
     name: '',
@@ -95,16 +98,53 @@ export function ConnectionDialog({
   const [showKeyPassphrase, setShowKeyPassphrase] = useState(false);
 
   useEffect(() => {
-    if (initialConfig) {
-      setConfig({
-        ...config,
-        ...initialConfig,
-        ssh_config: initialConfig.ssh_config || config.ssh_config,
-        ssl_config: initialConfig.ssl_config || config.ssl_config,
-        http_config: initialConfig.http_config || config.http_config,
-      });
+    if (open) {
+      if (initialConfig) {
+        // Edit mode: populate with initial config
+        setConfig({
+          ...initialConfig,
+          ssh_config: initialConfig.ssh_config || {
+            ssh_host: '',
+            ssh_port: 22,
+            ssh_username: '',
+            ssh_password: '',
+            local_bind_port: 0,
+          },
+          ssl_config: initialConfig.ssl_config || { ssl_mode: 'preferred' },
+          http_config: initialConfig.http_config || { http_url: '', http_auth_type: 'none' },
+        });
+      } else {
+        // New connection mode: reset to defaults
+        setConfig({
+          name: '',
+          host: 'localhost',
+          port: 3306,
+          username: 'root',
+          password: '',
+          database: '',
+          connection_type: 'direct',
+          color: 'blue',
+          ssh_config: {
+            ssh_host: '',
+            ssh_port: 22,
+            ssh_username: '',
+            ssh_password: '',
+            local_bind_port: 0,
+          },
+          ssl_config: {
+            ssl_mode: 'preferred',
+          },
+          http_config: {
+            http_url: '',
+            http_auth_type: 'none',
+          },
+        });
+      }
+      // Reset test status when dialog opens
+      setTestStatus('idle');
+      setTestMessage('');
     }
-  }, [initialConfig]);
+  }, [open, initialConfig]);
 
   const testConnection = async () => {
     setTestStatus('testing');
@@ -133,7 +173,6 @@ export function ConnectionDialog({
 
   const handleSave = () => {
     if (!config.name || !config.host || !config.username) return;
-    // For new connections, ensure no id is passed so backend generates a new one
     const saveConfig = initialConfig ? config : { ...config, id: undefined };
     onSave(saveConfig);
     onOpenChange(false);
@@ -480,7 +519,7 @@ export function ConnectionDialog({
           </div>
         )}
 
-        {/* Color Selection - Always at bottom */}
+        {/* Color Selection */}
         <div className="space-y-2 pt-4 border-t">
           <Label className="text-sm font-medium">Connection Color</Label>
           <div className="flex gap-3 flex-wrap">
@@ -501,6 +540,29 @@ export function ConnectionDialog({
             ))}
           </div>
         </div>
+
+        {/* Group Selection */}
+        {groups.length > 0 && (
+          <div className="space-y-2 pt-4 border-t">
+            <Label htmlFor="group">Group (optional)</Label>
+            <Select
+              value={config.group || ''}
+              onValueChange={(v) => updateConfig({ group: v || undefined })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a group..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">No Group</SelectItem>
+                {groups.map((group) => (
+                  <SelectItem key={group.id} value={group.id}>
+                    {group.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>

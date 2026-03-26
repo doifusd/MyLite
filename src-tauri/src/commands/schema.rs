@@ -35,8 +35,6 @@ async fn get_connection_config(
         .find(|c| c.id == connection_id)
         .ok_or_else(|| "Connection not found".to_string())?;
 
-    // For now, we construct a basic config without password
-    // In production, password should be retrieved from secure storage
     Ok(ConnectionConfig {
         id: Some(info.id),
         name: info.name,
@@ -50,6 +48,11 @@ async fn get_connection_config(
         ssh_config: info.ssh_config.clone(),
         ssl_config: info.ssl_config.clone(),
         http_config: info.http_config.clone(),
+        group: info.group,
+        is_favorite: info.is_favorite,
+        sort_order: info.sort_order,
+        tags: info.tags,
+        last_connected_at: info.last_connected_at,
     })
 }
 

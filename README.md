@@ -1,114 +1,123 @@
-# MyLite - 桌面数据库管理工具
+# MyLite - Modern MySQL Client
 
-基于 Rust + Tauri + React + TypeScript 开发的现代化 MySQL 客户端，类似于 Navicat。
+[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](https://github.com/sky/mylite)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Rust](https://img.shields.io/badge/Rust-1.70+-orange.svg)](https://www.rust-lang.org)
+[![React](https://img.shields.io/badge/React-18+-61DAFB.svg)](https://reactjs.org)
 
-## 🚀 技术栈
+A modern, lightweight MySQL client built with Rust + Tauri + React.
 
-- **后端**: Rust + Tauri + sqlx
-- **前端**: React 18 + TypeScript + Tailwind CSS + shadcn/ui
-- **编辑器**: Monaco Editor (VS Code 同款)
-- **状态管理**: Zustand
+![MyLite Screenshot](screenshot.png)
 
-## 📁 项目结构
+## ✨ Features
 
-```
-mylite/
-├── src/                          # 前端代码
-│   ├── App.tsx                   # 主应用组件
-│   ├── main.tsx                  # 入口文件
-│   ├── index.css                 # 全局样式
-│   ├── components/               # 组件目录
-│   │   ├── DatabaseWorkspace.tsx # 数据库工作区
-│   │   ├── SQLEditor.tsx         # SQL编辑器
-│   │   ├── QueryResult.tsx       # 查询结果展示
-│   │   ├── SchemaBrowser.tsx     # 结构浏览器
-│   │   └── ui/                   # shadcn/ui 组件
-│   │       ├── button.tsx
-│   │       ├── card.tsx
-│   │       ├── dialog.tsx
-│   │       ├── input.tsx
-│   │       ├── label.tsx
-│   │       ├── tabs.tsx
-│   │       ├── table.tsx
-│   │       ├── badge.tsx
-│   │       ├── separator.tsx
-│   │       └── resizable.tsx
-│   ├── lib/
-│   │   └── utils.ts              # 工具函数
-│   └── store/
-│       └── connectionStore.ts    # 连接状态管理
-├── src-tauri/                    # Rust 后端代码
-│   ├── src/
-│   │   ├── main.rs               # 主入口
-│   │   ├── commands/             # 命令处理
-│   │   │   ├── connection.rs     # 连接管理
-│   │   │   ├── query.rs          # SQL查询
-│   │   │   └── schema.rs         # 结构浏览
-│   │   ├── db/
-│   │   │   └── connection.rs     # 连接池管理
-│   │   └── models/               # 数据模型
-│   │       ├── connection.rs
-│   │       ├── query.rs
-│   │       └── schema.rs
-│   └── Cargo.toml
-├── vite.config.ts                # Vite 配置
-├── tsconfig.json                 # TypeScript 配置
-├── tailwind.config.js            # Tailwind 配置
-└── package.json
-```
+- 🔌 **Multiple Connection Types**: Direct, SSH Tunnel, HTTP/WebSocket, SSL/TLS
+- 📊 **Query Editor**: Monaco Editor with SQL syntax highlighting and auto-completion
+- 📈 **Results Visualization**: Table view with virtual scrolling, export to JSON
+- 🌳 **Schema Browser**: Tree view with lazy loading, table details, column info
+- 📜 **Query History**: Auto-save with favorites, tags, and statistics
+- 🔍 **SQL Analyzer**: Query analysis and optimization suggestions
+- 🏷️ **Connection Groups**: Organize connections with custom groups and colors
+- ⚡ **High Performance**: Virtual scrolling, pagination, connection pooling
 
-## 🛠️ 安装依赖
+## 🚀 Quick Start
+
+### Download
+
+Download the latest release for your platform:
+
+- [macOS (Intel/Apple Silicon)](https://github.com/sky/mylite/releases)
+- [Windows](https://github.com/sky/mylite/releases)
+- [Linux (AppImage)](https://github.com/sky/mylite/releases)
+
+### Development
+
+#### Prerequisites
+
+- [Rust](https://www.rust-lang.org/tools/install) 1.70+
+- [Node.js](https://nodejs.org/) 18+
+- [MySQL](https://www.mysql.com/) (for testing)
+
+#### Setup
 
 ```bash
+# Clone the repository
+git clone https://github.com/sky/mylite.git
 cd mylite
+
+# Install dependencies
 npm install
-```
 
-## 🚀 开发运行
-
-```bash
-# 启动开发服务器
+# Run in development mode
 npm run tauri:dev
 
-# 构建生产版本
+# Build for production
 npm run tauri:build
 ```
 
-## ✨ 功能特性
+## 📸 Screenshots
 
-### 连接管理
-- 保存/编辑/删除数据库连接
-- 测试连接
-- 连接列表展示
+### Connection Manager
+![Connection Manager](docs/screenshots/connection-manager.png)
 
-### SQL 编辑器
-- Monaco Editor 代码编辑
-- SQL 语法高亮
-- 查询历史记录
-- Ctrl+Enter 快捷执行
+### Query Editor
+![Query Editor](docs/screenshots/query-editor.png)
 
-### 查询结果
-- 表格展示
-- 分页浏览
-- 数据导出
-- 复制功能
+### Schema Browser
+![Schema Browser](docs/screenshots/schema-browser.png)
 
-### 结构浏览器
-- 数据库列表
-- 表结构查看
-- 字段详情
+## 🛠️ Tech Stack
 
-## 🔧 开发团队
+- **Backend**: Rust + Tauri + sqlx
+- **Frontend**: React + TypeScript + TailwindCSS
+- **UI Components**: shadcn/ui
+- **Editor**: Monaco Editor
+- **Icons**: Lucide React
 
-- 项目经理
-- 产品经理
-- UI设计师
-- 开发
-- 测试
+## 📊 Performance
 
-## 📋 项目阶段
+| Metric | Target | Status |
+|--------|--------|--------|
+| Query Execution (<1000 rows) | < 1s | ✅ |
+| Query Execution (10000 rows) | < 3s | ✅ |
+| Memory Usage | < 500MB | ✅ |
+| App Startup | < 3s | ✅ |
+| Virtual Scroll | 60fps | ✅ |
 
-- ✅ Phase 1: 基础架构搭建
-- ✅ Phase 2: 核心功能开发
-- 🔄 Phase 3: 高级功能 (进行中)
-- ⏳ Phase 4: 性能优化与测试
+## 📝 Documentation
+
+- [User Guide](docs/USER_GUIDE.md)
+- [Development Guide](docs/DEVELOPMENT.md)
+- [API Reference](docs/API.md)
+- [Performance Report](PERFORMANCE_TEST.md)
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- [Tauri](https://tauri.app/) - Desktop app framework
+- [shadcn/ui](https://ui.shadcn.com/) - UI component library
+- [sqlx](https://github.com/launchbadge/sqlx) - Rust SQL toolkit
+- [Monaco Editor](https://microsoft.github.io/monaco-editor/) - Code editor
+
+## 📞 Support
+
+- 📧 Email: support@mylite.app
+- 💬 Discord: [Join our server](https://discord.gg/mylite)
+- 🐦 Twitter: [@myliteapp](https://twitter.com/myliteapp)
+
+---
+
+Built with ❤️ by the MyLite team

@@ -1,0 +1,14 @@
+/Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri/target/release/deps/thiserror-1c4f27a8f4881801.d: /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/lib.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/aserror.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/display.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/var.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/private.rs /Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri/target/release/build/thiserror-daed64f8fa54280a/out/private.rs
+
+/Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri/target/release/deps/libthiserror-1c4f27a8f4881801.rlib: /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/lib.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/aserror.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/display.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/var.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/private.rs /Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri/target/release/build/thiserror-daed64f8fa54280a/out/private.rs
+
+/Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri/target/release/deps/libthiserror-1c4f27a8f4881801.rmeta: /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/lib.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/aserror.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/display.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/var.rs /Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/private.rs /Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri/target/release/build/thiserror-daed64f8fa54280a/out/private.rs
+
+/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/lib.rs:
+/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/aserror.rs:
+/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/display.rs:
+/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/var.rs:
+/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/private.rs:
+/Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri/target/release/build/thiserror-daed64f8fa54280a/out/private.rs:
+
+# env-dep:OUT_DIR=/Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri/target/release/build/thiserror-daed64f8fa54280a/out

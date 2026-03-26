@@ -74,6 +74,17 @@ pub struct ConnectionConfig {
     pub ssl_config: Option<SslConfig>,
     #[serde(default)]
     pub http_config: Option<HttpConfig>,
+    // Phase 4.1: Connection grouping and favorites
+    #[serde(default)]
+    pub group: Option<String>,
+    #[serde(default)]
+    pub is_favorite: bool,
+    #[serde(default)]
+    pub sort_order: i32,
+    #[serde(default)]
+    pub tags: Vec<String>,
+    #[serde(default)]
+    pub last_connected_at: Option<String>,
 }
 
 impl ConnectionConfig {
@@ -91,6 +102,11 @@ impl ConnectionConfig {
             ssh_config: None,
             ssl_config: None,
             http_config: None,
+            group: None,
+            is_favorite: false,
+            sort_order: 0,
+            tags: vec![],
+            last_connected_at: None,
         }
     }
 }
@@ -114,6 +130,17 @@ pub struct ConnectionInfo {
     pub ssl_config: Option<SslConfig>,
     #[serde(default)]
     pub http_config: Option<HttpConfig>,
+    // Phase 4.1: Connection grouping and favorites
+    #[serde(default)]
+    pub group: Option<String>,
+    #[serde(default)]
+    pub is_favorite: bool,
+    #[serde(default)]
+    pub sort_order: i32,
+    #[serde(default)]
+    pub tags: Vec<String>,
+    #[serde(default)]
+    pub last_connected_at: Option<String>,
 }
 
 impl From<ConnectionConfig> for ConnectionInfo {
@@ -131,6 +158,11 @@ impl From<ConnectionConfig> for ConnectionInfo {
             ssh_config: config.ssh_config,
             ssl_config: config.ssl_config,
             http_config: config.http_config,
+            group: config.group,
+            is_favorite: config.is_favorite,
+            sort_order: config.sort_order,
+            tags: config.tags,
+            last_connected_at: config.last_connected_at,
         }
     }
 }
@@ -140,4 +172,49 @@ pub struct ConnectionTestResult {
     pub success: bool,
     pub message: String,
     pub server_version: Option<String>,
+}
+
+// Phase 4.1: Connection group model
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConnectionGroup {
+    pub id: String,
+    pub name: String,
+    pub color: Option<ConnectionColor>,
+    pub sort_order: i32,
+    #[serde(default)]
+    pub is_expanded: bool,
+}
+
+// Phase 4.1: Quick connect template
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct QuickConnectTemplate {
+    pub id: String,
+    pub name: String,
+    pub host: String,
+    pub port: u16,
+    pub username: String,
+    pub database: Option<String>,
+    pub color: Option<ConnectionColor>,
+    pub tags: Vec<String>,
+}
+
+// Phase 4.1: Connection filter/sort options
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum ConnectionSortBy {
+    #[default]
+    Name,
+    LastConnected,
+    CreatedAt,
+    Host,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConnectionFilter {
+    pub search: Option<String>,
+    pub group_id: Option<String>,
+    pub tags: Vec<String>,
+    pub is_favorite: Option<bool>,
+    pub sort_by: ConnectionSortBy,
+    pub sort_ascending: bool,
 }

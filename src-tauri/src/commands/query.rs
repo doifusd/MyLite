@@ -1,3 +1,4 @@
+use crate::commands::query_history::add_query_to_history_internal;
 use crate::models::connection::{ConnectionConfig, ConnectionInfo};
 use crate::models::query::{ColumnInfo, QueryResult};
 use crate::AppState;
@@ -129,6 +130,14 @@ fn mysql_value_to_json(row: &MySqlRow, idx: usize) -> Value {
                 return val;
             }
         }
+        // Spatial types (MySQL 8.0+)
+        "GEOMETRY" | "POINT" | "LINESTRING" | "POLYGON" | 
+        "MULTIPOINT" | "MULTILINESTRING" | "MULTIPOLYGON" | "GEOMETRYCOLLECTION" => {
+            // Spatial data is stored as binary, convert to WKT or hex
+            if let Ok(val) = row.try_get::<Vec<u8>, _>(idx) {
+                return Value::String(format!("0x{}", hex::encode(&val)));
+            }
+        }
         // Binary types
         "BINARY" | "VARBINARY" | "TINYBLOB" | "BLOB" | "MEDIUMBLOB" | "LONGBLOB" | "BIT" => {
             if let Ok(val) = row.try_get::<Vec<u8>, _>(idx) {
@@ -137,6 +146,43 @@ fn mysql_value_to_json(row: &MySqlRow, idx: usize) -> Value {
             }
         }
         // String types (CHAR, VARCHAR, TEXT, ENUM, SET)
+        "CHAR" | "VARCHAR" | "TINYTEXT" | "TEXT" | "MEDIUMTEXT" | "LONGTEXT" => {
+            if let Ok(val) = row.try_get::<String, _>(idx) {
+                return Value::String(val);
+            }
+        }
+        // ENUM and SET types
+        "ENUM" | "SET" => {
+            if let Ok(val) = row.try_get::<String, _>(idx) {
+                return Value::String(val);
+            }
+        }
+        // Unsigned integer variants (MySQL returns these as specific type names)
+        "TINYINT UNSIGNED" => {
+            if let Ok(val) = row.try_get::<u8, _>(idx) {
+                return Value::Number(val.into());
+            }
+        }
+        "SMALLINT UNSIGNED" => {
+            if let Ok(val) = row.try_get::<u16, _>(idx) {
+                return Value::Number(val.into());
+            }
+        }
+        "MEDIUMINT UNSIGNED" => {
+            if let Ok(val) = row.try_get::<u32, _>(idx) {
+                return Value::Number(val.into());
+            }
+        }
+        "INT UNSIGNED" | "INTEGER UNSIGNED" => {
+            if let Ok(val) = row.try_get::<u32, _>(idx) {
+                return Value::Number(val.into());
+            }
+        }
+        "BIGINT UNSIGNED" => {
+            if let Ok(val) = row.try_get::<u64, _>(idx) {
+                return Value::String(val.to_string());
+            }
+        }
         _ => {}
     }
     
@@ -171,7 +217,7 @@ fn get_connections_from_store(
 }
 
 // Helper function to get connection config from store
-async fn get_connection_config(
+pub async fn get_connection_config(
     state: &State<'_, Arc<AppState>>,
     connection_id: &str,
 ) -> Result<ConnectionConfig, String> {
@@ -186,21 +232,24 @@ async fn get_connection_config(
         .find(|c| c.id == connection_id)
         .ok_or_else(|| "Connection not found".to_string())?;
 
-    // For now, we construct a basic config without password
-    // In production, password should be retrieved from secure storage
     Ok(ConnectionConfig {
         id: Some(info.id),
         name: info.name,
         host: info.host,
         port: info.port,
         username: info.username,
-        password: info.password.clone(),
+        password: info.password,
         database: info.database,
         color: info.color.clone(),
         connection_type: info.connection_type.clone(),
         ssh_config: info.ssh_config.clone(),
         ssl_config: info.ssl_config.clone(),
         http_config: info.http_config.clone(),
+        group: info.group,
+        is_favorite: info.is_favorite,
+        sort_order: info.sort_order,
+        tags: info.tags,
+        last_connected_at: info.last_connected_at,
     })
 }
 
@@ -280,36 +329,18 @@ pub async fn execute_query(
     }
 
     let is_select = is_select_query(&sql);
+    let sql_clone = sql.clone();
+    let database_clone = database.clone();
+    let connection_id_clone = connection_id.clone();
 
-    if is_select {
+    let result = if is_select {
         // Execute SELECT query
-        let rows = sqlx::query(&sql)
-            .fetch_all(&pool)
-            .await
-            .map_err(|e| e.to_string())?;
-
-
-
-        // Get column info
-        let columns: Vec<ColumnInfo> = if !rows.is_empty() {
-            // Get from first row
-            rows[0]
-                .columns()
-                .iter()
-                .map(|col| ColumnInfo {
-                    name: col.name().to_string(),
-                    data_type: col.type_info().to_string(),
-                    is_nullable: None,
-                    max_length: None,
-                })
-                .collect()
-        } else {
-            // Try to describe the query to get columns even if no rows
-            match pool.describe(&sql).await {
-                Ok(describe) => {
-                    let describe: sqlx::Describe<sqlx::MySql> = describe;
-                    describe
-                        .columns
+        match sqlx::query(&sql).fetch_all(&pool).await {
+            Ok(rows) => {
+                // Get column info
+                let columns: Vec<ColumnInfo> = if !rows.is_empty() {
+                    rows[0]
+                        .columns()
                         .iter()
                         .map(|col| ColumnInfo {
                             name: col.name().to_string(),
@@ -317,48 +348,133 @@ pub async fn execute_query(
                             is_nullable: None,
                             max_length: None,
                         })
-                        .collect::<Vec<ColumnInfo>>()
-                }
-                Err(_) => vec![], // Fallback to empty if describe fails
-            }
-        };
+                        .collect()
+                } else {
+                    match pool.describe(&sql).await {
+                        Ok(describe) => {
+                            let describe: sqlx::Describe<sqlx::MySql> = describe;
+                            describe
+                                .columns
+                                .iter()
+                                .map(|col| ColumnInfo {
+                                    name: col.name().to_string(),
+                                    data_type: col.type_info().to_string(),
+                                    is_nullable: None,
+                                    max_length: None,
+                                })
+                                .collect::<Vec<ColumnInfo>>()
+                        }
+                        Err(_) => vec![],
+                    }
+                };
 
-        // Convert rows to Vec<Value> using helper function
-        let query_rows: Vec<Vec<Value>> = rows
-            .iter()
-            .map(|row| {
-                columns
+                let query_rows: Vec<Vec<Value>> = rows
                     .iter()
-                    .enumerate()
-                    .map(|(idx, _)| mysql_value_to_json(row, idx))
-                    .collect()
-            })
-            .collect();
+                    .map(|row| {
+                        columns
+                            .iter()
+                            .enumerate()
+                            .map(|(idx, _)| mysql_value_to_json(row, idx))
+                            .collect()
+                    })
+                    .collect();
 
-        let row_count = query_rows.len();
-        Ok(QueryResult {
-            columns,
-            rows: query_rows,
-            row_count,
-            execution_time_ms: start_time.elapsed().as_millis() as u64,
-            affected_rows: None,
-            last_insert_id: None,
-        })
+                let row_count = query_rows.len();
+                let execution_time_ms = start_time.elapsed().as_millis() as u64;
+
+                // Add to history
+                let _ = add_query_to_history_internal(
+                    &state,
+                    connection_id_clone,
+                    database_clone,
+                    sql_clone,
+                    execution_time_ms,
+                    row_count,
+                    None,
+                    true,
+                    None,
+                ).await;
+
+                Ok(QueryResult {
+                    columns,
+                    rows: query_rows,
+                    row_count,
+                    execution_time_ms,
+                    affected_rows: None,
+                    last_insert_id: None,
+                })
+            }
+            Err(e) => {
+                let execution_time_ms = start_time.elapsed().as_millis() as u64;
+                let error_msg = e.to_string();
+
+                // Add to history (failed)
+                let _ = add_query_to_history_internal(
+                    &state,
+                    connection_id_clone,
+                    database_clone,
+                    sql_clone,
+                    execution_time_ms,
+                    0,
+                    None,
+                    false,
+                    Some(error_msg.clone()),
+                ).await;
+
+                Err(error_msg)
+            }
+        }
     } else {
-        // Execute non-SELECT query (INSERT, UPDATE, DELETE, etc.)
-        let result = pool.execute(sql.as_str())
-            .await
-            .map_err(|e| e.to_string())?;
+        // Execute non-SELECT query
+        match pool.execute(sql.as_str()).await {
+            Ok(result) => {
+                let execution_time_ms = start_time.elapsed().as_millis() as u64;
 
-        Ok(QueryResult {
-            columns: vec![],
-            rows: vec![],
-            row_count: 0,
-            execution_time_ms: start_time.elapsed().as_millis() as u64,
-            affected_rows: Some(result.rows_affected()),
-            last_insert_id: Some(result.last_insert_id()),
-        })
-    }
+                // Add to history
+                let _ = add_query_to_history_internal(
+                    &state,
+                    connection_id_clone,
+                    database_clone,
+                    sql_clone,
+                    execution_time_ms,
+                    0,
+                    Some(result.rows_affected()),
+                    true,
+                    None,
+                ).await;
+
+                Ok(QueryResult {
+                    columns: vec![],
+                    rows: vec![],
+                    row_count: 0,
+                    execution_time_ms,
+                    affected_rows: Some(result.rows_affected()),
+                    last_insert_id: Some(result.last_insert_id()),
+                })
+            }
+            Err(e) => {
+                let execution_time_ms = start_time.elapsed().as_millis() as u64;
+                let error_msg = e.to_string();
+
+                // Add to history (failed)
+                let _ = add_query_to_history_internal(
+                    &state,
+                    connection_id_clone,
+                    database_clone,
+                    sql_clone,
+                    execution_time_ms,
+                    0,
+                    None,
+                    false,
+                    Some(error_msg.clone()),
+                ).await;
+
+                Err(error_msg)
+            }
+        }
+    };
+
+    result
 }
 
 #[tauri::command]
@@ -409,4 +525,156 @@ pub async fn get_table_preview(
     let limit = limit.unwrap_or(100);
     let sql = format!("SELECT * FROM `{}`.`{}` LIMIT {}", database, table, limit);
     execute_query(state, connection_id, Some(database), sql).await
+}
+
+/// Execute paginated query for large result sets
+#[tauri::command]
+pub async fn execute_paginated_query(
+    state: State<'_, Arc<AppState>>,
+    connection_id: String,
+    database: Option<String>,
+    sql: String,
+    page: u32,
+    page_size: u32,
+) -> Result<QueryResult, String> {
+    let pool_id = if let Some(ref db) = database {
+        format!("{}_{}", connection_id, db)
+    } else {
+        connection_id.clone()
+    };
+    
+    let mut config = get_connection_config(&state, &connection_id).await?;
+    if let Some(ref db) = database {
+        config.database = Some(db.clone());
+    }
+
+    let pool = state
+        .pool
+        .get_or_create_pool(&pool_id, &config)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let start_time = std::time::Instant::now();
+
+    // Calculate offset
+    let offset = (page - 1) * page_size;
+    
+    // Wrap the query with pagination
+    let paginated_sql = format!("{} LIMIT {} OFFSET {}", sql.trim(), page_size, offset);
+
+    let sql_clone = sql.clone();
+    let database_clone = database.clone();
+    let connection_id_clone = connection_id.clone();
+
+    match sqlx::query(&paginated_sql).fetch_all(&pool).await {
+        Ok(rows) => {
+            // Get column info
+            let columns: Vec<ColumnInfo> = if !rows.is_empty() {
+                rows[0]
+                    .columns()
+                    .iter()
+                    .map(|col| ColumnInfo {
+                        name: col.name().to_string(),
+                        data_type: col.type_info().to_string(),
+                        is_nullable: None,
+                        max_length: None,
+                    })
+                    .collect()
+            } else {
+                vec![]
+            };
+
+            let query_rows: Vec<Vec<Value>> = rows
+                .iter()
+                .map(|row| {
+                    columns
+                        .iter()
+                        .enumerate()
+                        .map(|(idx, _)| mysql_value_to_json(row, idx))
+                        .collect()
+                })
+                .collect();
+
+            let row_count = query_rows.len();
+            let execution_time_ms = start_time.elapsed().as_millis() as u64;
+
+            // Add to history
+            let _ = add_query_to_history_internal(
+                &state,
+                connection_id_clone,
+                database_clone,
+                sql_clone,
+                execution_time_ms,
+                row_count,
+                None,
+                true,
+                None,
+            ).await;
+
+            Ok(QueryResult {
+                columns,
+                rows: query_rows,
+                row_count,
+                execution_time_ms,
+                affected_rows: None,
+                last_insert_id: None,
+            })
+        }
+        Err(e) => {
+            let execution_time_ms = start_time.elapsed().as_millis() as u64;
+            let error_msg = e.to_string();
+
+            // Add to history (failed)
+            let _ = add_query_to_history_internal(
+                &state,
+                connection_id_clone,
+                database_clone,
+                sql_clone,
+                execution_time_ms,
+                0,
+                None,
+                false,
+                Some(error_msg.clone()),
+            ).await;
+
+            Err(error_msg)
+        }
+    }
+}
+
+/// Get total count for paginated queries
+#[tauri::command]
+pub async fn get_query_count(
+    state: State<'_, Arc<AppState>>,
+    connection_id: String,
+    database: Option<String>,
+    sql: String,
+) -> Result<u64, String> {
+    let pool_id = if let Some(ref db) = database {
+        format!("{}_{}", connection_id, db)
+    } else {
+        connection_id.clone()
+    };
+    
+    let mut config = get_connection_config(&state, &connection_id).await?;
+    if let Some(ref db) = database {
+        config.database = Some(db.clone());
+    }
+
+    let pool = state
+        .pool
+        .get_or_create_pool(&pool_id, &config)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // Wrap query in COUNT
+    let count_sql = format!("SELECT COUNT(*) FROM ({})", sql.trim());
+
+    match sqlx::query_scalar::<_, i64>(&count_sql)
+        .fetch_one(&pool)
+        .await
+    {
+        Ok(count) => Ok(count as u64),
+        Err(e) => Err(e.to_string()),
+    }
 }

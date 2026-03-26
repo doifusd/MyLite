@@ -4,8 +4,13 @@ mod commands;
 mod db;
 mod models;
 
+#[cfg(test)]
+mod lib_test;
+
 use commands::connection::*;
 use commands::query::*;
+use commands::query_history::*;
+use commands::query_analyzer::*;
 use commands::schema::*;
 use db::connection::ConnectionPool;
 use std::sync::Arc;
@@ -48,11 +53,34 @@ async fn main() -> anyhow::Result<()> {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            // Connection management
             test_connection,
             save_connection,
             get_connections,
             delete_connection,
             get_connection_detail,
+            // Phase 4.1: Connection grouping and favorites
+            toggle_connection_favorite,
+            update_connection_group,
+            update_connection_last_connected,
+            get_connection_groups,
+            save_connection_group,
+            delete_connection_group,
+            get_quick_connect_templates,
+            save_quick_connect_template,
+            delete_quick_connect_template,
+            filter_connections,
+            // Phase 4.2: Query history
+            add_query_to_history,
+            get_query_history,
+            delete_query_history_item,
+            clear_query_history,
+            toggle_query_history_favorite,
+            add_query_history_tags,
+            remove_query_history_tags,
+            get_query_history_tags,
+            get_query_history_stats,
+            // Schema management
             get_schema_tree,
             get_table_info,
             get_databases,
@@ -60,12 +88,19 @@ async fn main() -> anyhow::Result<()> {
             get_tables,
             get_table_schema,
             get_database_info,
+            // Query execution
             execute_query,
             execute_raw_query,
             get_table_preview,
+            execute_paginated_query,
+            get_query_count,
             alter_table,
             get_charsets,
             get_collations,
+            // Query analyzer
+            analyze_query,
+            explain_query,
+            optimize_query,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

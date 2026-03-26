@@ -1,10 +1,23 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/tauri';
-import { Database, Plus, Trash2, Server, Lock, Shield, Globe, Edit2 } from 'lucide-react';
+import { Database, Plus, Trash2, Server, Lock, Shield, Globe, Edit2, Star, Folder, Zap, ChevronRight, ChevronDown, Search, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DatabaseWorkspace } from '@/components/DatabaseWorkspace';
 import { ConnectionDialog } from '@/components/ConnectionDialog';
+import { ConnectionGroup, type ConnectionInfo } from '@/components/ConnectionGroupManager';
+import { QuickConnect, QuickConnectTemplate } from '@/components/QuickConnect';
+import { GlobalSearch, useGlobalSearchShortcut } from '@/components/GlobalSearch';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { ToastContainer } from '@/components/Toast';
+import { WelcomePage } from '@/components/WelcomePage';
+import { KeyboardShortcutsHelp } from '@/components/KeyboardShortcutsHelp';
+import { useTheme } from '@/hooks/useTheme';
+import { useToast } from '@/hooks/useToast';
+import { useAppShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { cn } from '@/lib/utils';
 import type { Connection, ConnectionType, ConnectionColor } from '@/store/connectionStore';
 
 // Color mapping for Tailwind compatibility
@@ -49,22 +62,89 @@ function getConnectionTypeLabel(type: ConnectionType) {
 }
 
 function App() {
-  const [connections, setConnections] = useState<Connection[]>([]);
+  const [connections, setConnections] = useState<ConnectionInfo[]>([]);
+  const [groups, setGroups] = useState<ConnectionGroup[]>([]);
+  const [templates, setTemplates] = useState<QuickConnectTemplate[]>([]);
   const [selectedConnection, setSelectedConnection] = useState<Connection | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [, setIsLoading] = useState(false);
   const [showNewConnection, setShowNewConnection] = useState(false);
   const [editingConnection, setEditingConnection] = useState<Connection | undefined>(undefined);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState('connections');
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  
+  // UI/UX features
+  const [showGlobalSearch, setShowGlobalSearch] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(true);
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
+  const [recentQueries, setRecentQueries] = useState<any[]>([]);
+  
+  // Hooks
+  const { theme, setTheme } = useTheme();
+  const { toasts, removeToast, success, error } = useToast();
 
   useEffect(() => {
     loadConnections();
+    loadGroups();
+    loadTemplates();
+    loadRecentQueries();
   }, []);
+
+  // Global search shortcut
+  useGlobalSearchShortcut(() => setShowGlobalSearch(true));
+
+  // App shortcuts
+  useAppShortcuts({
+    onNewConnection: () => setShowNewConnection(true),
+    onGlobalSearch: () => setShowGlobalSearch(true),
+    onToggleTheme: () => setTheme(theme === 'light' ? 'dark' : theme === 'dark' ? 'system' : 'light'),
+    onCloseTab: () => {
+      if (selectedConnection) {
+        setSelectedConnection(null);
+        setShowWelcome(true);
+      }
+    },
+  });
 
   const loadConnections = async () => {
     try {
-      const data = await invoke<Connection[]>('get_connections');
+      const data = await invoke<ConnectionInfo[]>('get_connections');
       setConnections(data);
     } catch (err) {
       console.error('Failed to load connections:', err);
+    }
+  };
+
+  const loadGroups = async () => {
+    try {
+      const data = await invoke<ConnectionGroup[]>('get_connection_groups');
+      setGroups(data);
+      // Restore expanded state
+      setExpandedGroups(new Set(data.filter(g => g.is_expanded).map(g => g.id)));
+    } catch (err) {
+      console.error('Failed to load groups:', err);
+    }
+  };
+
+  const loadTemplates = async () => {
+    try {
+      const data = await invoke<QuickConnectTemplate[]>('get_quick_connect_templates');
+      setTemplates(data);
+    } catch (err) {
+      console.error('Failed to load templates:', err);
+    }
+  };
+
+  const loadRecentQueries = async () => {
+    try {
+      const data = await invoke<any[]>('get_query_history', {
+        connectionId: null,
+        limit: 10,
+      });
+      setRecentQueries(data);
+    } catch (err) {
+      console.error('Failed to load recent queries:', err);
     }
   };
 
@@ -75,8 +155,13 @@ function App() {
       await loadConnections();
       setShowNewConnection(false);
       setEditingConnection(undefined);
+      success(
+        config.id ? 'Connection updated' : 'Connection created',
+        `${config.name} has been saved successfully`
+      );
     } catch (err) {
       console.error('Failed to save connection:', err);
+      error('Failed to save connection', String(err));
     } finally {
       setIsLoading(false);
     }
@@ -92,20 +177,135 @@ function App() {
       await invoke('delete_connection', { connectionId: id });
       if (selectedConnection?.id === id) {
         setSelectedConnection(null);
+        setShowWelcome(true);
       }
       await loadConnections();
+      success('Connection deleted', 'The connection has been removed');
     } catch (err) {
       console.error('Failed to delete connection:', err);
+      error('Failed to delete connection', String(err));
     }
+  };
+
+  const toggleFavorite = async (e: React.MouseEvent, conn: ConnectionInfo) => {
+    e.stopPropagation();
+    try {
+      await invoke('toggle_connection_favorite', { connectionId: conn.id });
+      await loadConnections();
+      success(
+        conn.is_favorite ? 'Removed from favorites' : 'Added to favorites',
+        `${conn.name} has been ${conn.is_favorite ? 'removed from' : 'added to'} favorites`
+      );
+    } catch (err) {
+      console.error('Failed to toggle favorite:', err);
+      error('Failed to update favorite', String(err));
+    }
+  };
+
+  const handleConnectFromTemplate = useCallback(async (template: QuickConnectTemplate) => {
+    // Create a new connection from template
+    const config = {
+      id: undefined,
+      name: template.name,
+      host: template.host,
+      port: template.port,
+      username: template.username,
+      password: '', // User will need to enter password
+      database: template.database,
+      color: template.color,
+      connection_type: 'direct' as ConnectionType,
+      ssh_config: null,
+      ssl_config: null,
+      http_config: null,
+      group: null,
+      is_favorite: false,
+      sort_order: 0,
+      tags: template.tags,
+    };
+    
+    setEditingConnection(config as any);
+    setShowNewConnection(true);
+  }, []);
+
+  const handleSelectConnection = useCallback((connection: ConnectionInfo) => {
+    setSelectedConnection(connection as any);
+    setShowWelcome(false);
+  }, []);
+
+  const handleSelectQuery = useCallback((sql: string) => {
+    // TODO: Open query editor with this SQL
+    console.log('Selected query:', sql);
+  }, []);
+
+  // Filter connections based on search and selected group
+  const filteredConnections = connections.filter(conn => {
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const matchesSearch = 
+        conn.name.toLowerCase().includes(query) ||
+        conn.host.toLowerCase().includes(query) ||
+        conn.username.toLowerCase().includes(query) ||
+        conn.tags.some(tag => tag.toLowerCase().includes(query));
+      if (!matchesSearch) return false;
+    }
+
+    // Group filter
+    if (selectedGroup === 'favorites') {
+      return conn.is_favorite;
+    }
+    if (selectedGroup) {
+      return conn.group === selectedGroup;
+    }
+    return true;
+  });
+
+  // Group connections for display
+  const groupedConnections = groups.map(group => ({
+    group,
+    connections: filteredConnections.filter(c => c.group === group.id),
+  }));
+
+  const ungroupedConnections = filteredConnections.filter(c => !c.group);
+
+  const toggleGroupExpanded = (groupId: string) => {
+    setExpandedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(groupId)) {
+        next.delete(groupId);
+      } else {
+        next.add(groupId);
+      }
+      return next;
+    });
   };
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
       {/* Header */}
-      <header className="h-14 border-b bg-white flex items-center px-4">
+      <header className="h-14 border-b bg-white dark:bg-gray-900 flex items-center justify-between px-4">
         <div className="flex items-center gap-2">
           <Database className="h-6 w-6 text-blue-600" />
           <h1 className="text-lg font-semibold">MyLite</h1>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowGlobalSearch(true)}
+            title="Global Search (Cmd+K)"
+          >
+            <Search className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowShortcutsHelp(true)}
+            title="Keyboard Shortcuts (?)"
+          >
+            <HelpCircle className="h-4 w-4" />
+          </Button>
+          <ThemeToggle theme={theme} onThemeChange={setTheme} />
         </div>
       </header>
 
@@ -113,98 +313,172 @@ function App() {
       <div className="flex-1 flex overflow-hidden">
         {/* Connection List Sidebar - Always Visible */}
         <div className="w-80 border-r bg-white flex flex-col">
-          <div className="p-4 border-b">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-medium">Connections</h2>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setEditingConnection(undefined);
-                  setShowNewConnection(true);
-                }}
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                New
-              </Button>
-            </div>
-            <p className="text-sm text-gray-500">
-              {connections.length} saved connection{connections.length !== 1 && 's'}
-            </p>
-          </div>
-          
-          <div className="flex-1 overflow-auto p-2">
-            {connections.length === 0 ? (
-              <div className="text-center py-8 text-gray-400">
-                <Database className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                <p>No connections yet</p>
-                <p className="text-sm mt-1">Click "New Connection" to get started</p>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+            <TabsList className="w-full justify-start rounded-none border-b px-2 py-2">
+              <TabsTrigger value="connections" className="gap-1">
+                <Database className="h-4 w-4" />
+                Connections
+              </TabsTrigger>
+              <TabsTrigger value="quick" className="gap-1">
+                <Zap className="h-4 w-4" />
+                Quick
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="connections" className="flex-1 flex flex-col m-0 p-0">
+              {/* Search */}
+              <div className="p-3 border-b space-y-2">
+                <h2 className="font-medium">Connections</h2>
+                <div className="relative">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Search connections..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-8"
+                  />
+                </div>
               </div>
-            ) : (
-              <div className="space-y-2">
-                {connections.map((conn) => {
-                  const connColor = conn.color || 'blue';
-                  const colorStyle = colorMap[connColor];
-                  const isSelected = selectedConnection?.id === conn.id;
-                  
-                  return (
-                    <Card
-                      key={conn.id}
-                      className={`cursor-pointer transition-colors ${isSelected ? colorStyle.border : 'border-gray-200'} hover:${colorStyle.border}`}
-                      style={{
-                        backgroundColor: colorStyle.lightBg,
-                      }}
-                      onClick={() => setSelectedConnection(conn)}
-                    >
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            {getConnectionTypeIcon(conn.connection_type, conn.color)}
-                            <span className="truncate">{conn.name}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 text-gray-400 hover:text-blue-500"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEditConnection(conn);
-                              }}
-                            >
-                              <Edit2 className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 text-gray-400 hover:text-red-500"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                deleteConnection(conn.id);
-                              }}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </CardTitle>
-                        <CardDescription className="text-xs flex items-center gap-1">
-                          <span className="px-1.5 py-0.5 bg-gray-100 rounded text-gray-600">
-                            {getConnectionTypeLabel(conn.connection_type)}
-                          </span>
-                          {conn.host}:{conn.port}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="pt-0">
-                        <p className="text-xs text-gray-500">
-                          {conn.username}@{conn.database || 'no database'}
-                        </p>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
+
+              {/* Quick Filters */}
+              <div className="px-3 py-2 border-b space-y-1">
+                <button
+                  onClick={() => setSelectedGroup('favorites')}
+                  className={cn(
+                    'w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors',
+                    selectedGroup === 'favorites'
+                      ? 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-300'
+                      : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                  )}
+                >
+                  <Star className="w-4 h-4 text-yellow-500" />
+                  <span className="flex-1 text-left">Favorites</span>
+                  <span className="text-xs text-gray-500">
+                    {connections.filter(c => c.is_favorite).length}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => setSelectedGroup(null)}
+                  className={cn(
+                    'w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors',
+                    selectedGroup === null
+                      ? 'bg-blue-500/20 text-blue-700 dark:text-blue-300'
+                      : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                  )}
+                >
+                  <Database className="w-4 h-4 text-blue-500" />
+                  <span className="flex-1 text-left">All Connections</span>
+                  <span className="text-xs text-gray-500">{connections.length}</span>
+                </button>
               </div>
-            )}
-          </div>
+
+              {/* Connection List */}
+              <div className="flex-1 overflow-auto p-2">
+                {filteredConnections.length === 0 ? (
+                  <div className="text-center py-8 text-gray-400">
+                    <Database className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                    <p>No connections found</p>
+                    {searchQuery && (
+                      <p className="text-sm mt-1">Try adjusting your search</p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {/* Grouped connections */}
+                    {groupedConnections.map(({ group, connections: groupConns }) => (
+                      groupConns.length > 0 && (
+                        <div key={group.id}>
+                          <button
+                            onClick={() => toggleGroupExpanded(group.id)}
+                            className="w-full flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100 rounded"
+                          >
+                            {expandedGroups.has(group.id) ? (
+                              <ChevronDown className="w-3 h-3" />
+                            ) : (
+                              <ChevronRight className="w-3 h-3" />
+                            )}
+                            <Folder className="w-3 h-3" />
+                            {group.name}
+                            <span className="ml-auto">({groupConns.length})</span>
+                          </button>
+                          {expandedGroups.has(group.id) && (
+                            <div className="ml-4 space-y-1">
+                              {groupConns.map(conn => (
+                                <ConnectionCard
+                                  key={conn.id}
+                                  conn={conn}
+                                  isSelected={selectedConnection?.id === conn.id}
+                                  onSelect={() => setSelectedConnection(conn as any)}
+                                  onEdit={() => handleEditConnection(conn as any)}
+                                  onDelete={() => deleteConnection(conn.id)}
+                                  onToggleFavorite={(e) => toggleFavorite(e, conn)}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    ))}
+
+                    {/* Ungrouped connections */}
+                    {ungroupedConnections.length > 0 && (
+                      <div className="space-y-1">
+                        {groupedConnections.some(g => g.connections.length > 0) && (
+                          <div className="px-2 py-1 text-xs font-medium text-gray-500">
+                            Ungrouped
+                          </div>
+                        )}
+                        {ungroupedConnections.map(conn => (
+                          <ConnectionCard
+                            key={conn.id}
+                            conn={conn}
+                            isSelected={selectedConnection?.id === conn.id}
+                            onSelect={() => setSelectedConnection(conn as any)}
+                            onEdit={() => handleEditConnection(conn as any)}
+                            onDelete={() => deleteConnection(conn.id)}
+                            onToggleFavorite={(e) => toggleFavorite(e, conn)}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* New Connection Button - Fixed at bottom */}
+              <div className="p-3 border-t bg-gray-50 dark:bg-gray-900">
+                <Button
+                  className="w-full"
+                  onClick={() => {
+                    setEditingConnection(undefined);
+                    setShowNewConnection(true);
+                  }}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Connection
+                </Button>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="quick" className="flex-1 m-0 p-0">
+              <QuickConnect
+                templates={templates}
+                onTemplatesChange={loadTemplates}
+                onConnect={handleConnectFromTemplate}
+                recentConnections={connections
+                  .filter(c => c.last_connected_at)
+                  .sort((a, b) => new Date(b.last_connected_at!).getTime() - new Date(a.last_connected_at!).getTime())
+                  .slice(0, 5)
+                  .map(c => ({
+                    id: c.id,
+                    name: c.name,
+                    host: c.host,
+                    lastConnected: c.last_connected_at!,
+                  }))}
+              />
+            </TabsContent>
+          </Tabs>
         </div>
 
         {/* Right Content Area */}
@@ -214,7 +488,20 @@ function App() {
               connectionId={selectedConnection.id}
               connectionName={selectedConnection.name}
               className="h-full"
-              onClose={() => setSelectedConnection(null)}
+              onClose={() => {
+                setSelectedConnection(null);
+                setShowWelcome(true);
+              }}
+            />
+          ) : showWelcome ? (
+            <WelcomePage
+              connections={connections}
+              recentQueries={recentQueries}
+              onNewConnection={() => setShowNewConnection(true)}
+              onSelectConnection={handleSelectConnection}
+              onSelectQuery={handleSelectQuery}
+              onOpenShortcuts={() => setShowShortcutsHelp(true)}
+              onOpenSettings={() => {/* TODO */}}
             />
           ) : (
             <div className="h-full flex items-center justify-center">
@@ -234,18 +521,130 @@ function App() {
 
       {/* Connection Dialog */}
       <ConnectionDialog
+        key={editingConnection ? 'edit' : 'new'}
         open={showNewConnection}
         onOpenChange={(open) => {
           setShowNewConnection(open);
           if (!open) {
-            // Reset editing state when dialog closes
             setEditingConnection(undefined);
           }
         }}
         onSave={handleSaveConnection}
         initialConfig={editingConnection}
+        groups={groups}
       />
+
+      {/* Global Search */}
+      <GlobalSearch
+        open={showGlobalSearch}
+        onOpenChange={setShowGlobalSearch}
+        connections={connections}
+        onSelectConnection={handleSelectConnection}
+        onSelectQuery={handleSelectQuery}
+      />
+
+      {/* Keyboard Shortcuts Help */}
+      <KeyboardShortcutsHelp
+        open={showShortcutsHelp}
+        onOpenChange={setShowShortcutsHelp}
+      />
+
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
+  );
+}
+
+// Connection Card Component
+interface ConnectionCardProps {
+  conn: ConnectionInfo;
+  isSelected: boolean;
+  onSelect: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  onToggleFavorite: (e: React.MouseEvent) => void;
+}
+
+function ConnectionCard({ conn, isSelected, onSelect, onEdit, onDelete, onToggleFavorite }: ConnectionCardProps) {
+  const connColor = (conn.color || 'blue') as ConnectionColor;
+  const colorStyle = colorMap[connColor];
+
+  return (
+    <Card
+      className={cn(
+        'cursor-pointer transition-all hover:shadow-md',
+        isSelected ? `ring-2 ring-blue-500 ${colorStyle.border}` : 'border-gray-200'
+      )}
+      style={{ backgroundColor: colorStyle.lightBg }}
+      onClick={onSelect}
+    >
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium flex items-center justify-between">
+          <div className="flex items-center gap-2 min-w-0">
+            {getConnectionTypeIcon(conn.connection_type, connColor)}
+            <span className="truncate">{conn.name}</span>
+          </div>
+          <div className="flex items-center gap-0.5">
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn(
+                'h-6 w-6',
+                conn.is_favorite ? 'text-yellow-500' : 'text-gray-400 hover:text-yellow-500'
+              )}
+              onClick={onToggleFavorite}
+            >
+              <Star className={cn('h-3 w-3', conn.is_favorite && 'fill-current')} />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 text-gray-400 hover:text-blue-500"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit();
+              }}
+            >
+              <Edit2 className="h-3 w-3" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 text-gray-400 hover:text-red-500"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          </div>
+        </CardTitle>
+        <CardDescription className="text-xs flex items-center gap-1">
+          <span className="px-1.5 py-0.5 bg-gray-100 rounded text-gray-600">
+            {getConnectionTypeLabel(conn.connection_type)}
+          </span>
+          {conn.host}:{conn.port}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="pt-0">
+        <p className="text-xs text-gray-500">
+          {conn.username}@{conn.database || 'no database'}
+        </p>
+        {conn.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-2">
+            {conn.tags.map(tag => (
+              <span
+                key={tag}
+                className="px-1.5 py-0.5 text-xs bg-white/50 rounded text-gray-600"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

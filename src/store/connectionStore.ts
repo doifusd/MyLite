@@ -45,6 +45,11 @@ export interface Connection {
   ssh_config?: SshConfig;
   ssl_config?: SslConfig;
   http_config?: HttpConfig;
+  group?: string;
+  is_favorite?: boolean;
+  sort_order?: number;
+  tags?: string[];
+  last_connected_at?: string;
 }
 
 interface ConnectionState {

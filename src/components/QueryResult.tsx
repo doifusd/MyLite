@@ -34,6 +34,7 @@ import {
   ContextMenuSeparator,
 } from '@/components/ui/context-menu';
 import { invoke } from '@tauri-apps/api/tauri';
+import { VirtualTable } from './VirtualTable';
 
 interface InsertDialogProps {
   isOpen: boolean;
@@ -213,6 +214,49 @@ export const QueryResult: React.FC<QueryResultProps> = ({
   const handleCellCancel = () => {
     setEditingCell(null);
     setEditValue('');
+  };
+
+  // Handle virtual table cell edit
+  const handleVirtualCellEdit = async (rowIndex: number, colIndex: number, value: any) => {
+    if (!tableName || !databaseName || !connectionId) return;
+    
+    const row = filteredRows[rowIndex];
+    const col = data.columns[colIndex];
+    const originalValue = row[colIndex];
+    
+    // Skip if no change
+    if (value === originalValue) return;
+    
+    // Build UPDATE SQL
+    const setClause = value === null 
+      ? `\`${col.name}\` = NULL`
+      : `\`${col.name}\` = '${String(value).replace(/'/g, "''")}'`;
+    
+    // Build WHERE clause using all columns
+    const whereConditions: string[] = [];
+    data.columns.forEach((c, idx) => {
+      const val = row[idx];
+      if (val === null) {
+        whereConditions.push(`\`${c.name}\` IS NULL`);
+      } else if (typeof val === 'number' || typeof val === 'boolean') {
+        whereConditions.push(`\`${c.name}\` = ${val}`);
+      } else {
+        whereConditions.push(`\`${c.name}\` = '${String(val).replace(/'/g, "''")}'`);
+      }
+    });
+    
+    const sql = `UPDATE \`${databaseName}\`.\`${tableName}\` SET ${setClause} WHERE ${whereConditions.join(' AND ')} LIMIT 1;`;
+    
+    try {
+      await invoke('execute_query', {
+        connectionId,
+        database: databaseName,
+        sql,
+      });
+      onRefresh?.();
+    } catch (err: any) {
+      alert(`Error updating cell: ${err}`);
+    }
   };
 
   const [insertDialogOpen, setInsertDialogOpen] = useState(false);
@@ -518,29 +562,28 @@ export const QueryResult: React.FC<QueryResultProps> = ({
             ))}
           </select>
 
-          {totalPages > 1 && (
-            <div className="flex items-center gap-1">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="text-sm text-gray-600 px-2">
-                {currentPage} / {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
+          {/* Pagination - always show */}
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm text-gray-600 px-2 min-w-[60px] text-center">
+              {currentPage} / {Math.max(1, totalPages)}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage >= totalPages}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
 
           <Button
             variant="ghost"
@@ -563,132 +606,156 @@ export const QueryResult: React.FC<QueryResultProps> = ({
 
       {/* Results */}
       {viewMode === 'table' ? (
-        <div className="flex-1 overflow-auto">
-          <Table>
-            <TableHeader className="sticky top-0 bg-white z-10">
-              <TableRow>
-                {data.columns.map((col) => (
-                  <TableHead
-                    key={col.name}
-                    className="font-semibold text-xs whitespace-nowrap"
-                    title={col.data_type}
-                  >
-                    {col.name}
-                    <span className="text-gray-400 font-normal ml-1">
-                      ({col.data_type})
-                    </span>
-                  </TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {currentRows.length > 0 ? (
-                currentRows.map((row, rowIndex) => (
-                  <ContextMenu key={rowIndex}>
-                    <ContextMenuTrigger asChild>
-                      <TableRow className="hover:bg-gray-50 data-[state=open]:bg-gray-100">
-                        {row.map((cell, cellIndex) => (
-                          <TableCell
-                            key={cellIndex}
-                            className="text-sm font-mono whitespace-nowrap cursor-pointer hover:bg-blue-50"
-                            onClick={() => handleCellClick(rowIndex, cellIndex, cell)}
+        filteredRows.length > 1000 ? (
+          // Use virtual scrolling for large datasets
+          <VirtualTable
+            columns={data.columns}
+            rows={filteredRows}
+            containerHeight={expanded ? 800 : 400}
+            className="flex-1"
+            onCellEdit={tableName && databaseName && connectionId ? handleVirtualCellEdit : undefined}
+            onRowCopy={handleCopyRow}
+            onRowCopyWithColumns={handleCopyRowWithColumns}
+            onRowCopyInsert={handleCopyInsert}
+            onRowDuplicate={tableName && databaseName && connectionId ? handleDuplicateRow : undefined}
+            onRowDelete={tableName && databaseName && connectionId ? handleDeleteRow : undefined}
+            onInsertNew={() => setInsertDialogOpen(true)}
+            tableName={tableName}
+          />
+        ) : (
+          // Use regular table for small datasets
+          <div 
+            className="flex-1 overflow-auto border rounded-sm"
+            style={{ height: expanded ? 600 : 400 }}
+          >
+            <div className="inline-block min-w-full">
+              <Table>
+                <TableHeader className="sticky top-0 bg-gray-50 z-10">
+                  <TableRow>
+                    {data.columns.map((col) => (
+                      <TableHead
+                        key={col.name}
+                        className="font-semibold text-xs whitespace-nowrap bg-gray-50"
+                        title={col.data_type}
+                      >
+                        {col.name}
+                        <span className="text-gray-400 font-normal ml-1">
+                          ({col.data_type})
+                        </span>
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {currentRows.length > 0 ? (
+                    currentRows.map((row, rowIndex) => (
+                      <ContextMenu key={rowIndex}>
+                        <ContextMenuTrigger asChild>
+                          <TableRow className="hover:bg-gray-50 data-[state=open]:bg-gray-100">
+                            {row.map((cell, cellIndex) => (
+                              <TableCell
+                                key={cellIndex}
+                                className="text-sm font-mono whitespace-nowrap cursor-pointer hover:bg-blue-50"
+                                onClick={() => handleCellClick(rowIndex, cellIndex, cell)}
+                              >
+                                {editingCell?.rowIndex === rowIndex && editingCell?.colIndex === cellIndex ? (
+                                  <div className="flex items-center gap-1">
+                                    <Input
+                                      value={editValue}
+                                      onChange={(e) => setEditValue(e.target.value)}
+                                      className="h-7 w-32 text-xs"
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') handleCellSave();
+                                        if (e.key === 'Escape') handleCellCancel();
+                                      }}
+                                      autoFocus
+                                    />
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleCellSave();
+                                      }}
+                                    >
+                                      <Save className="h-3 w-3 text-green-600" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleCellCancel();
+                                      }}
+                                    >
+                                      <X className="h-3 w-3 text-red-600" />
+                                    </Button>
+                                  </div>
+                                ) : cell === null ? (
+                                  <span className="text-gray-400 italic">NULL</span>
+                                ) : typeof cell === 'object' ? (
+                                  JSON.stringify(cell)
+                                ) : (
+                                  String(cell)
+                                )}
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                        </ContextMenuTrigger>
+                        <ContextMenuContent className="w-64">
+                          <ContextMenuItem onClick={() => handleCopyRow(row)}>
+                            Copy
+                          </ContextMenuItem>
+                          <ContextMenuItem onClick={() => handleCopyRowWithColumns(row)}>
+                            Copy with Column Names
+                          </ContextMenuItem>
+                          <ContextMenuItem onClick={() => handleCopyInsert(row, false)}>
+                            Copy as SQL INSERT
+                          </ContextMenuItem>
+                          <ContextMenuItem onClick={() => handleCopyInsert(row, true)}>
+                            Copy as SQL INSERT (no auto_inc)
+                          </ContextMenuItem>
+                          <ContextMenuSeparator />
+                          <ContextMenuItem 
+                            onClick={() => setInsertDialogOpen(true)}
+                            disabled={!tableName}
                           >
-                            {editingCell?.rowIndex === rowIndex && editingCell?.colIndex === cellIndex ? (
-                              <div className="flex items-center gap-1">
-                                <Input
-                                  value={editValue}
-                                  onChange={(e) => setEditValue(e.target.value)}
-                                  className="h-7 w-32 text-xs"
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') handleCellSave();
-                                    if (e.key === 'Escape') handleCellCancel();
-                                  }}
-                                  autoFocus
-                                />
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleCellSave();
-                                  }}
-                                >
-                                  <Save className="h-3 w-3 text-green-600" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleCellCancel();
-                                  }}
-                                >
-                                  <X className="h-3 w-3 text-red-600" />
-                                </Button>
-                              </div>
-                            ) : cell === null ? (
-                              <span className="text-gray-400 italic">NULL</span>
-                            ) : typeof cell === 'object' ? (
-                              JSON.stringify(cell)
-                            ) : (
-                              String(cell)
-                            )}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    </ContextMenuTrigger>
-                    <ContextMenuContent className="w-64">
-                      <ContextMenuItem onClick={() => handleCopyRow(row)}>
-                        Copy
-                      </ContextMenuItem>
-                      <ContextMenuItem onClick={() => handleCopyRowWithColumns(row)}>
-                        Copy with Column Names
-                      </ContextMenuItem>
-                      <ContextMenuItem onClick={() => handleCopyInsert(row, false)}>
-                        Copy as SQL INSERT
-                      </ContextMenuItem>
-                      <ContextMenuItem onClick={() => handleCopyInsert(row, true)}>
-                        Copy as SQL INSERT (no auto_inc)
-                      </ContextMenuItem>
-                      <ContextMenuSeparator />
-                      <ContextMenuItem 
-                        onClick={() => setInsertDialogOpen(true)}
-                        disabled={!tableName}
+                            <Plus className="h-3 w-3 mr-2" />
+                            Insert New Row
+                          </ContextMenuItem>
+                          <ContextMenuItem 
+                            onClick={() => handleDuplicateRow(row)}
+                            disabled={!tableName}
+                          >
+                            Duplicate Row
+                          </ContextMenuItem>
+                          <ContextMenuItem 
+                            onClick={() => handleDeleteRow(row)}
+                            disabled={!tableName}
+                            className="text-red-600 focus:text-red-700 focus:bg-red-50"
+                          >
+                            Delete Row
+                          </ContextMenuItem>
+                        </ContextMenuContent>
+                      </ContextMenu>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell
+                        colSpan={data.columns.length}
+                        className="h-24 text-center text-gray-500"
                       >
-                        <Plus className="h-3 w-3 mr-2" />
-                        Insert New Row
-                      </ContextMenuItem>
-                      <ContextMenuItem 
-                        onClick={() => handleDuplicateRow(row)}
-                        disabled={!tableName}
-                      >
-                        Duplicate Row
-                      </ContextMenuItem>
-                      <ContextMenuItem 
-                        onClick={() => handleDeleteRow(row)}
-                        disabled={!tableName}
-                        className="text-red-600 focus:text-red-700 focus:bg-red-50"
-                      >
-                        Delete Row
-                      </ContextMenuItem>
-                    </ContextMenuContent>
-                  </ContextMenu>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={data.columns.length}
-                    className="h-24 text-center text-gray-500"
-                  >
-                    No data in this table
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
+                        No data in this table
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        )
       ) : (
         <div className="flex-1 overflow-auto p-4 bg-gray-900">
           <pre className="text-sm text-green-400 font-mono">

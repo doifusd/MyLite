@@ -76,10 +76,12 @@ impl ConnectionPool {
         }
 
         let pool = MySqlPoolOptions::new()
-            .max_connections(10)
-            .min_connections(1)
+            .max_connections(20)
+            .min_connections(2)
             .acquire_timeout(std::time::Duration::from_secs(30))
-            .idle_timeout(std::time::Duration::from_secs(600))
+            .idle_timeout(std::time::Duration::from_secs(300))
+            .max_lifetime(std::time::Duration::from_secs(1800))
+            .test_before_acquire(true)
             .connect_with(options)
             .await?;
 
@@ -134,6 +136,29 @@ impl ConnectionPool {
         
         Ok(row.0)
     }
+
+    pub async fn get_pool_stats(&self, connection_id: &str) -> Option<PoolStats> {
+        let pools = self.pools.read().await;
+        pools.get(connection_id).map(|pool| PoolStats {
+            size: pool.size(),
+            idle_connections: pool.num_idle() as u32,
+            is_closed: pool.is_closed(),
+        })
+    }
+
+    pub async fn close_all_pools(&self) {
+        let mut pools = self.pools.write().await;
+        for (_, pool) in pools.drain() {
+            let _ = pool.close().await;
+        }
+    }
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct PoolStats {
+    pub size: u32,
+    pub idle_connections: u32,
+    pub is_closed: bool,
 }
 
 fn configure_ssl(
