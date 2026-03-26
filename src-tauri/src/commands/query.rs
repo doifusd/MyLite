@@ -13,16 +13,16 @@ use tauri::State;
 fn mysql_value_to_json(row: &MySqlRow, idx: usize) -> Value {
     // Get the value reference
     let value_ref = row.try_get_raw(idx).ok();
-    
+
     // Check if value is null first
     if value_ref.as_ref().map(|v| v.is_null()).unwrap_or(true) {
         return Value::Null;
     }
-    
+
     let value_ref = value_ref.unwrap();
     let type_info = value_ref.type_info();
     let type_name = type_info.name();
-    
+
     // Try to decode based on type name
     match type_name {
         // Tiny integers (TINYINT)
@@ -83,18 +83,26 @@ fn mysql_value_to_json(row: &MySqlRow, idx: usize) -> Value {
                     .unwrap_or(Value::Null);
             }
         }
-        // Decimal - convert to string directly for precision
+        // Decimal - MySQL sends DECIMAL as ASCII text over the wire
         "DECIMAL" | "NUMERIC" => {
-            if let Ok(val) = row.try_get::<String, _>(idx) {
-                // Try to parse as number for JSON
-                if let Ok(num) = val.parse::<f64>() {
-                    if num.is_finite() {
-                        return serde_json::Number::from_f64(num)
-                            .map(Value::Number)
-                            .unwrap_or(Value::String(val));
+            // Try raw bytes first (MySQL binary protocol sends DECIMAL as ASCII text)
+            if let Ok(bytes) = row.try_get::<Vec<u8>, _>(idx) {
+                if let Ok(s) = String::from_utf8(bytes) {
+                    if let Ok(num) = s.parse::<f64>() {
+                        if num.is_finite() {
+                            return serde_json::Number::from_f64(num)
+                                .map(Value::Number)
+                                .unwrap_or(Value::String(s));
+                        }
                     }
+                    return Value::String(s);
                 }
-                return Value::String(val);
+            }
+            // Fallback: decode as f64
+            if let Ok(val) = row.try_get::<f64, _>(idx) {
+                return serde_json::Number::from_f64(val)
+                    .map(Value::Number)
+                    .unwrap_or_else(|| Value::String(val.to_string()));
             }
         }
         // Boolean (TINYINT(1) in MySQL)
@@ -131,8 +139,8 @@ fn mysql_value_to_json(row: &MySqlRow, idx: usize) -> Value {
             }
         }
         // Spatial types (MySQL 8.0+)
-        "GEOMETRY" | "POINT" | "LINESTRING" | "POLYGON" | 
-        "MULTIPOINT" | "MULTILINESTRING" | "MULTIPOLYGON" | "GEOMETRYCOLLECTION" => {
+        "GEOMETRY" | "POINT" | "LINESTRING" | "POLYGON" | "MULTIPOINT" | "MULTILINESTRING"
+        | "MULTIPOLYGON" | "GEOMETRYCOLLECTION" => {
             // Spatial data is stored as binary, convert to WKT or hex
             if let Ok(val) = row.try_get::<Vec<u8>, _>(idx) {
                 return Value::String(format!("0x{}", hex::encode(&val)));
@@ -185,12 +193,12 @@ fn mysql_value_to_json(row: &MySqlRow, idx: usize) -> Value {
         }
         _ => {}
     }
-    
+
     // Fallback: try as string for any remaining types
     if let Ok(val) = row.try_get::<String, _>(idx) {
         return Value::String(val);
     }
-    
+
     // Last resort: try to get as bytes and convert to string
     if let Ok(val) = row.try_get::<Vec<u8>, _>(idx) {
         if let Ok(s) = String::from_utf8(val.clone()) {
@@ -198,7 +206,7 @@ fn mysql_value_to_json(row: &MySqlRow, idx: usize) -> Value {
         }
         return Value::String(format!("0x{}", hex::encode(&val)));
     }
-    
+
     Value::Null
 }
 
@@ -208,8 +216,9 @@ fn get_connections_from_store(
     let store_lock = store.lock().map_err(|e| e.to_string())?;
     match store_lock.get("connections") {
         Some(value) => {
-            let connections: Vec<ConnectionInfo> = serde_json::from_value::<Vec<ConnectionInfo>>(value.clone())
-                .map_err(|e| format!("Failed to parse connections: {}", e))?;
+            let connections: Vec<ConnectionInfo> =
+                serde_json::from_value::<Vec<ConnectionInfo>>(value.clone())
+                    .map_err(|e| format!("Failed to parse connections: {}", e))?;
             Ok(connections)
         }
         None => Ok(vec![]),
@@ -226,7 +235,7 @@ pub async fn get_connection_config(
         .map_err(|e| format!("Failed to get store: {}", e))?;
 
     let connections = get_connections_from_store(&store)?;
-    
+
     let info = connections
         .into_iter()
         .find(|c| c.id == connection_id)
@@ -265,7 +274,7 @@ pub async fn execute_query(
     } else {
         connection_id.clone()
     };
-    
+
     let mut config = get_connection_config(&state, &connection_id).await?;
     if let Some(ref db) = database {
         config.database = Some(db.clone());
@@ -273,10 +282,7 @@ pub async fn execute_query(
 
     let pool = state
         .pool
-        .get_or_create_pool(
-            &pool_id,
-            &config,
-        )
+        .get_or_create_pool(&pool_id, &config)
         .await
         .map_err(|e| e.to_string())?;
 
@@ -292,7 +298,9 @@ pub async fn execute_query(
                 chars.next();
                 if chars.peek() == Some(&'-') {
                     while let Some(c) = chars.next() {
-                        if c == '\n' { break; }
+                        if c == '\n' {
+                            break;
+                        }
                     }
                 } else {
                     return false;
@@ -303,7 +311,9 @@ pub async fn execute_query(
                     chars.next();
                     let mut prev = ' ';
                     while let Some(curr) = chars.next() {
-                        if prev == '*' && curr == '/' { break; }
+                        if prev == '*' && curr == '/' {
+                            break;
+                        }
                         prev = curr;
                     }
                 } else {
@@ -313,7 +323,7 @@ pub async fn execute_query(
                 break;
             }
         }
-        
+
         let mut first_word = String::new();
         while let Some(c) = chars.next() {
             if c.is_alphabetic() {
@@ -324,8 +334,11 @@ pub async fn execute_query(
                 break;
             }
         }
-        
-        matches!(first_word.as_str(), "SELECT" | "SHOW" | "DESCRIBE" | "EXPLAIN" | "DESC" | "WITH")
+
+        matches!(
+            first_word.as_str(),
+            "SELECT" | "SHOW" | "DESCRIBE" | "EXPLAIN" | "DESC" | "WITH"
+        )
     }
 
     let is_select = is_select_query(&sql);
@@ -393,7 +406,8 @@ pub async fn execute_query(
                     None,
                     true,
                     None,
-                ).await;
+                )
+                .await;
 
                 Ok(QueryResult {
                     columns,
@@ -419,7 +433,8 @@ pub async fn execute_query(
                     None,
                     false,
                     Some(error_msg.clone()),
-                ).await;
+                )
+                .await;
 
                 Err(error_msg)
             }
@@ -441,7 +456,8 @@ pub async fn execute_query(
                     Some(result.rows_affected()),
                     true,
                     None,
-                ).await;
+                )
+                .await;
 
                 Ok(QueryResult {
                     columns: vec![],
@@ -467,7 +483,8 @@ pub async fn execute_query(
                     None,
                     false,
                     Some(error_msg.clone()),
-                ).await;
+                )
+                .await;
 
                 Err(error_msg)
             }
@@ -542,7 +559,7 @@ pub async fn execute_paginated_query(
     } else {
         connection_id.clone()
     };
-    
+
     let mut config = get_connection_config(&state, &connection_id).await?;
     if let Some(ref db) = database {
         config.database = Some(db.clone());
@@ -558,7 +575,7 @@ pub async fn execute_paginated_query(
 
     // Calculate offset
     let offset = (page - 1) * page_size;
-    
+
     // Wrap the query with pagination
     let paginated_sql = format!("{} LIMIT {} OFFSET {}", sql.trim(), page_size, offset);
 
@@ -609,7 +626,8 @@ pub async fn execute_paginated_query(
                 None,
                 true,
                 None,
-            ).await;
+            )
+            .await;
 
             Ok(QueryResult {
                 columns,
@@ -635,7 +653,8 @@ pub async fn execute_paginated_query(
                 None,
                 false,
                 Some(error_msg.clone()),
-            ).await;
+            )
+            .await;
 
             Err(error_msg)
         }
@@ -655,7 +674,7 @@ pub async fn get_query_count(
     } else {
         connection_id.clone()
     };
-    
+
     let mut config = get_connection_config(&state, &connection_id).await?;
     if let Some(ref db) = database {
         config.database = Some(db.clone());

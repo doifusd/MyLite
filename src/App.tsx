@@ -1,24 +1,22 @@
-import { useState, useEffect, useCallback } from 'react';
-import { invoke } from '@tauri-apps/api/tauri';
-import { Database, Plus, Trash2, Server, Lock, Shield, Globe, Edit2, Star, Folder, Zap, ChevronRight, ChevronDown, Search, HelpCircle } from 'lucide-react';
+import { ConnectionDialog } from '@/components/ConnectionDialog';
+import { ConnectionGroup, type ConnectionInfo } from '@/components/ConnectionGroupManager';
+import { DatabaseWorkspace } from '@/components/DatabaseWorkspace';
+import { GlobalSearch, useGlobalSearchShortcut } from '@/components/GlobalSearch';
+import { KeyboardShortcutsHelp } from '@/components/KeyboardShortcutsHelp';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { ToastContainer } from '@/components/Toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { DatabaseWorkspace } from '@/components/DatabaseWorkspace';
-import { ConnectionDialog } from '@/components/ConnectionDialog';
-import { ConnectionGroup, type ConnectionInfo } from '@/components/ConnectionGroupManager';
-import { QuickConnect, QuickConnectTemplate } from '@/components/QuickConnect';
-import { GlobalSearch, useGlobalSearchShortcut } from '@/components/GlobalSearch';
-import { ThemeToggle } from '@/components/ThemeToggle';
-import { ToastContainer } from '@/components/Toast';
 import { WelcomePage } from '@/components/WelcomePage';
-import { KeyboardShortcutsHelp } from '@/components/KeyboardShortcutsHelp';
+import { useAppShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useTheme } from '@/hooks/useTheme';
 import { useToast } from '@/hooks/useToast';
-import { useAppShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { cn } from '@/lib/utils';
-import type { Connection, ConnectionType, ConnectionColor } from '@/store/connectionStore';
+import type { Connection, ConnectionColor, ConnectionType } from '@/store/connectionStore';
+import { invoke } from '@tauri-apps/api/tauri';
+import { ChevronDown, ChevronRight, Database, Edit2, Folder, Globe, HelpCircle, Lock, Plus, Search, Server, Shield, Star, Trash2 } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
 // Color mapping for Tailwind compatibility
 const colorMap: Record<ConnectionColor, { bg: string; border: string; text: string; lightBg: string }> = {
@@ -64,22 +62,20 @@ function getConnectionTypeLabel(type: ConnectionType) {
 function App() {
   const [connections, setConnections] = useState<ConnectionInfo[]>([]);
   const [groups, setGroups] = useState<ConnectionGroup[]>([]);
-  const [templates, setTemplates] = useState<QuickConnectTemplate[]>([]);
   const [selectedConnection, setSelectedConnection] = useState<Connection | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [, setIsLoading] = useState(false);
   const [showNewConnection, setShowNewConnection] = useState(false);
   const [editingConnection, setEditingConnection] = useState<Connection | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState('connections');
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
-  
+
   // UI/UX features
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
   const [showWelcome, setShowWelcome] = useState(true);
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [recentQueries, setRecentQueries] = useState<any[]>([]);
-  
+
   // Hooks
   const { theme, setTheme } = useTheme();
   const { toasts, removeToast, success, error } = useToast();
@@ -87,7 +83,6 @@ function App() {
   useEffect(() => {
     loadConnections();
     loadGroups();
-    loadTemplates();
     loadRecentQueries();
   }, []);
 
@@ -124,15 +119,6 @@ function App() {
       setExpandedGroups(new Set(data.filter(g => g.is_expanded).map(g => g.id)));
     } catch (err) {
       console.error('Failed to load groups:', err);
-    }
-  };
-
-  const loadTemplates = async () => {
-    try {
-      const data = await invoke<QuickConnectTemplate[]>('get_quick_connect_templates');
-      setTemplates(data);
-    } catch (err) {
-      console.error('Failed to load templates:', err);
     }
   };
 
@@ -202,31 +188,6 @@ function App() {
     }
   };
 
-  const handleConnectFromTemplate = useCallback(async (template: QuickConnectTemplate) => {
-    // Create a new connection from template
-    const config = {
-      id: undefined,
-      name: template.name,
-      host: template.host,
-      port: template.port,
-      username: template.username,
-      password: '', // User will need to enter password
-      database: template.database,
-      color: template.color,
-      connection_type: 'direct' as ConnectionType,
-      ssh_config: null,
-      ssl_config: null,
-      http_config: null,
-      group: null,
-      is_favorite: false,
-      sort_order: 0,
-      tags: template.tags,
-    };
-    
-    setEditingConnection(config as any);
-    setShowNewConnection(true);
-  }, []);
-
   const handleSelectConnection = useCallback((connection: ConnectionInfo) => {
     setSelectedConnection(connection as any);
     setShowWelcome(false);
@@ -242,7 +203,7 @@ function App() {
     // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      const matchesSearch = 
+      const matchesSearch =
         conn.name.toLowerCase().includes(query) ||
         conn.host.toLowerCase().includes(query) ||
         conn.username.toLowerCase().includes(query) ||
@@ -313,172 +274,141 @@ function App() {
       <div className="flex-1 flex overflow-hidden">
         {/* Connection List Sidebar - Always Visible */}
         <div className="w-80 border-r bg-white flex flex-col">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-            <TabsList className="w-full justify-start rounded-none border-b px-2 py-2">
-              <TabsTrigger value="connections" className="gap-1">
-                <Database className="h-4 w-4" />
-                Connections
-              </TabsTrigger>
-              <TabsTrigger value="quick" className="gap-1">
-                <Zap className="h-4 w-4" />
-                Quick
-              </TabsTrigger>
-            </TabsList>
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Search */}
+            <div className="p-3 border-b space-y-2">
+              <h2 className="font-medium">Connections</h2>
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Search connections..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-8"
+                />
+              </div>
+            </div>
 
-            <TabsContent value="connections" className="flex-1 flex flex-col m-0 p-0">
-              {/* Search */}
-              <div className="p-3 border-b space-y-2">
-                <h2 className="font-medium">Connections</h2>
-                <div className="relative">
-                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    placeholder="Search connections..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-8"
-                  />
+            {/* Quick Filters */}
+            <div className="px-3 py-2 border-b space-y-1">
+              <button
+                onClick={() => setSelectedGroup('favorites')}
+                className={cn(
+                  'w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors',
+                  selectedGroup === 'favorites'
+                    ? 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-300'
+                    : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                )}
+              >
+                <Star className="w-4 h-4 text-yellow-500" />
+                <span className="flex-1 text-left">Favorites</span>
+                <span className="text-xs text-gray-500">
+                  {connections.filter(c => c.is_favorite).length}
+                </span>
+              </button>
+
+              <button
+                onClick={() => setSelectedGroup(null)}
+                className={cn(
+                  'w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors',
+                  selectedGroup === null
+                    ? 'bg-blue-500/20 text-blue-700 dark:text-blue-300'
+                    : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                )}
+              >
+                <Database className="w-4 h-4 text-blue-500" />
+                <span className="flex-1 text-left">All Connections</span>
+                <span className="text-xs text-gray-500">{connections.length}</span>
+              </button>
+            </div>
+
+            {/* Connection List */}
+            <div className="flex-1 overflow-auto p-2">
+              {filteredConnections.length === 0 ? (
+                <div className="text-center py-8 text-gray-400">
+                  <Database className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p>No connections found</p>
+                  {searchQuery && (
+                    <p className="text-sm mt-1">Try adjusting your search</p>
+                  )}
                 </div>
-              </div>
-
-              {/* Quick Filters */}
-              <div className="px-3 py-2 border-b space-y-1">
-                <button
-                  onClick={() => setSelectedGroup('favorites')}
-                  className={cn(
-                    'w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors',
-                    selectedGroup === 'favorites'
-                      ? 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-300'
-                      : 'hover:bg-gray-100 dark:hover:bg-gray-800'
-                  )}
-                >
-                  <Star className="w-4 h-4 text-yellow-500" />
-                  <span className="flex-1 text-left">Favorites</span>
-                  <span className="text-xs text-gray-500">
-                    {connections.filter(c => c.is_favorite).length}
-                  </span>
-                </button>
-
-                <button
-                  onClick={() => setSelectedGroup(null)}
-                  className={cn(
-                    'w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors',
-                    selectedGroup === null
-                      ? 'bg-blue-500/20 text-blue-700 dark:text-blue-300'
-                      : 'hover:bg-gray-100 dark:hover:bg-gray-800'
-                  )}
-                >
-                  <Database className="w-4 h-4 text-blue-500" />
-                  <span className="flex-1 text-left">All Connections</span>
-                  <span className="text-xs text-gray-500">{connections.length}</span>
-                </button>
-              </div>
-
-              {/* Connection List */}
-              <div className="flex-1 overflow-auto p-2">
-                {filteredConnections.length === 0 ? (
-                  <div className="text-center py-8 text-gray-400">
-                    <Database className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                    <p>No connections found</p>
-                    {searchQuery && (
-                      <p className="text-sm mt-1">Try adjusting your search</p>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {/* Grouped connections */}
-                    {groupedConnections.map(({ group, connections: groupConns }) => (
-                      groupConns.length > 0 && (
-                        <div key={group.id}>
-                          <button
-                            onClick={() => toggleGroupExpanded(group.id)}
-                            className="w-full flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100 rounded"
-                          >
-                            {expandedGroups.has(group.id) ? (
-                              <ChevronDown className="w-3 h-3" />
-                            ) : (
-                              <ChevronRight className="w-3 h-3" />
-                            )}
-                            <Folder className="w-3 h-3" />
-                            {group.name}
-                            <span className="ml-auto">({groupConns.length})</span>
-                          </button>
-                          {expandedGroups.has(group.id) && (
-                            <div className="ml-4 space-y-1">
-                              {groupConns.map(conn => (
-                                <ConnectionCard
-                                  key={conn.id}
-                                  conn={conn}
-                                  isSelected={selectedConnection?.id === conn.id}
-                                  onSelect={() => setSelectedConnection(conn as any)}
-                                  onEdit={() => handleEditConnection(conn as any)}
-                                  onDelete={() => deleteConnection(conn.id)}
-                                  onToggleFavorite={(e) => toggleFavorite(e, conn)}
-                                />
-                              ))}
-                            </div>
+              ) : (
+                <div className="space-y-2">
+                  {/* Grouped connections */}
+                  {groupedConnections.map(({ group, connections: groupConns }) => (
+                    groupConns.length > 0 && (
+                      <div key={group.id}>
+                        <button
+                          onClick={() => toggleGroupExpanded(group.id)}
+                          className="w-full flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100 rounded"
+                        >
+                          {expandedGroups.has(group.id) ? (
+                            <ChevronDown className="w-3 h-3" />
+                          ) : (
+                            <ChevronRight className="w-3 h-3" />
                           )}
-                        </div>
-                      )
-                    ))}
-
-                    {/* Ungrouped connections */}
-                    {ungroupedConnections.length > 0 && (
-                      <div className="space-y-1">
-                        {groupedConnections.some(g => g.connections.length > 0) && (
-                          <div className="px-2 py-1 text-xs font-medium text-gray-500">
-                            Ungrouped
+                          <Folder className="w-3 h-3" />
+                          {group.name}
+                          <span className="ml-auto">({groupConns.length})</span>
+                        </button>
+                        {expandedGroups.has(group.id) && (
+                          <div className="ml-4 space-y-1">
+                            {groupConns.map(conn => (
+                              <ConnectionCard
+                                key={conn.id}
+                                conn={conn}
+                                isSelected={selectedConnection?.id === conn.id}
+                                onSelect={() => setSelectedConnection(conn as any)}
+                                onEdit={() => handleEditConnection(conn as any)}
+                                onDelete={() => deleteConnection(conn.id)}
+                                onToggleFavorite={(e) => toggleFavorite(e, conn)}
+                              />
+                            ))}
                           </div>
                         )}
-                        {ungroupedConnections.map(conn => (
-                          <ConnectionCard
-                            key={conn.id}
-                            conn={conn}
-                            isSelected={selectedConnection?.id === conn.id}
-                            onSelect={() => setSelectedConnection(conn as any)}
-                            onEdit={() => handleEditConnection(conn as any)}
-                            onDelete={() => deleteConnection(conn.id)}
-                            onToggleFavorite={(e) => toggleFavorite(e, conn)}
-                          />
-                        ))}
                       </div>
-                    )}
-                  </div>
-                )}
-              </div>
+                    )
+                  ))}
 
-              {/* New Connection Button - Fixed at bottom */}
-              <div className="p-3 border-t bg-gray-50 dark:bg-gray-900">
-                <Button
-                  className="w-full"
-                  onClick={() => {
-                    setEditingConnection(undefined);
-                    setShowNewConnection(true);
-                  }}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Connection
-                </Button>
-              </div>
-            </TabsContent>
+                  {/* Ungrouped connections */}
+                  {ungroupedConnections.length > 0 && (
+                    <div className="space-y-1">
+                      {groupedConnections.some(g => g.connections.length > 0) && (
+                        <div className="px-2 py-1 text-xs font-medium text-gray-500">
+                          Ungrouped
+                        </div>
+                      )}
+                      {ungroupedConnections.map(conn => (
+                        <ConnectionCard
+                          key={conn.id}
+                          conn={conn}
+                          isSelected={selectedConnection?.id === conn.id}
+                          onSelect={() => setSelectedConnection(conn as any)}
+                          onEdit={() => handleEditConnection(conn as any)}
+                          onDelete={() => deleteConnection(conn.id)}
+                          onToggleFavorite={(e) => toggleFavorite(e, conn)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
-            <TabsContent value="quick" className="flex-1 m-0 p-0">
-              <QuickConnect
-                templates={templates}
-                onTemplatesChange={loadTemplates}
-                onConnect={handleConnectFromTemplate}
-                recentConnections={connections
-                  .filter(c => c.last_connected_at)
-                  .sort((a, b) => new Date(b.last_connected_at!).getTime() - new Date(a.last_connected_at!).getTime())
-                  .slice(0, 5)
-                  .map(c => ({
-                    id: c.id,
-                    name: c.name,
-                    host: c.host,
-                    lastConnected: c.last_connected_at!,
-                  }))}
-              />
-            </TabsContent>
-          </Tabs>
+            {/* New Connection Button - Fixed at bottom */}
+            <div className="p-3 border-t bg-gray-50 dark:bg-gray-900">
+              <Button
+                className="w-full"
+                onClick={() => {
+                  setEditingConnection(undefined);
+                  setShowNewConnection(true);
+                }}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                New Connection
+              </Button>
+            </div>
+          </div>
         </div>
 
         {/* Right Content Area */}
@@ -501,7 +431,7 @@ function App() {
               onSelectConnection={handleSelectConnection}
               onSelectQuery={handleSelectQuery}
               onOpenShortcuts={() => setShowShortcutsHelp(true)}
-              onOpenSettings={() => {/* TODO */}}
+              onOpenSettings={() => {/* TODO */ }}
             />
           ) : (
             <div className="h-full flex items-center justify-center">

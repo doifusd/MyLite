@@ -1,20 +1,20 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { invoke } from '@tauri-apps/api/tauri';
-import { 
-  Play, 
-  Save, 
-  FolderOpen, 
-  Clock,
-  Table2,
-  AlertCircle,
-  CheckCircle2,
-  Loader2
-} from 'lucide-react';
+import { QueryResult } from '@/components/QueryResult';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
-import { QueryResult } from '@/components/QueryResult';
 import Editor, { OnMount } from '@monaco-editor/react';
+import { invoke } from '@tauri-apps/api/tauri';
+import {
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  FolderOpen,
+  Loader2,
+  Play,
+  Save,
+  Table2
+} from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { format } from 'sql-formatter';
 
 interface ColumnInfo {
@@ -78,7 +78,7 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
 
   const handleEditorMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
-    
+
     // Add MySQL syntax highlighting
     monaco.languages.registerCompletionItemProvider('sql', {
       provideCompletionItems: () => {
@@ -209,17 +209,17 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
         currentSql = editorRef.current.getValue();
       }
     }
-    
+
     if (!currentSql.trim() || !connectionId) return;
 
     // 解析多语句
     const statements = parseMultipleStatements(currentSql);
-    
+
     // 如果没有语句，直接返回
     if (statements.length === 0) return;
 
     setIsExecuting(true);
-    
+
     // 清空之前的结果
     setResults([]);
     resultIdCounter.current = 0;
@@ -248,12 +248,12 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
           sql: stmt,
         });
 
-        setResults(prev => prev.map(r => 
-          r.id === `result-${i}` 
+        setResults(prev => prev.map(r =>
+          r.id === `result-${i}`
             ? { ...r, result: data, executionTime: Date.now() - startTime, isExecuting: false }
             : r
         ));
-        
+
         // 添加到历史
         if (i === statements.length - 1) {
           setHistory((prev) => [
@@ -262,9 +262,9 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
           ]);
         }
       } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : 'Query execution failed';
-        setResults(prev => prev.map(r => 
-          r.id === `result-${i}` 
+        const errorMsg = typeof err === 'string' ? err : err instanceof Error ? err.message : 'Query execution failed';
+        setResults(prev => prev.map(r =>
+          r.id === `result-${i}`
             ? { ...r, error: errorMsg, executionTime: Date.now() - startTime, isExecuting: false }
             : r
         ));
@@ -277,7 +277,7 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
 
   const formatSql = () => {
     const currentSql = editorRef.current?.getValue() || sql;
-    
+
     try {
       // 使用 sql-formatter 进行专业格式化
       const formatted = format(currentSql, {
@@ -286,7 +286,7 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
         indentStyle: 'standard',
         linesBetweenQueries: 2,
       });
-      
+
       if (editorRef.current) {
         editorRef.current.setValue(formatted);
       }
@@ -315,7 +315,7 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
           )}
           Execute
         </Button>
-        
+
         <Button
           variant="outline"
           size="sm"
@@ -331,7 +331,7 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
           <Save className="h-4 w-4" />
           Save
         </Button>
-        
+
         <Button variant="ghost" size="sm" className="gap-1">
           <FolderOpen className="h-4 w-4" />
           Open
@@ -374,8 +374,8 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
           <TabsList className="w-full justify-start rounded-none border-b bg-gray-50 px-2 shrink-0 overflow-x-auto">
             {results.length > 0 ? (
               results.map((res, index) => (
-                <TabsTrigger 
-                  key={res.id} 
+                <TabsTrigger
+                  key={res.id}
                   value={res.id}
                   className={cn(
                     "gap-1 min-w-fit",
@@ -415,9 +415,9 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
 
           <div className="flex-1 overflow-hidden relative">
             {results.map((res) => (
-              <TabsContent 
-                key={res.id} 
-                value={res.id} 
+              <TabsContent
+                key={res.id}
+                value={res.id}
                 className="absolute inset-0 m-0 data-[state=inactive]:hidden"
               >
                 {res.isExecuting ? (
@@ -439,7 +439,7 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
                     </div>
                   </div>
                 ) : res.result ? (
-                  <QueryResult 
+                  <QueryResult
                     data={res.result}
                     connectionId={connectionId}
                     databaseName={database}

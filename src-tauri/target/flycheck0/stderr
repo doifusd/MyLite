@@ -1,89 +1,45 @@
-   0.286747625s  INFO prepare_target{force=false package_id=mylite v0.1.0 (/Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri) target="mylite"}: cargo::core::compiler::fingerprint: dependency on `build_script_build` is newer than we are 1774501651.896256210s > 1774495465.655116723s "/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/objc_exception-0.1.2"
-   0.291972333s  INFO prepare_target{force=false package_id=mylite v0.1.0 (/Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri) target="mylite"}: cargo::core::compiler::fingerprint: dependency on `build_script_build` is newer than we are 1774501651.895964278s > 1774495466.819354901s "/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mac-notification-sys-0.6.12"
-   0.307383916s  INFO prepare_target{force=false package_id=mylite v0.1.0 (/Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri) target="mylite"}: cargo::core::compiler::fingerprint: fingerprint dirty for mylite v0.1.0 (/Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri)/Check { test: false }/TargetInner { name: "mylite", doc: true, ..: with_path("/Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri/src/main.rs", Edition2021) }
-   0.307434333s  INFO prepare_target{force=false package_id=mylite v0.1.0 (/Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri) target="mylite"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleDepFingerprint { name: "tauri_plugin_store" })
-   0.361353916s  INFO prepare_target{force=false package_id=tauri v1.8.3 target="tauri"}: cargo::core::compiler::fingerprint: fingerprint dirty for tauri v1.8.3/Check { test: false }/TargetInner { ..: lib_target("tauri", ["lib"], "/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-1.8.3/src/lib.rs", Edition2021) }
-   0.361389750s  INFO prepare_target{force=false package_id=tauri v1.8.3 target="tauri"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleDepFingerprint { name: "rfd" })
-   0.363462708s  INFO prepare_target{force=false package_id=cocoa v0.24.1 target="cocoa"}: cargo::core::compiler::fingerprint: fingerprint dirty for cocoa v0.24.1/Check { test: false }/TargetInner { name_inferred: true, ..: lib_target("cocoa", ["lib"], "/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cocoa-0.24.1/src/lib.rs", Edition2015) }
-   0.363469958s  INFO prepare_target{force=false package_id=cocoa v0.24.1 target="cocoa"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleDepFingerprint { name: "objc" })
-   0.364125958s  INFO prepare_target{force=false package_id=cocoa-foundation v0.1.2 target="cocoa_foundation"}: cargo::core::compiler::fingerprint: fingerprint dirty for cocoa-foundation v0.1.2/Check { test: false }/TargetInner { name_inferred: true, ..: lib_target("cocoa_foundation", ["lib"], "/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cocoa-foundation-0.1.2/src/lib.rs", Edition2015) }
-   0.364133416s  INFO prepare_target{force=false package_id=cocoa-foundation v0.1.2 target="cocoa_foundation"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleDepFingerprint { name: "objc" })
-   0.364925833s  INFO prepare_target{force=false package_id=objc v0.2.7 target="objc"}: cargo::core::compiler::fingerprint: fingerprint dirty for objc v0.2.7/Check { test: false }/TargetInner { name_inferred: true, ..: lib_target("objc", ["lib"], "/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/objc-0.2.7/src/lib.rs", Edition2015) }
-   0.364940291s  INFO prepare_target{force=false package_id=objc v0.2.7 target="objc"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleDepFingerprint { name: "objc_exception" })
-   0.365692083s  INFO prepare_target{force=false package_id=objc_exception v0.1.2 target="objc_exception"}: cargo::core::compiler::fingerprint: fingerprint dirty for objc_exception v0.1.2/Check { test: false }/TargetInner { name_inferred: true, ..: lib_target("objc_exception", ["lib"], "/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/objc_exception-0.1.2/src/lib.rs", Edition2015) }
-   0.365702083s  INFO prepare_target{force=false package_id=objc_exception v0.1.2 target="objc_exception"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleDependency { name: "build_script_build", dep_mtime: FileTime { seconds: 1774501651, nanos: 896256210 }, max_mtime: FileTime { seconds: 1774495465, nanos: 655116723 } })
-   0.370839083s  INFO prepare_target{force=false package_id=notify-rust v4.12.0 target="notify_rust"}: cargo::core::compiler::fingerprint: fingerprint dirty for notify-rust v4.12.0/Check { test: false }/TargetInner { ..: lib_target("notify_rust", ["lib"], "/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/notify-rust-4.12.0/src/lib.rs", Edition2021) }
-   0.370851583s  INFO prepare_target{force=false package_id=notify-rust v4.12.0 target="notify_rust"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleDepFingerprint { name: "mac_notification_sys" })
-   0.371617666s  INFO prepare_target{force=false package_id=mac-notification-sys v0.6.12 target="mac_notification_sys"}: cargo::core::compiler::fingerprint: fingerprint dirty for mac-notification-sys v0.6.12/Check { test: false }/TargetInner { ..: lib_target("mac_notification_sys", ["lib"], "/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mac-notification-sys-0.6.12/src/lib.rs", Edition2024) }
-   0.371626041s  INFO prepare_target{force=false package_id=mac-notification-sys v0.6.12 target="mac_notification_sys"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleDependency { name: "build_script_build", dep_mtime: FileTime { seconds: 1774501651, nanos: 895964278 }, max_mtime: FileTime { seconds: 1774495466, nanos: 819354901 } })
-   0.375734833s  INFO prepare_target{force=false package_id=rfd v0.10.0 target="rfd"}: cargo::core::compiler::fingerprint: fingerprint dirty for rfd v0.10.0/Check { test: false }/TargetInner { name_inferred: true, ..: lib_target("rfd", ["lib"], "/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rfd-0.10.0/src/lib.rs", Edition2021) }
-   0.375747666s  INFO prepare_target{force=false package_id=rfd v0.10.0 target="rfd"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleDepFingerprint { name: "objc" })
-   0.376468541s  INFO prepare_target{force=false package_id=objc-foundation v0.1.1 target="objc_foundation"}: cargo::core::compiler::fingerprint: fingerprint dirty for objc-foundation v0.1.1/Check { test: false }/TargetInner { name_inferred: true, ..: lib_target("objc_foundation", ["lib"], "/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/objc-foundation-0.1.1/src/lib.rs", Edition2015) }
-   0.376482583s  INFO prepare_target{force=false package_id=objc-foundation v0.1.1 target="objc_foundation"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleDepFingerprint { name: "objc" })
-   0.377142000s  INFO prepare_target{force=false package_id=objc_id v0.1.1 target="objc_id"}: cargo::core::compiler::fingerprint: fingerprint dirty for objc_id v0.1.1/Check { test: false }/TargetInner { name_inferred: true, ..: lib_target("objc_id", ["lib"], "/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/objc_id-0.1.1/src/lib.rs", Edition2015) }
-   0.377160666s  INFO prepare_target{force=false package_id=objc_id v0.1.1 target="objc_id"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleDepFingerprint { name: "objc" })
-   0.389183416s  INFO prepare_target{force=false package_id=tauri-runtime-wry v0.14.11 target="tauri_runtime_wry"}: cargo::core::compiler::fingerprint: fingerprint dirty for tauri-runtime-wry v0.14.11/Check { test: false }/TargetInner { ..: lib_target("tauri_runtime_wry", ["lib"], "/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-runtime-wry-0.14.11/src/lib.rs", Edition2021) }
-   0.389197083s  INFO prepare_target{force=false package_id=tauri-runtime-wry v0.14.11 target="tauri_runtime_wry"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleDepFingerprint { name: "wry" })
-   0.392528583s  INFO prepare_target{force=false package_id=wry v0.24.11 target="wry"}: cargo::core::compiler::fingerprint: fingerprint dirty for wry v0.24.11/Check { test: false }/TargetInner { ..: lib_target("wry", ["lib"], "/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wry-0.24.11/src/lib.rs", Edition2021) }
-   0.392537083s  INFO prepare_target{force=false package_id=wry v0.24.11 target="wry"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleDepFingerprint { name: "objc" })
-   0.393431791s  INFO prepare_target{force=false package_id=tao v0.16.11 target="tao"}: cargo::core::compiler::fingerprint: fingerprint dirty for tao v0.16.11/Check { test: false }/TargetInner { ..: lib_target("tao", ["lib"], "/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tao-0.16.11/src/lib.rs", Edition2021) }
-   0.393440625s  INFO prepare_target{force=false package_id=tao v0.16.11 target="tao"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleDepFingerprint { name: "objc" })
-   0.394963875s  INFO prepare_target{force=false package_id=tauri-plugin-store v0.0.0 (https://github.com/tauri-apps/plugins-workspace?branch=v1#1e407ed5) target="tauri_plugin_store"}: cargo::core::compiler::fingerprint: fingerprint dirty for tauri-plugin-store v0.0.0 (https://github.com/tauri-apps/plugins-workspace?branch=v1#1e407ed5)/Check { test: false }/TargetInner { name_inferred: true, ..: lib_target("tauri_plugin_store", ["lib"], "/Users/sky/.cargo/git/checkouts/plugins-workspace-bac95421cc662c04/1e407ed/plugins/store/src/lib.rs", Edition2021) }
-   0.394971500s  INFO prepare_target{force=false package_id=tauri-plugin-store v0.0.0 (https://github.com/tauri-apps/plugins-workspace?branch=v1#1e407ed5) target="tauri_plugin_store"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleDepFingerprint { name: "tauri" })
-   0.396870750s  INFO prepare_target{force=false package_id=mylite v0.1.0 (/Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri) target="mylite"}: cargo::core::compiler::fingerprint: fingerprint error for mylite v0.1.0 (/Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri)/Check { test: true }/TargetInner { name: "mylite", doc: true, ..: with_path("/Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri/src/main.rs", Edition2021) }
-   0.396878333s  INFO prepare_target{force=false package_id=mylite v0.1.0 (/Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri) target="mylite"}: cargo::core::compiler::fingerprint:     err: failed to read `/Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri/target/debug/.fingerprint/mylite-aaaf838cc9911bfd/test-bin-mylite`
-
-Caused by:
-    No such file or directory (os error 2)
-
-Stack backtrace:
-   0: std::backtrace::Backtrace::create
-   1: cargo_util::paths::read_bytes
-   2: cargo_util::paths::read
-   3: cargo::core::compiler::fingerprint::_compare_old_fingerprint
-   4: cargo::core::compiler::fingerprint::prepare_target
-   5: cargo::core::compiler::compile
-   6: <cargo::core::compiler::build_runner::BuildRunner>::compile
-   7: cargo::ops::cargo_compile::compile_ws
-   8: cargo::ops::cargo_compile::compile_with_exec
-   9: cargo::ops::cargo_compile::compile
-  10: cargo::commands::check::exec
-  11: <cargo::cli::Exec>::exec
-  12: cargo::main
-  13: std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>
-  14: std::rt::lang_start::<()>::{closure#0}
-  15: std::rt::lang_start_internal
-  16: _main
-   0.417313583s  INFO prepare_target{force=false package_id=mylite v0.1.0 (/Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri) target="integration_test"}: cargo::core::compiler::fingerprint: fingerprint error for mylite v0.1.0 (/Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri)/Check { test: true }/TargetInner { kind: "test", name: "integration_test", benched: false, ..: with_path("/Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri/tests/integration_test.rs", Edition2021) }
-   0.417327583s  INFO prepare_target{force=false package_id=mylite v0.1.0 (/Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri) target="integration_test"}: cargo::core::compiler::fingerprint:     err: failed to read `/Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri/target/debug/.fingerprint/mylite-3f4c69aab010bdd5/test-integration-test-integration_test`
-
-Caused by:
-    No such file or directory (os error 2)
-
-Stack backtrace:
-   0: std::backtrace::Backtrace::create
-   1: cargo_util::paths::read_bytes
-   2: cargo_util::paths::read
-   3: cargo::core::compiler::fingerprint::_compare_old_fingerprint
-   4: cargo::core::compiler::fingerprint::prepare_target
-   5: cargo::core::compiler::compile
-   6: <cargo::core::compiler::build_runner::BuildRunner>::compile
-   7: cargo::ops::cargo_compile::compile_ws
-   8: cargo::ops::cargo_compile::compile_with_exec
-   9: cargo::ops::cargo_compile::compile
-  10: cargo::commands::check::exec
-  11: <cargo::cli::Exec>::exec
-  12: cargo::main
-  13: std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>
-  14: std::rt::lang_start::<()>::{closure#0}
-  15: std::rt::lang_start_internal
-  16: _main
+   0.726896375s  INFO prepare_target{force=false package_id=mylite v0.1.0 (/Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri) target="mylite"}: cargo::core::compiler::fingerprint: dependency on `build_script_build` is newer than we are 1774521723.580236701s > 1774521702.487018401s "/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/objc_exception-0.1.2"
+   0.744148916s  INFO prepare_target{force=false package_id=mylite v0.1.0 (/Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri) target="mylite"}: cargo::core::compiler::fingerprint: dependency on `build_script_build` is newer than we are 1774521723.599909949s > 1774521703.438467290s "/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mac-notification-sys-0.6.12"
+   0.773054125s  INFO prepare_target{force=false package_id=mylite v0.1.0 (/Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri) target="mylite"}: cargo::core::compiler::fingerprint: fingerprint dirty for mylite v0.1.0 (/Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri)/Check { test: false }/TargetInner { name: "mylite", doc: true, ..: with_path("/Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri/src/main.rs", Edition2021) }
+   0.773104166s  INFO prepare_target{force=false package_id=mylite v0.1.0 (/Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri) target="mylite"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleDepFingerprint { name: "tauri_plugin_store" })
+   0.943409125s  INFO prepare_target{force=false package_id=tauri v1.8.3 target="tauri"}: cargo::core::compiler::fingerprint: fingerprint dirty for tauri v1.8.3/Check { test: false }/TargetInner { ..: lib_target("tauri", ["lib"], "/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-1.8.3/src/lib.rs", Edition2021) }
+   0.943444250s  INFO prepare_target{force=false package_id=tauri v1.8.3 target="tauri"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleDepFingerprint { name: "rfd" })
+   0.947067708s  INFO prepare_target{force=false package_id=cocoa v0.24.1 target="cocoa"}: cargo::core::compiler::fingerprint: fingerprint dirty for cocoa v0.24.1/Check { test: false }/TargetInner { name_inferred: true, ..: lib_target("cocoa", ["lib"], "/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cocoa-0.24.1/src/lib.rs", Edition2015) }
+   0.947084958s  INFO prepare_target{force=false package_id=cocoa v0.24.1 target="cocoa"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleDepFingerprint { name: "objc" })
+   0.947886375s  INFO prepare_target{force=false package_id=cocoa-foundation v0.1.2 target="cocoa_foundation"}: cargo::core::compiler::fingerprint: fingerprint dirty for cocoa-foundation v0.1.2/Check { test: false }/TargetInner { name_inferred: true, ..: lib_target("cocoa_foundation", ["lib"], "/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cocoa-foundation-0.1.2/src/lib.rs", Edition2015) }
+   0.947893875s  INFO prepare_target{force=false package_id=cocoa-foundation v0.1.2 target="cocoa_foundation"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleDepFingerprint { name: "objc" })
+   0.948660750s  INFO prepare_target{force=false package_id=objc v0.2.7 target="objc"}: cargo::core::compiler::fingerprint: fingerprint dirty for objc v0.2.7/Check { test: false }/TargetInner { name_inferred: true, ..: lib_target("objc", ["lib"], "/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/objc-0.2.7/src/lib.rs", Edition2015) }
+   0.948671750s  INFO prepare_target{force=false package_id=objc v0.2.7 target="objc"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleDepFingerprint { name: "objc_exception" })
+   0.949430958s  INFO prepare_target{force=false package_id=objc_exception v0.1.2 target="objc_exception"}: cargo::core::compiler::fingerprint: fingerprint dirty for objc_exception v0.1.2/Check { test: false }/TargetInner { name_inferred: true, ..: lib_target("objc_exception", ["lib"], "/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/objc_exception-0.1.2/src/lib.rs", Edition2015) }
+   0.949444250s  INFO prepare_target{force=false package_id=objc_exception v0.1.2 target="objc_exception"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleDependency { name: "build_script_build", dep_mtime: FileTime { seconds: 1774521723, nanos: 580236701 }, max_mtime: FileTime { seconds: 1774521702, nanos: 487018401 } })
+   0.955486166s  INFO prepare_target{force=false package_id=notify-rust v4.12.0 target="notify_rust"}: cargo::core::compiler::fingerprint: fingerprint dirty for notify-rust v4.12.0/Check { test: false }/TargetInner { ..: lib_target("notify_rust", ["lib"], "/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/notify-rust-4.12.0/src/lib.rs", Edition2021) }
+   0.955504416s  INFO prepare_target{force=false package_id=notify-rust v4.12.0 target="notify_rust"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleDepFingerprint { name: "mac_notification_sys" })
+   0.955949000s  INFO prepare_target{force=false package_id=mac-notification-sys v0.6.12 target="mac_notification_sys"}: cargo::core::compiler::fingerprint: fingerprint dirty for mac-notification-sys v0.6.12/Check { test: false }/TargetInner { ..: lib_target("mac_notification_sys", ["lib"], "/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/mac-notification-sys-0.6.12/src/lib.rs", Edition2024) }
+   0.955955791s  INFO prepare_target{force=false package_id=mac-notification-sys v0.6.12 target="mac_notification_sys"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleDependency { name: "build_script_build", dep_mtime: FileTime { seconds: 1774521723, nanos: 599909949 }, max_mtime: FileTime { seconds: 1774521703, nanos: 438467290 } })
+   0.961045750s  INFO prepare_target{force=false package_id=rfd v0.10.0 target="rfd"}: cargo::core::compiler::fingerprint: fingerprint dirty for rfd v0.10.0/Check { test: false }/TargetInner { name_inferred: true, ..: lib_target("rfd", ["lib"], "/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rfd-0.10.0/src/lib.rs", Edition2021) }
+   0.961058583s  INFO prepare_target{force=false package_id=rfd v0.10.0 target="rfd"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleDepFingerprint { name: "objc" })
+   0.961543041s  INFO prepare_target{force=false package_id=objc-foundation v0.1.1 target="objc_foundation"}: cargo::core::compiler::fingerprint: fingerprint dirty for objc-foundation v0.1.1/Check { test: false }/TargetInner { name_inferred: true, ..: lib_target("objc_foundation", ["lib"], "/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/objc-foundation-0.1.1/src/lib.rs", Edition2015) }
+   0.961548708s  INFO prepare_target{force=false package_id=objc-foundation v0.1.1 target="objc_foundation"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleDepFingerprint { name: "objc" })
+   0.961915333s  INFO prepare_target{force=false package_id=objc_id v0.1.1 target="objc_id"}: cargo::core::compiler::fingerprint: fingerprint dirty for objc_id v0.1.1/Check { test: false }/TargetInner { name_inferred: true, ..: lib_target("objc_id", ["lib"], "/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/objc_id-0.1.1/src/lib.rs", Edition2015) }
+   0.961930541s  INFO prepare_target{force=false package_id=objc_id v0.1.1 target="objc_id"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleDepFingerprint { name: "objc" })
+   0.977213833s  INFO prepare_target{force=false package_id=tauri-runtime-wry v0.14.11 target="tauri_runtime_wry"}: cargo::core::compiler::fingerprint: fingerprint dirty for tauri-runtime-wry v0.14.11/Check { test: false }/TargetInner { ..: lib_target("tauri_runtime_wry", ["lib"], "/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-runtime-wry-0.14.11/src/lib.rs", Edition2021) }
+   0.977228541s  INFO prepare_target{force=false package_id=tauri-runtime-wry v0.14.11 target="tauri_runtime_wry"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleDepFingerprint { name: "wry" })
+   0.981195541s  INFO prepare_target{force=false package_id=wry v0.24.11 target="wry"}: cargo::core::compiler::fingerprint: fingerprint dirty for wry v0.24.11/Check { test: false }/TargetInner { ..: lib_target("wry", ["lib"], "/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wry-0.24.11/src/lib.rs", Edition2021) }
+   0.981209250s  INFO prepare_target{force=false package_id=wry v0.24.11 target="wry"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleDepFingerprint { name: "objc" })
+   0.982184208s  INFO prepare_target{force=false package_id=tao v0.16.11 target="tao"}: cargo::core::compiler::fingerprint: fingerprint dirty for tao v0.16.11/Check { test: false }/TargetInner { ..: lib_target("tao", ["lib"], "/Users/sky/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tao-0.16.11/src/lib.rs", Edition2021) }
+   0.982192208s  INFO prepare_target{force=false package_id=tao v0.16.11 target="tao"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleDepFingerprint { name: "objc" })
+   0.984291458s  INFO prepare_target{force=false package_id=tauri-plugin-store v0.0.0 (https://github.com/tauri-apps/plugins-workspace?branch=v1#1e407ed5) target="tauri_plugin_store"}: cargo::core::compiler::fingerprint: fingerprint dirty for tauri-plugin-store v0.0.0 (https://github.com/tauri-apps/plugins-workspace?branch=v1#1e407ed5)/Check { test: false }/TargetInner { name_inferred: true, ..: lib_target("tauri_plugin_store", ["lib"], "/Users/sky/.cargo/git/checkouts/plugins-workspace-bac95421cc662c04/1e407ed/plugins/store/src/lib.rs", Edition2021) }
+   0.984299916s  INFO prepare_target{force=false package_id=tauri-plugin-store v0.0.0 (https://github.com/tauri-apps/plugins-workspace?branch=v1#1e407ed5) target="tauri_plugin_store"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleDepFingerprint { name: "tauri" })
+   0.986339083s  INFO prepare_target{force=false package_id=mylite v0.1.0 (/Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri) target="mylite"}: cargo::core::compiler::fingerprint: fingerprint dirty for mylite v0.1.0 (/Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri)/Check { test: true }/TargetInner { name: "mylite", doc: true, ..: with_path("/Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri/src/main.rs", Edition2021) }
+   0.986347083s  INFO prepare_target{force=false package_id=mylite v0.1.0 (/Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri) target="mylite"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleDepFingerprint { name: "tauri_plugin_store" })
+   0.987964041s  INFO prepare_target{force=false package_id=mylite v0.1.0 (/Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri) target="integration_test"}: cargo::core::compiler::fingerprint: fingerprint dirty for mylite v0.1.0 (/Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri)/Check { test: true }/TargetInner { kind: "test", name: "integration_test", benched: false, ..: with_path("/Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri/tests/integration_test.rs", Edition2021) }
+   0.987973125s  INFO prepare_target{force=false package_id=mylite v0.1.0 (/Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri) target="integration_test"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleDepFingerprint { name: "tauri_plugin_store" })
     Checking objc_exception v0.1.2
     Checking mac-notification-sys v0.6.12
     Checking objc v0.2.7
     Checking notify-rust v4.12.0
-    Checking cocoa-foundation v0.1.2
     Checking objc_id v0.1.1
+    Checking cocoa-foundation v0.1.2
     Checking objc-foundation v0.1.1
     Checking rfd v0.10.0
     Checking cocoa v0.24.1
@@ -93,4 +49,4 @@ Stack backtrace:
     Checking tauri v1.8.3
     Checking tauri-plugin-store v0.0.0 (https://github.com/tauri-apps/plugins-workspace?branch=v1#1e407ed5)
     Checking mylite v0.1.0 (/Users/sky/.zeroclaw/workspace/mysqlClient/src-tauri)
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 7.96s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 7.22s

@@ -1,19 +1,20 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { invoke } from '@tauri-apps/api/tauri';
 import { cn } from '@/lib/utils';
-import { 
-  ChevronRight, 
-  ChevronDown, 
-  Database, 
-  Table, 
-  Columns, 
+import { invoke } from '@tauri-apps/api/tauri';
+import {
+  ChevronDown,
+  ChevronRight,
+  Columns,
+  Database,
   Key,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  Table
 } from 'lucide-react';
-import { DatabasePropertiesDialog } from './DatabasePropertiesDialog';
-import { TableDDLDialog } from './TableDDLDialog';
+import React, { useCallback, useEffect, useState } from 'react';
 import { CreateTableDialog } from './CreateTableDialog';
+import { DatabasePropertiesDialog } from './DatabasePropertiesDialog';
+import { DesignTableDialog } from './DesignTableDialog';
+import { TableDDLDialog } from './TableDDLDialog';
 
 interface SchemaTreeItem {
   id: string;
@@ -44,10 +45,10 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
 
   const fetchDatabases = useCallback(async () => {
     if (!connectionId) return;
-    
+
     setLoading(true);
     setError(null);
-    
+
     try {
       const result = await invoke<SchemaTreeItem[]>('get_databases_v2', {
         connectionId,
@@ -105,11 +106,11 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
         });
       }
 
-      setTreeData((prev) => 
-        updateNode(prev, node.id, { 
-          children: children.length > 0 ? children : undefined, 
-          isLoaded: true, 
-          isLoading: false 
+      setTreeData((prev) =>
+        updateNode(prev, node.id, {
+          children: children.length > 0 ? children : undefined,
+          isLoaded: true,
+          isLoading: false
         })
       );
     } catch (err) {
@@ -122,7 +123,7 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
     const nodeId = node.id;
     const isExpanding = !expandedNodes.has(nodeId);
 
-    if (isExpanding && !node.isLoaded) {
+    if (isExpanding && !node.isLoaded && node.type !== 'folder') {
       await loadNodeChildren(node);
     }
 
@@ -152,6 +153,9 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
   const [createTableOpen, setCreateTableOpen] = useState(false);
   const [selectedDbForCreateTable, setSelectedDbForCreateTable] = useState<string | null>(null);
 
+  const [designTableOpen, setDesignTableOpen] = useState(false);
+  const [selectedTableForDesign, setSelectedTableForDesign] = useState<{ database: string; table: string } | null>(null);
+
   const handleContextMenu = (e: React.MouseEvent, node: SchemaTreeItem) => {
     if (node.type !== 'table' && node.type !== 'database') return;
     e.preventDefault();
@@ -172,7 +176,7 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
     if (node.type === 'database' || node.type === 'table' || node.type === 'folder') {
       toggleNode(node);
     }
-    
+
     if (node.type === 'table' && onTableSelect) {
       // Extract database and table name from node id
       const parts = node.id.replace('table_', '').split('.');
@@ -185,15 +189,15 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
   const getNodeIcon = (type: string) => {
     switch (type) {
       case 'database':
-        return <Database className="h-4 w-4 text-blue-500" />;
+        return <Database className="w-4 h-4 text-blue-500" />;
       case 'table':
-        return <Table className="h-4 w-4 text-amber-500" />;
+        return <Table className="w-4 h-4 text-amber-500" />;
       case 'column':
-        return <Columns className="h-4 w-4 text-gray-500" />;
+        return <Columns className="w-4 h-4 text-gray-500" />;
       case 'index':
-        return <Key className="h-4 w-4 text-purple-500" />;
+        return <Key className="w-4 h-4 text-purple-500" />;
       case 'folder':
-        return <Columns className="h-4 w-4 text-gray-400" />;
+        return <Columns className="w-4 h-4 text-gray-400" />;
       default:
         return null;
     }
@@ -216,20 +220,20 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
           onContextMenu={(e) => handleContextMenu(e, node)}
         >
           {node.isLoading ? (
-            <Loader2 className="h-3 w-3 animate-spin text-gray-400" />
+            <Loader2 className="w-3 h-3 text-gray-400 animate-spin" />
           ) : hasChildren ? (
             isExpanded ? (
-              <ChevronDown className="h-3 w-3 text-gray-500" />
+              <ChevronDown className="w-3 h-3 text-gray-500" />
             ) : (
-              <ChevronRight className="h-3 w-3 text-gray-500" />
+              <ChevronRight className="w-3 h-3 text-gray-500" />
             )
           ) : (
             <span className="w-3" />
           )}
-          
+
           {getNodeIcon(node.type)}
-          
-          <span className="text-sm truncate ml-1">{node.name}</span>
+
+          <span className="ml-1 text-sm truncate">{node.name}</span>
         </div>
 
         {isExpanded && node.children && (
@@ -244,7 +248,7 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
   if (loading) {
     return (
       <div className={cn('flex items-center justify-center p-8', className)}>
-        <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+        <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
       </div>
     );
   }
@@ -255,9 +259,9 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
         <p>{error}</p>
         <button
           onClick={fetchDatabases}
-          className="mt-2 flex items-center gap-1 text-blue-500 hover:text-blue-600"
+          className="flex items-center gap-1 mt-2 text-blue-500 hover:text-blue-600"
         >
-          <RefreshCw className="h-3 w-3" />
+          <RefreshCw className="w-3 h-3" />
           Retry
         </button>
       </div>
@@ -270,16 +274,16 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
         <h3 className="text-sm font-medium">Schema Browser</h3>
         <button
           onClick={fetchDatabases}
-          className="p-1 hover:bg-gray-100 rounded"
+          className="p-1 rounded hover:bg-gray-100"
           title="Refresh"
         >
-          <RefreshCw className="h-3 w-3" />
+          <RefreshCw className="w-3 h-3" />
         </button>
       </div>
-      
+
       <div className="p-2">
         {treeData.length === 0 ? (
-          <p className="text-sm text-gray-500 text-center py-4">
+          <p className="py-4 text-sm text-center text-gray-500">
             No databases found
           </p>
         ) : (
@@ -289,11 +293,26 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
 
       {contextMenu && (
         <div
-          className="fixed z-50 bg-white dark:bg-gray-900 border rounded shadow-lg py-1 w-48 text-sm"
+          className="fixed z-50 w-48 py-1 text-sm bg-white border rounded shadow-lg dark:bg-gray-900"
           style={{ top: contextMenu.y, left: contextMenu.x }}
         >
+          {contextMenu.node.type === 'table' && (
+            <button
+              className="w-full px-4 py-2 font-medium text-left hover:bg-gray-100 dark:hover:bg-gray-800"
+              onClick={() => {
+                const parts = contextMenu.node.id.replace('table_', '').split('.');
+                if (parts.length === 2) {
+                  setSelectedTableForDesign({ database: parts[0], table: parts[1] });
+                  setDesignTableOpen(true);
+                }
+                setContextMenu(null);
+              }}
+            >
+              Design Table
+            </button>
+          )}
           <button
-            className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800"
+            className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-800"
             onClick={() => {
               const parts = contextMenu.node.id.replace('table_', '').split('.');
               if (parts.length === 2 && onTableSelect) {
@@ -306,7 +325,7 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
           </button>
           {contextMenu.node.type === 'table' && (
             <button
-              className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-800"
               onClick={() => {
                 const parts = contextMenu.node.id.replace('table_', '').split('.');
                 if (parts.length === 2) {
@@ -320,7 +339,7 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
             </button>
           )}
           <button
-            className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800"
+            className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-800"
             onClick={() => {
               if (contextMenu.node.type === 'database') {
                 setSelectedDbForCreateTable(contextMenu.node.name);
@@ -331,10 +350,10 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
           >
             Create New Table
           </button>
-          <div className="border-t my-1" />
-          <div className="border-t my-1" />
+          <div className="my-1 border-t" />
+          <div className="my-1 border-t" />
           <button
-            className="w-full text-left px-4 py-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+            className="w-full px-4 py-2 text-left text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
             onClick={async () => {
               const parts = contextMenu.node.id.replace('table_', '').split('.');
               if (parts.length === 2) {
@@ -367,6 +386,20 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
           }}
           connectionId={connectionId}
           databaseName={selectedDbForProps}
+          onRefresh={fetchDatabases}
+        />
+      )}
+
+      {selectedTableForDesign && (
+        <DesignTableDialog
+          isOpen={designTableOpen}
+          onClose={() => {
+            setDesignTableOpen(false);
+            setSelectedTableForDesign(null);
+          }}
+          connectionId={connectionId}
+          database={selectedTableForDesign.database}
+          tableName={selectedTableForDesign.table}
           onRefresh={fetchDatabases}
         />
       )}

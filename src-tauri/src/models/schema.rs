@@ -22,6 +22,10 @@ pub struct TableInfo {
     pub updated_at: Option<String>,
     pub comment: Option<String>,
     pub create_sql: Option<String>,
+    pub auto_increment: Option<u64>,
+    pub row_format: Option<String>,
+    pub avg_row_length: Option<u64>,
+    pub create_options: Option<String>,
     pub columns: Vec<ColumnDefinition>,
     pub indexes: Vec<IndexInfo>,
 }

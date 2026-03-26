@@ -11,8 +11,9 @@ fn get_connections_from_store(
     let store_lock = store.lock().map_err(|e| e.to_string())?;
     match store_lock.get("connections") {
         Some(value) => {
-            let connections: Vec<ConnectionInfo> = serde_json::from_value::<Vec<ConnectionInfo>>(value.clone())
-                .map_err(|e| format!("Failed to parse connections: {}", e))?;
+            let connections: Vec<ConnectionInfo> =
+                serde_json::from_value::<Vec<ConnectionInfo>>(value.clone())
+                    .map_err(|e| format!("Failed to parse connections: {}", e))?;
             Ok(connections)
         }
         None => Ok(vec![]),
@@ -29,7 +30,7 @@ async fn get_connection_config(
         .map_err(|e| format!("Failed to get store: {}", e))?;
 
     let connections = get_connections_from_store(&store)?;
-    
+
     let info = connections
         .into_iter()
         .find(|c| c.id == connection_id)
@@ -63,7 +64,10 @@ pub async fn get_schema_tree(
 ) -> Result<Vec<SchemaTreeItem>, String> {
     let pool = state
         .pool
-        .get_or_create_pool(&connection_id, &get_connection_config(&state, &connection_id).await?)
+        .get_or_create_pool(
+            &connection_id,
+            &get_connection_config(&state, &connection_id).await?,
+        )
         .await
         .map_err(|e| e.to_string())?;
 
@@ -76,7 +80,6 @@ pub async fn get_schema_tree(
         .map_err(|e| e.to_string())?;
 
     for db_name in databases {
-
         let db_id = format!("db_{}", db_name);
         let mut db_children = Vec::new();
 
@@ -93,7 +96,7 @@ pub async fn get_schema_tree(
             let table_id = format!("table_{}.{}", db_name, table_name);
             let mut table_children = Vec::new();
 
-        let columns: Vec<SchemaTreeItem> = sqlx::query(&format!(
+            let columns: Vec<SchemaTreeItem> = sqlx::query(&format!(
                 "SELECT column_name AS column_name, data_type AS data_type FROM information_schema.columns 
                  WHERE table_schema = '{}' AND table_name = '{}' 
                  ORDER BY ordinal_position",
@@ -135,7 +138,12 @@ pub async fn get_schema_tree(
             .map_err(|e| e.to_string())?
             .into_iter()
             .map(|row| SchemaTreeItem {
-                id: format!("idx_{}.{}.{}", db_name, table_name, row.get::<String, _>("index_name")),
+                id: format!(
+                    "idx_{}.{}.{}",
+                    db_name,
+                    table_name,
+                    row.get::<String, _>("index_name")
+                ),
                 name: row.get::<String, _>("index_name"),
                 item_type: "index".to_string(),
                 parent_id: Some(table_id.clone()),
@@ -161,7 +169,11 @@ pub async fn get_schema_tree(
                 name: table_name,
                 item_type: "table".to_string(),
                 parent_id: Some(db_id.clone()),
-                children: if table_children.is_empty() { None } else { Some(table_children) },
+                children: if table_children.is_empty() {
+                    None
+                } else {
+                    Some(table_children)
+                },
                 metadata: None,
             };
             db_children.push(table_node);
@@ -172,7 +184,11 @@ pub async fn get_schema_tree(
             name: db_name,
             item_type: "database".to_string(),
             parent_id: None,
-            children: if db_children.is_empty() { None } else { Some(db_children) },
+            children: if db_children.is_empty() {
+                None
+            } else {
+                Some(db_children)
+            },
             metadata: None,
         };
         tree.push(db_node);
@@ -190,7 +206,10 @@ pub async fn get_table_info(
 ) -> Result<TableInfo, String> {
     let pool = state
         .pool
-        .get_or_create_pool(&connection_id, &get_connection_config(&state, &connection_id).await?)
+        .get_or_create_pool(
+            &connection_id,
+            &get_connection_config(&state, &connection_id).await?,
+        )
         .await
         .map_err(|e| e.to_string())?;
 
@@ -199,7 +218,9 @@ pub async fn get_table_info(
         "SELECT engine AS engine, table_rows AS table_rows, data_length AS data_length, 
                 index_length AS index_length, table_collation AS table_collation, 
                 create_time AS create_time, update_time AS update_time, 
-                table_comment AS table_comment 
+                table_comment AS table_comment, auto_increment AS auto_increment,
+                row_format AS row_format, avg_row_length AS avg_row_length,
+                create_options AS create_options 
          FROM information_schema.tables 
          WHERE table_schema = '{}' AND table_name = '{}'",
         database, table
@@ -209,13 +230,11 @@ pub async fn get_table_info(
     .map_err(|e| e.to_string())?;
 
     // Get CREATE TABLE SQL
-    let create_sql_row: (String, String) = sqlx::query_as(&format!(
-        "SHOW CREATE TABLE `{}`.`{}`",
-        database, table
-    ))
-    .fetch_one(&pool)
-    .await
-    .map_err(|e| e.to_string())?;
+    let create_sql_row: (String, String) =
+        sqlx::query_as(&format!("SHOW CREATE TABLE `{}`.`{}`", database, table))
+            .fetch_one(&pool)
+            .await
+            .map_err(|e| e.to_string())?;
 
     let columns: Vec<ColumnDefinition> = sqlx::query(&format!(
         "SELECT column_name AS column_name, data_type AS data_type, 
@@ -265,8 +284,9 @@ pub async fn get_table_info(
     .into_iter()
     .fold(std::collections::HashMap::new(), |mut acc, row| {
         let name: String = row.get("index_name");
-        
-        let non_unique = row.try_get::<i64, _>("non_unique")
+
+        let non_unique = row
+            .try_get::<i64, _>("non_unique")
             .or_else(|_| row.try_get::<i32, _>("non_unique").map(|v| v as i64))
             .or_else(|_| row.try_get::<u32, _>("non_unique").map(|v| v as i64))
             .unwrap_or(0);
@@ -292,10 +312,20 @@ pub async fn get_table_info(
         data_length: table_row.try_get("data_length").ok(),
         index_length: table_row.try_get("index_length").ok(),
         collation: table_row.try_get("table_collation").ok(),
-        created_at: table_row.try_get::<chrono::NaiveDateTime, _>("create_time").ok().map(|dt| dt.to_string()),
-        updated_at: table_row.try_get::<chrono::NaiveDateTime, _>("update_time").ok().map(|dt| dt.to_string()),
+        created_at: table_row
+            .try_get::<chrono::NaiveDateTime, _>("create_time")
+            .ok()
+            .map(|dt| dt.to_string()),
+        updated_at: table_row
+            .try_get::<chrono::NaiveDateTime, _>("update_time")
+            .ok()
+            .map(|dt| dt.to_string()),
         comment: table_row.try_get("table_comment").ok(),
         create_sql: Some(create_sql_row.1),
+        auto_increment: table_row.try_get::<u64, _>("auto_increment").ok(),
+        row_format: table_row.try_get("row_format").ok(),
+        avg_row_length: table_row.try_get::<u64, _>("avg_row_length").ok(),
+        create_options: table_row.try_get("create_options").ok(),
         columns,
         indexes,
     })
@@ -311,7 +341,10 @@ pub async fn alter_table(
 ) -> Result<(), String> {
     let pool = state
         .pool
-        .get_or_create_pool(&connection_id, &get_connection_config(&state, &connection_id).await?)
+        .get_or_create_pool(
+            &connection_id,
+            &get_connection_config(&state, &connection_id).await?,
+        )
         .await
         .map_err(|e| e.to_string())?;
 
@@ -336,7 +369,10 @@ pub async fn get_databases(
 ) -> Result<Vec<String>, String> {
     let pool = state
         .pool
-        .get_or_create_pool(&connection_id, &get_connection_config(&state, &connection_id).await?)
+        .get_or_create_pool(
+            &connection_id,
+            &get_connection_config(&state, &connection_id).await?,
+        )
         .await
         .map_err(|e| e.to_string())?;
 
@@ -356,7 +392,10 @@ pub async fn get_database_info(
 ) -> Result<serde_json::Value, String> {
     let pool = state
         .pool
-        .get_or_create_pool(&connection_id, &get_connection_config(&state, &connection_id).await?)
+        .get_or_create_pool(
+            &connection_id,
+            &get_connection_config(&state, &connection_id).await?,
+        )
         .await
         .map_err(|e| e.to_string())?;
 
@@ -372,8 +411,14 @@ pub async fn get_database_info(
 
     let mut map = serde_json::Map::new();
     map.insert("name".to_string(), serde_json::Value::String(database));
-    map.insert("charset".to_string(), serde_json::Value::String(row.get("default_character_set_name")));
-    map.insert("collation".to_string(), serde_json::Value::String(row.get("default_collation_name")));
+    map.insert(
+        "charset".to_string(),
+        serde_json::Value::String(row.get("default_character_set_name")),
+    );
+    map.insert(
+        "collation".to_string(),
+        serde_json::Value::String(row.get("default_collation_name")),
+    );
 
     Ok(serde_json::Value::Object(map))
 }
@@ -385,7 +430,10 @@ pub async fn get_databases_v2(
 ) -> Result<Vec<SchemaTreeItem>, String> {
     let pool = state
         .pool
-        .get_or_create_pool(&connection_id, &get_connection_config(&state, &connection_id).await?)
+        .get_or_create_pool(
+            &connection_id,
+            &get_connection_config(&state, &connection_id).await?,
+        )
         .await
         .map_err(|e| e.to_string())?;
 
@@ -417,7 +465,10 @@ pub async fn get_tables(
 ) -> Result<Vec<SchemaTreeItem>, String> {
     let pool = state
         .pool
-        .get_or_create_pool(&connection_id, &get_connection_config(&state, &connection_id).await?)
+        .get_or_create_pool(
+            &connection_id,
+            &get_connection_config(&state, &connection_id).await?,
+        )
         .await
         .map_err(|e| e.to_string())?;
 
@@ -453,7 +504,10 @@ pub async fn get_table_schema(
 ) -> Result<Vec<SchemaTreeItem>, String> {
     let pool = state
         .pool
-        .get_or_create_pool(&connection_id, &get_connection_config(&state, &connection_id).await?)
+        .get_or_create_pool(
+            &connection_id,
+            &get_connection_config(&state, &connection_id).await?,
+        )
         .await
         .map_err(|e| e.to_string())?;
 
@@ -471,8 +525,17 @@ pub async fn get_table_schema(
     .map_err(|e| e.to_string())?
     .into_iter()
     .map(|row| SchemaTreeItem {
-        id: format!("col_{}.{}.{}", database, table, row.get::<String, _>("column_name")),
-        name: format!("{} ({})", row.get::<String, _>("column_name"), row.get::<String, _>("data_type")),
+        id: format!(
+            "col_{}.{}.{}",
+            database,
+            table,
+            row.get::<String, _>("column_name")
+        ),
+        name: format!(
+            "{} ({})",
+            row.get::<String, _>("column_name"),
+            row.get::<String, _>("data_type")
+        ),
         item_type: "column".to_string(),
         parent_id: Some(format!("{}/columns", table_id)),
         children: None,
@@ -501,7 +564,12 @@ pub async fn get_table_schema(
     .map_err(|e| e.to_string())?
     .into_iter()
     .map(|row| SchemaTreeItem {
-        id: format!("idx_{}.{}.{}", database, table, row.get::<String, _>("index_name")),
+        id: format!(
+            "idx_{}.{}.{}",
+            database,
+            table,
+            row.get::<String, _>("index_name")
+        ),
         name: row.get::<String, _>("index_name"),
         item_type: "index".to_string(),
         parent_id: Some(format!("{}/indexes", table_id)),
@@ -531,7 +599,10 @@ pub async fn get_charsets(
 ) -> Result<Vec<serde_json::Value>, String> {
     let pool = state
         .pool
-        .get_or_create_pool(&connection_id, &get_connection_config(&state, &connection_id).await?)
+        .get_or_create_pool(
+            &connection_id,
+            &get_connection_config(&state, &connection_id).await?,
+        )
         .await
         .map_err(|e| e.to_string())?;
 
@@ -542,17 +613,30 @@ pub async fn get_charsets(
         .into_iter()
         .map(|row| {
             let mut map = serde_json::Map::new();
-            map.insert("charset".to_string(), serde_json::Value::String(row.get("Charset")));
-            map.insert("description".to_string(), serde_json::Value::String(row.get("Description")));
-            map.insert("default_collation".to_string(), serde_json::Value::String(row.get("Default collation")));
-            
-            let maxlen = row.try_get::<i64, _>("Maxlen")
+            map.insert(
+                "charset".to_string(),
+                serde_json::Value::String(row.get("Charset")),
+            );
+            map.insert(
+                "description".to_string(),
+                serde_json::Value::String(row.get("Description")),
+            );
+            map.insert(
+                "default_collation".to_string(),
+                serde_json::Value::String(row.get("Default collation")),
+            );
+
+            let maxlen = row
+                .try_get::<i64, _>("Maxlen")
                 .or_else(|_| row.try_get::<u32, _>("Maxlen").map(|v| v as i64))
                 .or_else(|_| row.try_get::<i32, _>("Maxlen").map(|v| v as i64))
                 .or_else(|_| row.try_get::<u64, _>("Maxlen").map(|v| v as i64))
                 .unwrap_or(0);
-            map.insert("maxlen".to_string(), serde_json::Value::Number(maxlen.into()));
-            
+            map.insert(
+                "maxlen".to_string(),
+                serde_json::Value::Number(maxlen.into()),
+            );
+
             serde_json::Value::Object(map)
         })
         .collect();
@@ -568,7 +652,10 @@ pub async fn get_collations(
 ) -> Result<Vec<serde_json::Value>, String> {
     let pool = state
         .pool
-        .get_or_create_pool(&connection_id, &get_connection_config(&state, &connection_id).await?)
+        .get_or_create_pool(
+            &connection_id,
+            &get_connection_config(&state, &connection_id).await?,
+        )
         .await
         .map_err(|e| e.to_string())?;
 
@@ -585,26 +672,43 @@ pub async fn get_collations(
         .into_iter()
         .map(|row| {
             let mut map = serde_json::Map::new();
-            map.insert("collation".to_string(), serde_json::Value::String(row.get("Collation")));
-            map.insert("charset".to_string(), serde_json::Value::String(row.get("Charset")));
-            
-            let id = row.try_get::<i64, _>("Id")
+            map.insert(
+                "collation".to_string(),
+                serde_json::Value::String(row.get("Collation")),
+            );
+            map.insert(
+                "charset".to_string(),
+                serde_json::Value::String(row.get("Charset")),
+            );
+
+            let id = row
+                .try_get::<i64, _>("Id")
                 .or_else(|_| row.try_get::<u32, _>("Id").map(|v| v as i64))
                 .or_else(|_| row.try_get::<i32, _>("Id").map(|v| v as i64))
                 .or_else(|_| row.try_get::<u64, _>("Id").map(|v| v as i64))
                 .unwrap_or(0);
             map.insert("id".to_string(), serde_json::Value::Number(id.into()));
-            
-            map.insert("is_default".to_string(), serde_json::Value::String(row.get("Default")));
-            map.insert("is_compiled".to_string(), serde_json::Value::String(row.get("Compiled")));
-            
-            let sortlen = row.try_get::<i64, _>("Sortlen")
+
+            map.insert(
+                "is_default".to_string(),
+                serde_json::Value::String(row.get("Default")),
+            );
+            map.insert(
+                "is_compiled".to_string(),
+                serde_json::Value::String(row.get("Compiled")),
+            );
+
+            let sortlen = row
+                .try_get::<i64, _>("Sortlen")
                 .or_else(|_| row.try_get::<u32, _>("Sortlen").map(|v| v as i64))
                 .or_else(|_| row.try_get::<i32, _>("Sortlen").map(|v| v as i64))
                 .or_else(|_| row.try_get::<u64, _>("Sortlen").map(|v| v as i64))
                 .unwrap_or(0);
-            map.insert("sortlen".to_string(), serde_json::Value::Number(sortlen.into()));
-            
+            map.insert(
+                "sortlen".to_string(),
+                serde_json::Value::Number(sortlen.into()),
+            );
+
             serde_json::Value::Object(map)
         })
         .collect();
