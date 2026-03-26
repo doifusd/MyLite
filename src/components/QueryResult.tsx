@@ -1,20 +1,13 @@
-import React, { useState, useMemo } from 'react';
-import {
-  ChevronLeft,
-  ChevronRight,
-  Download,
-  Copy,
-  Check,
-  FileJson,
-  Table2,
-  Maximize2,
-  Minimize2,
-  Search,
-  X,
-  Plus,
-  Save
-} from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
+import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -23,17 +16,24 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import {
-  ContextMenu,
-  ContextMenuTrigger,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-} from '@/components/ui/context-menu';
 import { invoke } from '@tauri-apps/api/tauri';
+import {
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Copy,
+  Download,
+  FileJson,
+  Maximize2,
+  Minimize2,
+  Plus,
+  Save,
+  Search,
+  Table2,
+  X
+} from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { VirtualTable } from './VirtualTable';
 
 interface InsertDialogProps {
@@ -58,7 +58,7 @@ const InsertDialog: React.FC<InsertDialogProps> = ({
   const handleSave = () => {
     const cols: string[] = [];
     const vals: string[] = [];
-    
+
     columns.forEach(col => {
       if (values[col.name] !== undefined && values[col.name] !== '') {
         cols.push(`\`${col.name}\``);
@@ -154,8 +154,23 @@ export const QueryResult: React.FC<QueryResultProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'table' | 'json'>('table');
 
-  const [editingCell, setEditingCell] = useState<{rowIndex: number; colIndex: number} | null>(null);
+  const [editingCell, setEditingCell] = useState<{ rowIndex: number; colIndex: number } | null>(null);
   const [editValue, setEditValue] = useState('');
+  const tableAreaRef = useRef<HTMLDivElement>(null);
+  const [tableAreaHeight, setTableAreaHeight] = useState(400);
+
+  useEffect(() => {
+    const el = tableAreaRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        setTableAreaHeight(entry.contentRect.height);
+      }
+    });
+    ro.observe(el);
+    setTableAreaHeight(el.clientHeight);
+    return () => ro.disconnect();
+  }, []);
   const handleCellClick = (rowIndex: number, colIndex: number, value: any) => {
     if (!tableName || !databaseName || !connectionId) return;
     setEditingCell({ rowIndex, colIndex });
@@ -164,24 +179,24 @@ export const QueryResult: React.FC<QueryResultProps> = ({
 
   const handleCellSave = async () => {
     if (!editingCell || !tableName || !databaseName || !connectionId) return;
-    
+
     const { rowIndex, colIndex } = editingCell;
     const row = currentRows[rowIndex];
     const col = data.columns[colIndex];
     const originalValue = row[colIndex];
-    
+
     // Skip if no change
     const newValue = editValue === 'NULL' ? null : editValue;
     if (newValue === originalValue) {
       setEditingCell(null);
       return;
     }
-    
+
     // Build UPDATE SQL
-    const setClause = editValue === 'NULL' 
+    const setClause = editValue === 'NULL'
       ? `\`${col.name}\` = NULL`
       : `\`${col.name}\` = '${editValue.replace(/'/g, "''")}'`;
-    
+
     // Build WHERE clause using primary key or all columns
     const whereConditions: string[] = [];
     data.columns.forEach((c, idx) => {
@@ -194,9 +209,9 @@ export const QueryResult: React.FC<QueryResultProps> = ({
         whereConditions.push(`\`${c.name}\` = '${String(val).replace(/'/g, "''")}'`);
       }
     });
-    
+
     const sql = `UPDATE \`${databaseName}\`.\`${tableName}\` SET ${setClause} WHERE ${whereConditions.join(' AND ')} LIMIT 1;`;
-    
+
     try {
       await invoke('execute_query', {
         connectionId,
@@ -207,7 +222,7 @@ export const QueryResult: React.FC<QueryResultProps> = ({
     } catch (err: any) {
       alert(`Error updating cell: ${err}`);
     }
-    
+
     setEditingCell(null);
   };
 
@@ -219,19 +234,19 @@ export const QueryResult: React.FC<QueryResultProps> = ({
   // Handle virtual table cell edit
   const handleVirtualCellEdit = async (rowIndex: number, colIndex: number, value: any) => {
     if (!tableName || !databaseName || !connectionId) return;
-    
+
     const row = filteredRows[rowIndex];
     const col = data.columns[colIndex];
     const originalValue = row[colIndex];
-    
+
     // Skip if no change
     if (value === originalValue) return;
-    
+
     // Build UPDATE SQL
-    const setClause = value === null 
+    const setClause = value === null
       ? `\`${col.name}\` = NULL`
       : `\`${col.name}\` = '${String(value).replace(/'/g, "''")}'`;
-    
+
     // Build WHERE clause using all columns
     const whereConditions: string[] = [];
     data.columns.forEach((c, idx) => {
@@ -244,9 +259,9 @@ export const QueryResult: React.FC<QueryResultProps> = ({
         whereConditions.push(`\`${c.name}\` = '${String(val).replace(/'/g, "''")}'`);
       }
     });
-    
+
     const sql = `UPDATE \`${databaseName}\`.\`${tableName}\` SET ${setClause} WHERE ${whereConditions.join(' AND ')} LIMIT 1;`;
-    
+
     try {
       await invoke('execute_query', {
         connectionId,
@@ -307,11 +322,11 @@ export const QueryResult: React.FC<QueryResultProps> = ({
     const table = tableName || 'table_name';
     const cols: string[] = [];
     const vals: string[] = [];
-    
+
     data.columns.forEach((col, idx) => {
       if (excludeAutoInc && col.name.toLowerCase() === 'id') return;
       cols.push(`\`${col.name}\``);
-      
+
       const val = row[idx];
       if (val === null) {
         vals.push('NULL');
@@ -335,7 +350,7 @@ export const QueryResult: React.FC<QueryResultProps> = ({
   const generateDeleteSQL = (row: any[]) => {
     const table = tableName || 'table_name';
     const conditions: string[] = [];
-    
+
     data.columns.forEach((col, idx) => {
       const val = row[idx];
       if (val === null) {
@@ -355,9 +370,9 @@ export const QueryResult: React.FC<QueryResultProps> = ({
       alert("Table information is missing, cannot delete row directly.");
       return;
     }
-    
+
     if (!confirm("Are you sure you want to delete this row?")) return;
-    
+
     const sql = generateDeleteSQL(row);
     try {
       await invoke('execute_query', {
@@ -376,7 +391,7 @@ export const QueryResult: React.FC<QueryResultProps> = ({
       alert("Table information is missing, cannot duplicate row directly.");
       return;
     }
-    
+
     const sql = generateInsertSQL(row, true);
     try {
       await invoke('execute_query', {
@@ -469,7 +484,7 @@ export const QueryResult: React.FC<QueryResultProps> = ({
   }
 
   return (
-    <div className={cn('flex flex-col h-full', className)}>
+    <div className={cn('flex flex-col h-full min-h-0', className)}>
       {/* Toolbar */}
       <div className="flex items-center justify-between p-2 border-b bg-gray-50">
         <div className="flex items-center gap-2">
@@ -605,31 +620,31 @@ export const QueryResult: React.FC<QueryResultProps> = ({
       </div>
 
       {/* Results */}
-      {viewMode === 'table' ? (
-        filteredRows.length > 1000 ? (
-          // Use virtual scrolling for large datasets
-          <VirtualTable
-            columns={data.columns}
-            rows={filteredRows}
-            containerHeight={expanded ? 800 : 400}
-            className="flex-1"
-            onCellEdit={tableName && databaseName && connectionId ? handleVirtualCellEdit : undefined}
-            onRowCopy={handleCopyRow}
-            onRowCopyWithColumns={handleCopyRowWithColumns}
-            onRowCopyInsert={handleCopyInsert}
-            onRowDuplicate={tableName && databaseName && connectionId ? handleDuplicateRow : undefined}
-            onRowDelete={tableName && databaseName && connectionId ? handleDeleteRow : undefined}
-            onInsertNew={() => setInsertDialogOpen(true)}
-            tableName={tableName}
-          />
-        ) : (
-          // Use regular table for small datasets
-          <div 
-            className="flex-1 overflow-auto border rounded-sm"
-            style={{ height: expanded ? 600 : 400 }}
-          >
-            <div className="inline-block min-w-full">
-              <Table>
+      <div ref={tableAreaRef} className="flex-1 min-h-0">
+        {viewMode === 'table' ? (
+          filteredRows.length > 1000 ? (
+            // Use virtual scrolling for large datasets
+            <VirtualTable
+              columns={data.columns}
+              rows={filteredRows}
+              containerHeight={tableAreaHeight}
+              className="h-full"
+              onCellEdit={tableName && databaseName && connectionId ? handleVirtualCellEdit : undefined}
+              onRowCopy={handleCopyRow}
+              onRowCopyWithColumns={handleCopyRowWithColumns}
+              onRowCopyInsert={handleCopyInsert}
+              onRowDuplicate={tableName && databaseName && connectionId ? handleDuplicateRow : undefined}
+              onRowDelete={tableName && databaseName && connectionId ? handleDeleteRow : undefined}
+              onInsertNew={() => setInsertDialogOpen(true)}
+              tableName={tableName}
+            />
+          ) : (
+            // Use regular table for small datasets
+            <div
+              className="overflow-auto border rounded-sm"
+              style={{ height: tableAreaHeight }}
+            >
+              <Table style={{ width: 'max-content', minWidth: '100%' }}>
                 <TableHeader className="sticky top-0 bg-gray-50 z-10">
                   <TableRow>
                     {data.columns.map((col) => (
@@ -718,20 +733,20 @@ export const QueryResult: React.FC<QueryResultProps> = ({
                             Copy as SQL INSERT (no auto_inc)
                           </ContextMenuItem>
                           <ContextMenuSeparator />
-                          <ContextMenuItem 
+                          <ContextMenuItem
                             onClick={() => setInsertDialogOpen(true)}
                             disabled={!tableName}
                           >
                             <Plus className="h-3 w-3 mr-2" />
                             Insert New Row
                           </ContextMenuItem>
-                          <ContextMenuItem 
+                          <ContextMenuItem
                             onClick={() => handleDuplicateRow(row)}
                             disabled={!tableName}
                           >
                             Duplicate Row
                           </ContextMenuItem>
-                          <ContextMenuItem 
+                          <ContextMenuItem
                             onClick={() => handleDeleteRow(row)}
                             disabled={!tableName}
                             className="text-red-600 focus:text-red-700 focus:bg-red-50"
@@ -754,25 +769,25 @@ export const QueryResult: React.FC<QueryResultProps> = ({
                 </TableBody>
               </Table>
             </div>
+          )
+        ) : (
+          <div className="overflow-auto p-4 bg-gray-900" style={{ height: tableAreaHeight }}>
+            <pre className="text-sm text-green-400 font-mono">
+              {JSON.stringify(
+                currentRows.map((row) => {
+                  const obj: Record<string, any> = {};
+                  data.columns.forEach((col, idx) => {
+                    obj[col.name] = row[idx];
+                  });
+                  return obj;
+                }),
+                null,
+                2
+              )}
+            </pre>
           </div>
-        )
-      ) : (
-        <div className="flex-1 overflow-auto p-4 bg-gray-900">
-          <pre className="text-sm text-green-400 font-mono">
-            {JSON.stringify(
-              currentRows.map((row) => {
-                const obj: Record<string, any> = {};
-                data.columns.forEach((col, idx) => {
-                  obj[col.name] = row[idx];
-                });
-                return obj;
-              }),
-              null,
-              2
-            )}
-          </pre>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Footer */}
       <div className="px-3 py-2 border-t bg-gray-50 text-xs text-gray-500 flex items-center justify-between">
