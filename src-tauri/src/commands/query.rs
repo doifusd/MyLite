@@ -7,6 +7,7 @@ use sqlx::mysql::MySqlRow;
 use sqlx::{Column, Executor, Row, TypeInfo, ValueRef};
 use std::sync::Arc;
 use tauri::State;
+use rust_decimal::Decimal;
 
 /// Helper function to convert a MySQL row value to JSON Value
 /// Supports all MySQL 8.0+ data types
@@ -85,24 +86,44 @@ fn mysql_value_to_json(row: &MySqlRow, idx: usize) -> Value {
         }
         // Decimal - MySQL sends DECIMAL as ASCII text over the wire
         "DECIMAL" | "NUMERIC" => {
-            // Try raw bytes first (MySQL binary protocol sends DECIMAL as ASCII text)
+            // Try to decode as Decimal first (most accurate)
+            if let Ok(val) = row.try_get::<Decimal, _>(idx) {
+                return Value::String(val.to_string());
+            }
+            // MySQL sends DECIMAL as ASCII text, preserve exact decimal representation
             if let Ok(bytes) = row.try_get::<Vec<u8>, _>(idx) {
                 if let Ok(s) = String::from_utf8(bytes) {
-                    if let Ok(num) = s.parse::<f64>() {
-                        if num.is_finite() {
-                            return serde_json::Number::from_f64(num)
-                                .map(Value::Number)
-                                .unwrap_or(Value::String(s));
-                        }
-                    }
                     return Value::String(s);
                 }
             }
-            // Fallback: decode as f64
+            // Fallback: try as string
+            if let Ok(val) = row.try_get::<String, _>(idx) {
+                return Value::String(val);
+            }
+            // Last resort: convert to string from f64 (lossy)
             if let Ok(val) = row.try_get::<f64, _>(idx) {
-                return serde_json::Number::from_f64(val)
-                    .map(Value::Number)
-                    .unwrap_or_else(|| Value::String(val.to_string()));
+                return Value::String(val.to_string());
+            }
+        }
+        // Decimal unsigned variants
+        "DECIMAL UNSIGNED" | "NUMERIC UNSIGNED" => {
+            // Try to decode as Decimal first (most accurate)
+            if let Ok(val) = row.try_get::<Decimal, _>(idx) {
+                return Value::String(val.to_string());
+            }
+            // MySQL sends DECIMAL as ASCII text, preserve exact decimal representation
+            if let Ok(bytes) = row.try_get::<Vec<u8>, _>(idx) {
+                if let Ok(s) = String::from_utf8(bytes) {
+                    return Value::String(s);
+                }
+            }
+            // Fallback: try as string
+            if let Ok(val) = row.try_get::<String, _>(idx) {
+                return Value::String(val);
+            }
+            // Last resort: convert to string from f64 (lossy)
+            if let Ok(val) = row.try_get::<f64, _>(idx) {
+                return Value::String(val.to_string());
             }
         }
         // Boolean (TINYINT(1) in MySQL)
@@ -194,17 +215,28 @@ fn mysql_value_to_json(row: &MySqlRow, idx: usize) -> Value {
         _ => {}
     }
 
+    // Fallback: First try binary types (important for VARBINARY, BLOB, etc.)
+    // This must come before string fallback to avoid type mismatch errors
+    if let Ok(val) = row.try_get::<Vec<u8>, _>(idx) {
+        if let Ok(s) = String::from_utf8(val.clone()) {
+            // Only return as string if it's valid UTF-8
+            // Check if the column name or type hints suggest it should be binary
+            if type_name.to_uppercase().contains("BINARY") 
+                || type_name.to_uppercase().contains("BLOB")
+                || type_name.to_uppercase().contains("BIT") {
+                // Return as hex for binary types
+                return Value::String(format!("0x{}", hex::encode(&val)));
+            }
+            // For TEXT types that happen to be bytes, return as string
+            return Value::String(s);
+        }
+        // Non-UTF8 binary data
+        return Value::String(format!("0x{}", hex::encode(&val)));
+    }
+
     // Fallback: try as string for any remaining types
     if let Ok(val) = row.try_get::<String, _>(idx) {
         return Value::String(val);
-    }
-
-    // Last resort: try to get as bytes and convert to string
-    if let Ok(val) = row.try_get::<Vec<u8>, _>(idx) {
-        if let Ok(s) = String::from_utf8(val.clone()) {
-            return Value::String(s);
-        }
-        return Value::String(format!("0x{}", hex::encode(&val)));
     }
 
     Value::Null

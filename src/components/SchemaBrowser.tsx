@@ -54,8 +54,11 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
         connectionId,
       });
       setTreeData(result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load databases');
+    } catch (err: any) {
+      console.error('Failed to fetch databases:', err);
+      // Ensure we extract the error message accurately from Tauri's response
+      const message = typeof err === 'string' ? err : (err?.message || JSON.stringify(err));
+      setError(message || 'Failed to load databases');
     } finally {
       setLoading(false);
     }

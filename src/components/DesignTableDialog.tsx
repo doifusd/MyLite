@@ -82,21 +82,6 @@ interface CollationInfo {
     charset?: string;
 }
 
-interface ForeignKeyInfo {
-    name: string;
-    columns: string[];
-    ref_database: string;
-    ref_table: string;
-    ref_columns: string[];
-    on_delete: string;
-    on_update: string;
-}
-
-interface EditableForeignKey extends ForeignKeyInfo {
-    isNew?: boolean;
-    originalName?: string;
-}
-
 interface DesignTableDialogProps {
     isOpen: boolean;
     onClose: () => void;
@@ -117,26 +102,8 @@ const MYSQL_TYPES = [
 
 const MYSQL_ENGINES = ['InnoDB', 'MyISAM', 'MEMORY', 'CSV', 'ARCHIVE', 'BLACKHOLE', 'FEDERATED'];
 
-const FK_ACTIONS = ['NO ACTION', 'RESTRICT', 'CASCADE', 'SET NULL', 'SET DEFAULT'];
 const MYSQL_ROW_FORMATS = ['DEFAULT', 'DYNAMIC', 'FIXED', 'COMPRESSED', 'REDUNDANT', 'COMPACT'];
 const STATS_OPTS = [{ label: 'DEFAULT', value: '' }, { label: '0', value: '0' }, { label: '1', value: '1' }];
-const PARTITION_TYPES = ['', 'RANGE', 'LIST', 'HASH', 'KEY', 'LINEAR HASH', 'LINEAR KEY'];
-const SUBPARTITION_TYPES = ['', 'HASH', 'KEY', 'LINEAR HASH', 'LINEAR KEY'];
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface PartitionDef {
-    name: string;
-    values: string;
-    engine: string;
-    dataDirectory: string;
-    indexDirectory: string;
-    maxRows: string;
-    minRows: string;
-    tablespace: string;
-    nodeGroup: string;
-    comment: string;
-}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -362,63 +329,6 @@ function generateAlterStatements(
     return stmts;
 }
 
-// ─── FK helpers ───────────────────────────────────────────────────────────────
-
-function fksEqual(a: ForeignKeyInfo, b: EditableForeignKey): boolean {
-    return (
-        a.name === b.name &&
-        a.ref_database === b.ref_database &&
-        a.ref_table === b.ref_table &&
-        a.columns.length === b.columns.length &&
-        a.columns.every((c, i) => c === b.columns[i]) &&
-        a.ref_columns.length === b.ref_columns.length &&
-        a.ref_columns.every((c, i) => c === b.ref_columns[i]) &&
-        a.on_delete === b.on_delete &&
-        a.on_update === b.on_update
-    );
-}
-
-function buildFkConstraint(fk: EditableForeignKey, tableRef: string): string {
-    const localCols = fk.columns.filter(Boolean).map(c => `\`${c}\``).join(', ');
-    const refCols = fk.ref_columns.filter(Boolean).map(c => `\`${c}\``).join(', ');
-    const refTableRef = `\`${fk.ref_database}\`.\`${fk.ref_table}\``;
-    const onDelete = fk.on_delete ? ` ON DELETE ${fk.on_delete}` : '';
-    const onUpdate = fk.on_update ? ` ON UPDATE ${fk.on_update}` : '';
-    return `ALTER TABLE ${tableRef} ADD CONSTRAINT \`${fk.name}\` FOREIGN KEY (${localCols}) REFERENCES ${refTableRef} (${refCols})${onDelete}${onUpdate}`;
-}
-
-function generateFkStatements(
-    originalFks: ForeignKeyInfo[],
-    editableFks: EditableForeignKey[],
-    deletedFks: string[],
-    database: string,
-    tableName: string,
-): string[] {
-    const stmts: string[] = [];
-    const tableRef = `\`${database}\`.\`${tableName}\``;
-
-    for (const fkName of deletedFks) {
-        stmts.push(`ALTER TABLE ${tableRef} DROP FOREIGN KEY \`${fkName}\``);
-    }
-
-    for (const fk of editableFks) {
-        if (!fk.name.trim() || !fk.columns.filter(Boolean).length || !fk.ref_database || !fk.ref_table || !fk.ref_columns.filter(Boolean).length) continue;
-        if (fk.isNew) {
-            stmts.push(buildFkConstraint(fk, tableRef));
-        } else {
-            const originalName = fk.originalName ?? fk.name;
-            const original = originalFks.find(f => f.name === originalName);
-            if (!original) continue;
-            if (!fksEqual(original, fk)) {
-                stmts.push(`ALTER TABLE ${tableRef} DROP FOREIGN KEY \`${originalName}\``);
-                stmts.push(buildFkConstraint(fk, tableRef));
-            }
-        }
-    }
-
-    return stmts;
-}
-
 // ─── Inline cell input ────────────────────────────────────────────────────────
 
 const CellInput: React.FC<{
@@ -448,12 +358,11 @@ const CellInput: React.FC<{
     />
 );
 
-type TabId = 'fields' | 'indexes' | 'foreign_keys' | 'options' | 'comment' | 'sql_preview';
+type TabId = 'fields' | 'indexes' | 'options' | 'comment' | 'sql_preview';
 
 const TABS: { id: TabId; label: string }[] = [
     { id: 'fields', label: 'Fields' },
     { id: 'indexes', label: 'Indexes' },
-    { id: 'foreign_keys', label: 'Foreign Keys' },
     { id: 'options', label: 'Options' },
     { id: 'comment', label: 'Comment' },
     { id: 'sql_preview', label: 'SQL Preview' },
@@ -500,30 +409,9 @@ export const DesignTableDialog: React.FC<DesignTableDialogProps> = ({
     const [editableStatsPersistent, setEditableStatsPersistent] = useState('');
     const [editableStatsSamplePages, setEditableStatsSamplePages] = useState('');
     const [editableEncryption, setEditableEncryption] = useState(false);
-    // ── Partition dialog ──
-    const [showPartitionDialog, setShowPartitionDialog] = useState(false);
-    const [partitionBy, setPartitionBy] = useState('');
-    const [partitionExpr, setPartitionExpr] = useState('');
-    const [partitionCount, setPartitionCount] = useState('');
-    const [subpartitionBy, setSubpartitionBy] = useState('');
-    const [subpartitionExpr, setSubpartitionExpr] = useState('');
-    const [subpartitionCount, setSubpartitionCount] = useState('');
-    const [manualPartition, setManualPartition] = useState(false);
-    const [manualSubpartition, setManualSubpartition] = useState(false);
-    const [partitionDefs, setPartitionDefs] = useState<PartitionDef[]>([]);
-    const [selectedPartitionIdx, setSelectedPartitionIdx] = useState<number | null>(null);
 
     // ── Selection ──
     const [selectedIndexIndex, setSelectedIndexIndex] = useState<number | null>(null);
-    const [selectedFkIndex, setSelectedFkIndex] = useState<number | null>(null);
-
-    // ── Foreign keys ──
-    const [originalFks, setOriginalFks] = useState<ForeignKeyInfo[]>([]);
-    const [editableFks, setEditableFks] = useState<EditableForeignKey[]>([]);
-    const [deletedFks, setDeletedFks] = useState<string[]>([]);
-    const [availableDatabases, setAvailableDatabases] = useState<string[]>([]);
-    const [dbTables, setDbTables] = useState<Record<string, string[]>>({});
-    const [tableColumns, setTableColumns] = useState<Record<string, string[]>>({});
 
     // ── Charset / collation lists ──
     const [charsets, setCharsets] = useState<CharsetInfo[]>([]);
@@ -548,9 +436,8 @@ export const DesignTableDialog: React.FC<DesignTableDialogProps> = ({
         };
         return [
             ...generateAlterStatements(tableInfo, editableColumns, deletedColumns, editableIndexes, deletedIndexes, editableEngine, editableCollation, editableComment, database, tableName, opts),
-            ...generateFkStatements(originalFks, editableFks, deletedFks, database, tableName),
         ];
-    }, [tableInfo, editableColumns, deletedColumns, editableIndexes, deletedIndexes, editableEngine, editableCollation, editableComment, database, tableName, originalFks, editableFks, deletedFks, editableAutoIncrement, editableRowFormat, editableKeyBlockSize, editableMinRows, editableMaxRows, editableEncryption, editableStatsAutoRecalc, editableStatsPersistent, editableStatsSamplePages, editableDataDirectory, editableIndexDirectory, editableTablespace]);
+    }, [tableInfo, editableColumns, deletedColumns, editableIndexes, deletedIndexes, editableEngine, editableCollation, editableComment, database, tableName, editableAutoIncrement, editableRowFormat, editableKeyBlockSize, editableMinRows, editableMaxRows, editableEncryption, editableStatsAutoRecalc, editableStatsPersistent, editableStatsSamplePages, editableDataDirectory, editableIndexDirectory, editableTablespace]);
 
     const hasChanges = pendingStatements.length > 0;
 
@@ -562,7 +449,6 @@ export const DesignTableDialog: React.FC<DesignTableDialogProps> = ({
             setSaveError(null);
             fetchTableInfo();
             fetchCharsets();
-            fetchAvailableDatabases();
         } else {
             setTableInfo(null);
             setError(null);
@@ -583,7 +469,6 @@ export const DesignTableDialog: React.FC<DesignTableDialogProps> = ({
             });
             setTableInfo(result);
             resetEditableState(result);
-            await fetchForeignKeys();
         } catch (err: any) {
             setError(err.toString());
         } finally {
@@ -610,84 +495,6 @@ export const DesignTableDialog: React.FC<DesignTableDialogProps> = ({
         }
     };
 
-    const fetchForeignKeys = async () => {
-        const db = database.replace(/'/g, "\\'");
-        const tbl = tableName.replace(/'/g, "\\'");
-        const sql = `SELECT kcu.CONSTRAINT_NAME, kcu.COLUMN_NAME, kcu.ORDINAL_POSITION, kcu.REFERENCED_TABLE_SCHEMA, kcu.REFERENCED_TABLE_NAME, kcu.REFERENCED_COLUMN_NAME, rc.DELETE_RULE, rc.UPDATE_RULE FROM information_schema.KEY_COLUMN_USAGE kcu JOIN information_schema.REFERENTIAL_CONSTRAINTS rc ON rc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME AND rc.CONSTRAINT_SCHEMA = kcu.TABLE_SCHEMA WHERE kcu.TABLE_SCHEMA = '${db}' AND kcu.TABLE_NAME = '${tbl}' AND kcu.REFERENCED_TABLE_NAME IS NOT NULL ORDER BY kcu.CONSTRAINT_NAME, kcu.ORDINAL_POSITION`;
-        try {
-            const result = await invoke<{ columns: Array<{ name: string; data_type: string }>; rows: any[][], row_count: number }>('execute_query', { connectionId, database, sql });
-            const ci = (n: string) => result.columns.findIndex(c => c.name === n);
-            const nameIdx = ci('CONSTRAINT_NAME'), colIdx = ci('COLUMN_NAME'),
-                refDbIdx = ci('REFERENCED_TABLE_SCHEMA'), refTblIdx = ci('REFERENCED_TABLE_NAME'),
-                refColIdx = ci('REFERENCED_COLUMN_NAME'), delIdx = ci('DELETE_RULE'), updIdx = ci('UPDATE_RULE');
-
-            const fkMap = new Map<string, ForeignKeyInfo>();
-            for (const row of result.rows) {
-                const name = String(row[nameIdx] ?? '');
-                if (!fkMap.has(name)) {
-                    fkMap.set(name, {
-                        name,
-                        columns: [],
-                        ref_database: String(row[refDbIdx] ?? ''),
-                        ref_table: String(row[refTblIdx] ?? ''),
-                        ref_columns: [],
-                        on_delete: String(row[delIdx] ?? ''),
-                        on_update: String(row[updIdx] ?? ''),
-                    });
-                }
-                const fk = fkMap.get(name)!;
-                fk.columns.push(String(row[colIdx] ?? ''));
-                fk.ref_columns.push(String(row[refColIdx] ?? ''));
-            }
-            const fks = Array.from(fkMap.values());
-            setOriginalFks(fks);
-            setEditableFks(fks.map(f => ({ ...f, originalName: f.name })));
-            // Pre-load tables/columns for existing FKs
-            const seen = new Set<string>();
-            for (const fk of fks) {
-                if (fk.ref_database && !seen.has(fk.ref_database)) {
-                    seen.add(fk.ref_database);
-                    fetchRefTables(fk.ref_database).then(() => {
-                        if (fk.ref_database && fk.ref_table) fetchRefColumns(fk.ref_database, fk.ref_table);
-                    });
-                }
-            }
-        } catch { /* FK fetch is optional */ }
-    };
-
-    const fetchAvailableDatabases = async () => {
-        try {
-            const dbs = await invoke<string[]>('get_databases', { connectionId });
-            setAvailableDatabases(dbs);
-            fetchRefTables(database);
-        } catch { }
-    };
-
-    const fetchRefTables = async (dbName: string) => {
-        if (!dbName) return;
-        try {
-            const result = await invoke<Array<{ id: string; name: string }>>('get_tables', { connectionId, database: dbName });
-            setDbTables(prev => ({ ...prev, [dbName]: result.map(t => t.name) }));
-        } catch { }
-    };
-
-    const fetchRefColumns = async (dbName: string, tblName: string) => {
-        if (!dbName || !tblName) return;
-        const key = `${dbName}.${tblName}`;
-        const db = dbName.replace(/'/g, "\\'");
-        const tbl = tblName.replace(/'/g, "\\'");
-        try {
-            const result = await invoke<{ columns: Array<{ name: string; data_type: string }>; rows: any[][]; row_count: number }>('execute_query', {
-                connectionId,
-                database: dbName,
-                sql: `SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = '${db}' AND TABLE_NAME = '${tbl}' ORDER BY ORDINAL_POSITION`,
-            });
-            const idx = result.columns.findIndex(c => c.name === 'COLUMN_NAME');
-            const cols = result.rows.map(row => String(row[idx] ?? ''));
-            setTableColumns(prev => ({ ...prev, [key]: cols }));
-        } catch { }
-    };
-
     // ── Init editable state ──
     const resetEditableState = (info: TableInfo | null) => {
         if (!info) {
@@ -711,10 +518,6 @@ export const DesignTableDialog: React.FC<DesignTableDialogProps> = ({
             setEditableStatsPersistent('');
             setEditableStatsSamplePages('');
             setEditableEncryption(false);
-            setOriginalFks([]);
-            setEditableFks([]);
-            setDeletedFks([]);
-            setSelectedFkIndex(null);
             return;
         }
         setEditableColumns(info.columns.map(c => ({ ...c, originalName: c.name })));
@@ -799,36 +602,6 @@ export const DesignTableDialog: React.FC<DesignTableDialogProps> = ({
         }
         setEditableIndexes(prev => prev.filter((_, i) => i !== selectedIndexIndex));
         setSelectedIndexIndex(null);
-    };
-
-    // ── Foreign key handlers ──
-    const updateEditableFk = (i: number, field: keyof EditableForeignKey, value: unknown) => {
-        setEditableFks(prev => prev.map((fk, j) => j !== i ? fk : { ...fk, [field]: value }));
-    };
-
-    const handleAddFk = () => {
-        const newFk: EditableForeignKey = {
-            name: '',
-            columns: [''],
-            ref_database: database,
-            ref_table: '',
-            ref_columns: [''],
-            on_delete: 'NO ACTION',
-            on_update: 'NO ACTION',
-            isNew: true,
-        };
-        setEditableFks(prev => [...prev, newFk]);
-        setSelectedFkIndex(editableFks.length);
-    };
-
-    const handleDeleteFk = () => {
-        if (selectedFkIndex === null) return;
-        const fk = editableFks[selectedFkIndex];
-        if (!fk.isNew && fk.originalName) {
-            setDeletedFks(prev => [...prev, fk.originalName!]);
-        }
-        setEditableFks(prev => prev.filter((_, i) => i !== selectedFkIndex));
-        setSelectedFkIndex(null);
     };
 
     // ── Save ──
@@ -1144,161 +917,6 @@ export const DesignTableDialog: React.FC<DesignTableDialogProps> = ({
         </div>
     );
 
-    const renderForeignKeys = () => {
-        const selectCls = 'w-full bg-transparent text-xs text-blue-600 dark:text-blue-300 border border-transparent hover:border-gray-300 dark:hover:border-[#3a3a4a] focus:border-blue-400 dark:focus:border-blue-500 focus:bg-blue-50 dark:focus:bg-[#1a3150] rounded px-1 py-0.5 outline-none cursor-pointer font-mono';
-        const localColumns = editableColumns.map(c => c.name).filter(Boolean);
-
-        return (
-            <div className="flex flex-col h-full overflow-hidden">
-                <div className="flex-1 overflow-auto">
-                    <table className="w-full text-sm border-collapse">
-                        <thead>
-                            <tr className="bg-gray-100 dark:bg-[#2d2d3a] text-gray-600 dark:text-gray-300 text-xs sticky top-0 z-10">
-                                <th className="text-left px-3 py-2 font-medium border-r border-gray-300 dark:border-[#3a3a4a] min-w-[140px]">Name</th>
-                                <th className="text-left px-3 py-2 font-medium border-r border-gray-300 dark:border-[#3a3a4a] min-w-[110px]">Fields</th>
-                                <th className="text-left px-3 py-2 font-medium border-r border-gray-300 dark:border-[#3a3a4a] min-w-[130px]">Referenced Dat...</th>
-                                <th className="text-left px-3 py-2 font-medium border-r border-gray-300 dark:border-[#3a3a4a] min-w-[130px]">Referenced Table</th>
-                                <th className="text-left px-3 py-2 font-medium border-r border-gray-300 dark:border-[#3a3a4a] min-w-[130px]">Referenced Fields</th>
-                                <th className="text-left px-3 py-2 font-medium border-r border-gray-300 dark:border-[#3a3a4a] w-[110px]">On Delete</th>
-                                <th className="text-left px-3 py-2 font-medium w-[110px]">On Update</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {editableFks.map((fk, i) => {
-                                const refTbls = dbTables[fk.ref_database] ?? [];
-                                const refCols = tableColumns[`${fk.ref_database}.${fk.ref_table}`] ?? [];
-                                return (
-                                    <tr
-                                        key={i}
-                                        className={cn(
-                                            'border-b border-gray-200 dark:border-[#2a2a38] cursor-pointer transition-colors',
-                                            selectedFkIndex === i
-                                                ? 'bg-blue-100 dark:bg-[#1e4d7b] hover:bg-blue-100 dark:hover:bg-[#1e4d7b]'
-                                                : i % 2 === 0
-                                                    ? 'bg-white dark:bg-[#1e1e2e] hover:bg-gray-50 dark:hover:bg-[#252535]'
-                                                    : 'bg-gray-50 dark:bg-[#22222f] hover:bg-gray-100 dark:hover:bg-[#252535]'
-                                        )}
-                                        onClick={() => setSelectedFkIndex(i)}
-                                    >
-                                        {/* Name */}
-                                        <td className="px-1 py-0.5 border-r border-gray-200 dark:border-[#2a2a38]" onClick={e => e.stopPropagation()}>
-                                            <CellInput
-                                                value={fk.name}
-                                                onChange={v => updateEditableFk(i, 'name', v)}
-                                                placeholder="fk_name"
-                                            />
-                                        </td>
-                                        {/* Fields (local column) */}
-                                        <td className="px-1 py-0.5 border-r border-gray-200 dark:border-[#2a2a38]" onClick={e => e.stopPropagation()}>
-                                            <select
-                                                value={fk.columns[0] ?? ''}
-                                                onChange={e => updateEditableFk(i, 'columns', [e.target.value])}
-                                                className={selectCls}
-                                            >
-                                                <option value="">— select —</option>
-                                                {localColumns.map(c => <option key={c} value={c}>{c}</option>)}
-                                            </select>
-                                        </td>
-                                        {/* Referenced Database */}
-                                        <td className="px-1 py-0.5 border-r border-gray-200 dark:border-[#2a2a38]" onClick={e => e.stopPropagation()}>
-                                            <select
-                                                value={fk.ref_database}
-                                                onChange={async e => {
-                                                    const db = e.target.value;
-                                                    updateEditableFk(i, 'ref_database', db);
-                                                    updateEditableFk(i, 'ref_table', '');
-                                                    updateEditableFk(i, 'ref_columns', ['']);
-                                                    await fetchRefTables(db);
-                                                }}
-                                                className={selectCls}
-                                            >
-                                                <option value="">— select —</option>
-                                                {availableDatabases.map(db => <option key={db} value={db}>{db}</option>)}
-                                            </select>
-                                        </td>
-                                        {/* Referenced Table */}
-                                        <td className="px-1 py-0.5 border-r border-gray-200 dark:border-[#2a2a38]" onClick={e => e.stopPropagation()}>
-                                            <select
-                                                value={fk.ref_table}
-                                                onChange={async e => {
-                                                    const tbl = e.target.value;
-                                                    updateEditableFk(i, 'ref_table', tbl);
-                                                    updateEditableFk(i, 'ref_columns', ['']);
-                                                    if (fk.ref_database && tbl) await fetchRefColumns(fk.ref_database, tbl);
-                                                }}
-                                                className={selectCls}
-                                            >
-                                                <option value="">— select —</option>
-                                                {refTbls.map(t => <option key={t} value={t}>{t}</option>)}
-                                            </select>
-                                        </td>
-                                        {/* Referenced Fields */}
-                                        <td className="px-1 py-0.5 border-r border-gray-200 dark:border-[#2a2a38]" onClick={e => e.stopPropagation()}>
-                                            <select
-                                                value={fk.ref_columns[0] ?? ''}
-                                                onChange={e => updateEditableFk(i, 'ref_columns', [e.target.value])}
-                                                className={selectCls}
-                                            >
-                                                <option value="">— select —</option>
-                                                {refCols.map(c => <option key={c} value={c}>{c}</option>)}
-                                            </select>
-                                        </td>
-                                        {/* On Delete */}
-                                        <td className="px-1 py-0.5 border-r border-gray-200 dark:border-[#2a2a38]" onClick={e => e.stopPropagation()}>
-                                            <select
-                                                value={fk.on_delete}
-                                                onChange={e => updateEditableFk(i, 'on_delete', e.target.value)}
-                                                className={cn(selectCls, 'text-gray-600 dark:text-gray-400')}
-                                            >
-                                                {FK_ACTIONS.map(a => <option key={a} value={a}>{a}</option>)}
-                                            </select>
-                                        </td>
-                                        {/* On Update */}
-                                        <td className="px-1 py-0.5" onClick={e => e.stopPropagation()}>
-                                            <select
-                                                value={fk.on_update}
-                                                onChange={e => updateEditableFk(i, 'on_update', e.target.value)}
-                                                className={cn(selectCls, 'text-gray-600 dark:text-gray-400')}
-                                            >
-                                                {FK_ACTIONS.map(a => <option key={a} value={a}>{a}</option>)}
-                                            </select>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                            {editableFks.length === 0 && (
-                                <tr>
-                                    <td colSpan={7} className="px-4 py-8 text-xs text-center text-gray-400 dark:text-gray-600">
-                                        No foreign keys — press Add Foreign Key to create one
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-                {/* Toolbar */}
-                <div className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 dark:bg-[#1a1a28] border-t border-gray-200 dark:border-[#2a2a38]">
-                    <button
-                        onClick={handleAddFk}
-                        className="flex items-center gap-1 px-2 py-1 text-xs text-gray-600 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-[#2a2a38] transition-colors"
-                    >
-                        <Plus className="w-3 h-3" /> Add Foreign Key
-                    </button>
-                    <button
-                        onClick={handleDeleteFk}
-                        disabled={selectedFkIndex === null}
-                        className="flex items-center gap-1 px-2 py-1 text-xs text-gray-600 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-[#2a2a38] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                        <Trash2 className="w-3 h-3" /> Delete Foreign Key
-                    </button>
-                    <span className="ml-auto text-xs text-gray-400 dark:text-gray-600">
-                        {editableFks.length} foreign key{editableFks.length !== 1 ? 's' : ''}
-                    </span>
-                </div>
-            </div>
-        );
-    };
-
     const renderOptions = () => {
         if (!tableInfo) return null;
 
@@ -1522,17 +1140,6 @@ export const DesignTableDialog: React.FC<DesignTableDialogProps> = ({
                             <span className="text-xs text-gray-700 dark:text-gray-300">Encryption</span>
                         </label>
                     </Row>
-
-                    {/* Partition */}
-                    <Row label="">
-                        <button
-                            type="button"
-                            onClick={() => setShowPartitionDialog(true)}
-                            className="px-3 py-1 text-xs rounded border border-gray-300 dark:border-[#3a3a4a] bg-gray-100 dark:bg-[#252535] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2e2e42] transition-colors"
-                        >
-                            Partition
-                        </button>
-                    </Row>
                 </div>
             </div>
         );
@@ -1609,7 +1216,6 @@ export const DesignTableDialog: React.FC<DesignTableDialogProps> = ({
         switch (activeTab) {
             case 'fields': return renderFields();
             case 'indexes': return renderIndexes();
-            case 'foreign_keys': return renderForeignKeys();
             case 'options': return renderOptions();
             case 'comment': return renderComment();
             case 'sql_preview': return renderSqlPreview();
@@ -1670,7 +1276,7 @@ export const DesignTableDialog: React.FC<DesignTableDialogProps> = ({
                     <div className="shrink-0 flex items-center justify-between px-4 py-1.5 bg-gray-50 dark:bg-[#16161f] border-t border-gray-200 dark:border-[#2a2a38] text-[11px] text-gray-400 dark:text-gray-600">
                         <span>
                             {tableInfo
-                                ? `${editableColumns.length} fields · ${editableIndexes.length} indexes · ${editableFks.length} foreign keys · Engine: ${editableEngine || tableInfo.engine || 'N/A'}`
+                                ? `${editableColumns.length} fields · ${editableIndexes.length} indexes · Engine: ${editableEngine || tableInfo.engine || 'N/A'}`
                                 : loading ? 'Loading…' : ''}
                             {hasChanges && (
                                 <span className="ml-2 text-amber-500">{pendingStatements.length} pending change{pendingStatements.length !== 1 ? 's' : ''}</span>
@@ -1710,283 +1316,7 @@ export const DesignTableDialog: React.FC<DesignTableDialogProps> = ({
                     </div>
                 </DialogContent>
             </Dialog>
-            <PartitionDialog
-                isOpen={showPartitionDialog}
-                onClose={() => setShowPartitionDialog(false)}
-                partitionBy={partitionBy} setPartitionBy={setPartitionBy}
-                partitionExpr={partitionExpr} setPartitionExpr={setPartitionExpr}
-                partitionCount={partitionCount} setPartitionCount={setPartitionCount}
-                subpartitionBy={subpartitionBy} setSubpartitionBy={setSubpartitionBy}
-                subpartitionExpr={subpartitionExpr} setSubpartitionExpr={setSubpartitionExpr}
-                subpartitionCount={subpartitionCount} setSubpartitionCount={setSubpartitionCount}
-                manualPartition={manualPartition} setManualPartition={setManualPartition}
-                manualSubpartition={manualSubpartition} setManualSubpartition={setManualSubpartition}
-                partitionDefs={partitionDefs} setPartitionDefs={setPartitionDefs}
-                selectedPartitionIdx={selectedPartitionIdx} setSelectedPartitionIdx={setSelectedPartitionIdx}
-            />
         </>
-    );
-};
-
-// ─── Partition Dialog ─────────────────────────────────────────────────────────
-
-interface PartitionDialogProps {
-    isOpen: boolean;
-    onClose: () => void;
-    partitionBy: string; setPartitionBy: (v: string) => void;
-    partitionExpr: string; setPartitionExpr: (v: string) => void;
-    partitionCount: string; setPartitionCount: (v: string) => void;
-    subpartitionBy: string; setSubpartitionBy: (v: string) => void;
-    subpartitionExpr: string; setSubpartitionExpr: (v: string) => void;
-    subpartitionCount: string; setSubpartitionCount: (v: string) => void;
-    manualPartition: boolean; setManualPartition: (v: boolean) => void;
-    manualSubpartition: boolean; setManualSubpartition: (v: boolean) => void;
-    partitionDefs: PartitionDef[]; setPartitionDefs: (v: PartitionDef[]) => void;
-    selectedPartitionIdx: number | null; setSelectedPartitionIdx: (v: number | null) => void;
-}
-
-const EMPTY_PART_DEF: PartitionDef = {
-    name: '', values: '', engine: '', dataDirectory: '', indexDirectory: '',
-    maxRows: '', minRows: '', tablespace: '', nodeGroup: '', comment: '',
-};
-
-const PartitionDialog: React.FC<PartitionDialogProps> = ({
-    isOpen, onClose,
-    partitionBy, setPartitionBy,
-    partitionExpr, setPartitionExpr,
-    partitionCount, setPartitionCount,
-    subpartitionBy, setSubpartitionBy,
-    subpartitionExpr, setSubpartitionExpr,
-    subpartitionCount, setSubpartitionCount,
-    manualPartition, setManualPartition,
-    manualSubpartition, setManualSubpartition,
-    partitionDefs, setPartitionDefs,
-    selectedPartitionIdx, setSelectedPartitionIdx,
-}) => {
-    const sel = selectedPartitionIdx !== null ? partitionDefs[selectedPartitionIdx] : null;
-
-    const updateDef = (field: keyof PartitionDef, value: string) => {
-        if (selectedPartitionIdx === null) return;
-        setPartitionDefs(partitionDefs.map((d, i) =>
-            i === selectedPartitionIdx ? { ...d, [field]: value } : d
-        ));
-    };
-
-    const addDef = () => {
-        const next = [...partitionDefs, { ...EMPTY_PART_DEF }];
-        setPartitionDefs(next);
-        setSelectedPartitionIdx(next.length - 1);
-    };
-
-    const removeDef = () => {
-        if (selectedPartitionIdx === null) return;
-        const next = partitionDefs.filter((_, i) => i !== selectedPartitionIdx);
-        setPartitionDefs(next);
-        setSelectedPartitionIdx(next.length > 0 ? Math.min(selectedPartitionIdx, next.length - 1) : null);
-    };
-
-    const inputCls = 'flex-1 h-6 bg-gray-50 dark:bg-[#252535] border border-gray-300 dark:border-[#3a3a4a] rounded px-2 text-xs text-gray-700 dark:text-gray-300 font-mono focus:outline-none focus:border-blue-400 dark:focus:border-blue-500 placeholder:text-gray-400';
-    const selectCls = 'flex-1 h-6 bg-gray-50 dark:bg-[#252535] border border-gray-300 dark:border-[#3a3a4a] rounded px-2 text-xs text-gray-700 dark:text-gray-300 font-mono focus:outline-none focus:border-blue-400 dark:focus:border-blue-500 cursor-pointer';
-    const labelCls = 'w-36 text-xs text-gray-500 dark:text-gray-400 shrink-0 text-right pr-2';
-
-    return (
-        <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
-            <DialogContent
-                className="max-w-[640px] w-[640px] flex flex-col p-0 gap-0 rounded-xl overflow-hidden bg-white dark:bg-[#1e1e2e] border border-gray-200 dark:border-[#2a2a38] shadow-2xl outline-none focus-visible:outline-none"
-            >
-                <DialogHeader className="shrink-0 px-5 py-3 bg-gray-50 dark:bg-[#16161f] border-b border-gray-200 dark:border-[#2a2a38]">
-                    <DialogTitle className="text-sm font-semibold text-gray-800 dark:text-gray-200">Partition</DialogTitle>
-                </DialogHeader>
-
-                <div className="flex-1 p-5 space-y-3 overflow-auto">
-                    {/* Partition By */}
-                    <div className="flex items-center gap-2">
-                        <span className={labelCls}>Partition By:</span>
-                        <select value={partitionBy} onChange={e => setPartitionBy(e.target.value)} className={cn(selectCls, 'w-36 flex-none')}>
-                            {PARTITION_TYPES.map(t => <option key={t} value={t}>{t || '(none)'}</option>)}
-                        </select>
-                        <input
-                            type="text"
-                            value={partitionExpr}
-                            onChange={e => setPartitionExpr(e.target.value)}
-                            placeholder="expression"
-                            className={inputCls}
-                        />
-                    </div>
-
-                    {/* Partitions count */}
-                    <div className="flex items-center gap-2">
-                        <span className={labelCls}>Partitions:</span>
-                        <input
-                            type="number" min={0}
-                            value={partitionCount}
-                            onChange={e => setPartitionCount(e.target.value)}
-                            className={cn(inputCls, 'w-28 flex-none')}
-                        />
-                    </div>
-
-                    {/* Subpartition By */}
-                    <div className="flex items-center gap-2">
-                        <span className={labelCls}>Subpartition By:</span>
-                        <select value={subpartitionBy} onChange={e => setSubpartitionBy(e.target.value)} className={cn(selectCls, 'w-36 flex-none')}>
-                            {SUBPARTITION_TYPES.map(t => <option key={t} value={t}>{t || '(none)'}</option>)}
-                        </select>
-                        <input
-                            type="text"
-                            value={subpartitionExpr}
-                            onChange={e => setSubpartitionExpr(e.target.value)}
-                            placeholder="expression"
-                            className={inputCls}
-                        />
-                    </div>
-
-                    {/* Subpartitions count */}
-                    <div className="flex items-center gap-2">
-                        <span className={labelCls}>Subpartitions:</span>
-                        <input
-                            type="number" min={0}
-                            value={subpartitionCount}
-                            onChange={e => setSubpartitionCount(e.target.value)}
-                            className={cn(inputCls, 'w-28 flex-none')}
-                        />
-                    </div>
-
-                    {/* Manually Create */}
-                    <div className="flex items-center gap-4">
-                        <span className={labelCls}>Manually Create:</span>
-                        <label className="flex items-center gap-1.5 cursor-pointer select-none text-xs text-gray-700 dark:text-gray-300">
-                            <input type="checkbox" checked={manualPartition} onChange={e => setManualPartition(e.target.checked)}
-                                className="w-3.5 h-3.5 accent-blue-500" />
-                            Partition
-                        </label>
-                        <label className="flex items-center gap-1.5 cursor-pointer select-none text-xs text-gray-700 dark:text-gray-300">
-                            <input type="checkbox" checked={manualSubpartition} onChange={e => setManualSubpartition(e.target.checked)}
-                                className="w-3.5 h-3.5 accent-blue-500" />
-                            Subpartition
-                        </label>
-                    </div>
-
-                    {/* Partition Definition table */}
-                    <div className="border border-gray-200 dark:border-[#2a2a38] rounded overflow-hidden">
-                        <div className="text-[11px] font-medium text-gray-600 dark:text-gray-400 px-3 py-1.5 bg-gray-100 dark:bg-[#1a1a28] border-b border-gray-200 dark:border-[#2a2a38] flex items-center justify-between">
-                            <span>Partition Definition</span>
-                            <div className="flex gap-1">
-                                <button onClick={addDef}
-                                    className="px-2 py-0.5 text-[10px] rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors">
-                                    + Add
-                                </button>
-                                {selectedPartitionIdx !== null && (
-                                    <button onClick={removeDef}
-                                        className="px-2 py-0.5 text-[10px] rounded bg-red-600 text-white hover:bg-red-700 transition-colors">
-                                        Remove
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                        {/* Header row */}
-                        <div className="grid grid-cols-2 border-b border-gray-200 dark:border-[#2a2a38] bg-gray-50 dark:bg-[#1e1e2e]">
-                            <div className="px-3 py-1 text-[11px] font-medium text-gray-600 dark:text-gray-400 border-r border-gray-200 dark:border-[#2a2a38]">Name</div>
-                            <div className="px-3 py-1 text-[11px] font-medium text-gray-600 dark:text-gray-400">Values</div>
-                        </div>
-                        {/* Rows */}
-                        <div className="min-h-[120px] max-h-[200px] overflow-auto bg-white dark:bg-[#1e1e2e]">
-                            {partitionDefs.length === 0 ? (
-                                <div className="flex items-center justify-center h-full py-8 text-xs text-gray-400 dark:text-gray-600">
-                                    No partitions defined
-                                </div>
-                            ) : (
-                                partitionDefs.map((def, i) => (
-                                    <div
-                                        key={i}
-                                        onClick={() => setSelectedPartitionIdx(i)}
-                                        className={cn(
-                                            'grid grid-cols-2 cursor-pointer border-b border-gray-100 dark:border-[#2a2a38] last:border-0',
-                                            selectedPartitionIdx === i
-                                                ? 'bg-blue-50 dark:bg-[#1a3150]'
-                                                : 'hover:bg-gray-50 dark:hover:bg-[#252535]'
-                                        )}
-                                    >
-                                        <div className="px-3 py-1.5 text-xs font-mono text-gray-700 dark:text-gray-300 border-r border-gray-100 dark:border-[#2a2a38] truncate">
-                                            {def.name || <span className="text-gray-400">(unnamed)</span>}
-                                        </div>
-                                        <div className="px-3 py-1.5 text-xs font-mono text-gray-700 dark:text-gray-300 truncate">
-                                            {def.values || <span className="text-gray-400">—</span>}
-                                        </div>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Selected partition detail */}
-                    {sel && (
-                        <div className="pt-1 space-y-2">
-                            {([
-                                ['Name:', 'name'],
-                                ['Values:', 'values'],
-                            ] as [string, keyof PartitionDef][]).map(([lbl, field]) => (
-                                <div key={field} className="flex items-center gap-2">
-                                    <span className={labelCls}>{lbl}</span>
-                                    <input type="text" value={sel[field] as string}
-                                        onChange={e => updateDef(field, e.target.value)}
-                                        className={inputCls} />
-                                </div>
-                            ))}
-                            <div className="flex items-center gap-2">
-                                <span className={labelCls}>Engine:</span>
-                                <select value={sel.engine} onChange={e => updateDef('engine', e.target.value)} className={selectCls}>
-                                    <option value="">(inherit)</option>
-                                    {MYSQL_ENGINES.map(e => <option key={e} value={e}>{e}</option>)}
-                                </select>
-                            </div>
-                            {([
-                                ['Data Directory:', 'dataDirectory'],
-                                ['Index Directory:', 'indexDirectory'],
-                            ] as [string, keyof PartitionDef][]).map(([lbl, field]) => (
-                                <div key={field} className="flex items-center gap-2">
-                                    <span className={labelCls}>{lbl}</span>
-                                    <input type="text" value={sel[field] as string}
-                                        onChange={e => updateDef(field, e.target.value)}
-                                        className={inputCls} />
-                                </div>
-                            ))}
-                            <div className="flex items-center gap-2">
-                                <span className={labelCls}>Max Rows:</span>
-                                <input type="number" min={0} value={sel.maxRows}
-                                    onChange={e => updateDef('maxRows', e.target.value)}
-                                    className={cn(inputCls, 'w-32 flex-none')} />
-                                <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0">Min Rows:</span>
-                                <input type="number" min={0} value={sel.minRows}
-                                    onChange={e => updateDef('minRows', e.target.value)}
-                                    className={inputCls} />
-                            </div>
-                            {([
-                                ['Tablespace:', 'tablespace'],
-                                ['Node Group:', 'nodeGroup'],
-                                ['Comment:', 'comment'],
-                            ] as [string, keyof PartitionDef][]).map(([lbl, field]) => (
-                                <div key={field} className="flex items-center gap-2">
-                                    <span className={labelCls}>{lbl}</span>
-                                    <input type="text" value={sel[field] as string}
-                                        onChange={e => updateDef(field, e.target.value)}
-                                        className={inputCls} />
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-
-                {/* Footer */}
-                <div className="shrink-0 flex items-center justify-end gap-2 px-5 py-3 bg-gray-50 dark:bg-[#16161f] border-t border-gray-200 dark:border-[#2a2a38]">
-                    <button
-                        onClick={onClose}
-                        className="px-4 py-1 text-xs rounded border border-gray-300 dark:border-[#3a3a4a] bg-white dark:bg-[#252535] text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#2e2e42] transition-colors"
-                    >
-                        OK
-                    </button>
-                </div>
-            </DialogContent>
-        </Dialog>
     );
 };
 

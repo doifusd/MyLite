@@ -1,4 +1,4 @@
-import { Database, Plus, Zap, Clock, Star, BookOpen, Keyboard, Settings } from 'lucide-react';
+import { Database, Plus, Clock, Star, BookOpen, Keyboard, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import type { ConnectionInfo } from '@/components/ConnectionGroupManager';
@@ -20,7 +20,6 @@ export function WelcomePage({
   onSelectConnection,
   onSelectQuery,
   onOpenShortcuts,
-  onOpenSettings,
 }: WelcomePageProps) {
   const favoriteConnections = connections.filter(c => c.is_favorite);
   const recentConnections = connections
@@ -35,13 +34,6 @@ export function WelcomePage({
       description: 'Create a new database connection',
       onClick: onNewConnection,
       color: 'text-blue-500',
-    },
-    {
-      icon: Zap,
-      label: 'Quick Connect',
-      description: 'Connect using a template',
-      onClick: onNewConnection,
-      color: 'text-yellow-500',
     },
     {
       icon: BookOpen,
@@ -69,17 +61,13 @@ export function WelcomePage({
           </div>
           <h1 className="text-4xl font-bold mb-3">Welcome to MyLite</h1>
           <p className="text-lg text-gray-500 max-w-2xl mx-auto">
-            A lightweight, powerful MySQL client for developers. Connect to your databases, 
+            A lightweight, powerful MySQL client for developers. Connect to your databases,
             run queries, and manage your data with ease.
           </p>
           <div className="flex items-center justify-center gap-3 mt-6">
             <Button size="lg" onClick={onNewConnection}>
               <Plus className="h-5 w-5 mr-2" />
               New Connection
-            </Button>
-            <Button size="lg" variant="outline" onClick={onOpenSettings}>
-              <Settings className="h-5 w-5 mr-2" />
-              Settings
             </Button>
           </div>
         </div>

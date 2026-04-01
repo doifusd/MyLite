@@ -73,19 +73,21 @@ pub async fn get_schema_tree(
 
     let mut tree = Vec::new();
 
-    // Get all databases
-    let databases: Vec<String> = sqlx::query_scalar("SHOW DATABASES")
-        .fetch_all(&pool)
-        .await
-        .map_err(|e| e.to_string())?;
+    // Get all databases - CAST to VARCHAR to avoid type mismatch with VARBINARY
+    let databases: Vec<String> = sqlx::query_scalar(
+        "SELECT CAST(schema_name AS CHAR) FROM information_schema.schemata WHERE schema_name NOT IN ('mysql', 'information_schema', 'performance_schema', 'sys')"
+    )
+    .fetch_all(&pool)
+    .await
+    .map_err(|e| e.to_string())?;
 
     for db_name in databases {
         let db_id = format!("db_{}", db_name);
         let mut db_children = Vec::new();
 
-        // Get tables for this database
+        // Get tables for this database - CAST to VARCHAR to avoid type mismatch
         let tables: Vec<String> = sqlx::query_scalar(&format!(
-            "SELECT table_name FROM information_schema.tables WHERE table_schema = '{}'",
+            "SELECT CAST(table_name AS CHAR) FROM information_schema.tables WHERE table_schema = '{}'",
             db_name
         ))
         .fetch_all(&pool)
@@ -97,7 +99,7 @@ pub async fn get_schema_tree(
             let mut table_children = Vec::new();
 
             let columns: Vec<SchemaTreeItem> = sqlx::query(&format!(
-                "SELECT column_name AS column_name, data_type AS data_type FROM information_schema.columns 
+                "SELECT CAST(column_name AS CHAR) AS column_name, CAST(data_type AS CHAR) AS data_type FROM information_schema.columns 
                  WHERE table_schema = '{}' AND table_name = '{}' 
                  ORDER BY ordinal_position",
                 db_name, table_name
@@ -129,7 +131,7 @@ pub async fn get_schema_tree(
             }
 
             let indexes: Vec<SchemaTreeItem> = sqlx::query(&format!(
-                "SELECT DISTINCT index_name AS index_name FROM information_schema.statistics 
+                "SELECT DISTINCT CAST(index_name AS CHAR) AS index_name FROM information_schema.statistics 
                  WHERE table_schema = '{}' AND table_name = '{}'",
                 db_name, table_name
             ))
@@ -376,10 +378,13 @@ pub async fn get_databases(
         .await
         .map_err(|e| e.to_string())?;
 
-    let databases: Vec<String> = sqlx::query_scalar("SHOW DATABASES")
-        .fetch_all(&pool)
-        .await
-        .map_err(|e| e.to_string())?;
+    // CAST to VARCHAR to avoid type mismatch with VARBINARY
+    let databases: Vec<String> = sqlx::query_scalar(
+        "SELECT CAST(schema_name AS CHAR) FROM information_schema.schemata WHERE schema_name NOT IN ('mysql', 'information_schema', 'performance_schema', 'sys')"
+    )
+    .fetch_all(&pool)
+    .await
+    .map_err(|e| e.to_string())?;
 
     Ok(databases)
 }
@@ -437,10 +442,13 @@ pub async fn get_databases_v2(
         .await
         .map_err(|e| e.to_string())?;
 
-    let databases: Vec<String> = sqlx::query_scalar("SHOW DATABASES")
-        .fetch_all(&pool)
-        .await
-        .map_err(|e| e.to_string())?;
+    // CAST to VARCHAR to avoid type mismatch with VARBINARY  
+    let databases: Vec<String> = sqlx::query_scalar(
+        "SELECT CAST(schema_name AS CHAR) FROM information_schema.schemata WHERE schema_name NOT IN ('mysql', 'information_schema', 'performance_schema', 'sys')"
+    )
+    .fetch_all(&pool)
+    .await
+    .map_err(|e| e.to_string())?;
 
     let mut tree = Vec::new();
     for db_name in databases {
@@ -472,8 +480,9 @@ pub async fn get_tables(
         .await
         .map_err(|e| e.to_string())?;
 
+    // CAST to VARCHAR to avoid type mismatch errors with VARBINARY
     let tables: Vec<String> = sqlx::query_scalar(&format!(
-        "SELECT table_name AS table_name FROM information_schema.tables WHERE table_schema = '{}'",
+        "SELECT CAST(table_name AS CHAR) FROM information_schema.tables WHERE table_schema = '{}'",
         database
     ))
     .fetch_all(&pool)
@@ -515,7 +524,7 @@ pub async fn get_table_schema(
     let table_id = format!("table_{}.{}", database, table);
 
     let columns: Vec<SchemaTreeItem> = sqlx::query(&format!(
-        "SELECT column_name AS column_name, data_type AS data_type FROM information_schema.columns 
+        "SELECT CAST(column_name AS CHAR) AS column_name, CAST(data_type AS CHAR) AS data_type FROM information_schema.columns 
          WHERE table_schema = '{}' AND table_name = '{}' 
          ORDER BY ordinal_position",
         database, table
@@ -555,7 +564,7 @@ pub async fn get_table_schema(
     }
 
     let indexes: Vec<SchemaTreeItem> = sqlx::query(&format!(
-        "SELECT DISTINCT index_name AS index_name FROM information_schema.statistics 
+        "SELECT DISTINCT CAST(index_name AS CHAR) AS index_name FROM information_schema.statistics 
          WHERE table_schema = '{}' AND table_name = '{}'",
         database, table
     ))
