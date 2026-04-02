@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
-import { invoke } from '@tauri-apps/api/tauri';
-import { Search, Database, Clock, X, Command, FileText } from 'lucide-react';
+import type { ConnectionInfo } from '@/components/ConnectionGroupManager';
+import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type { ConnectionInfo } from '@/components/ConnectionGroupManager';
+import { invoke } from '@tauri-apps/api/tauri';
+import { Clock, Command, Database, FileText, Search, X } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
 interface SearchResult {
   id: string;

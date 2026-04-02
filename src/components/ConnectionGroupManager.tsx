@@ -1,12 +1,12 @@
-import React, { useState, useCallback } from 'react';
+import { cn } from '@/lib/utils';
 import { invoke } from '@tauri-apps/api/tauri';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
+import { ChevronDown, ChevronRight, Edit2, Folder, Plus, Trash2 } from 'lucide-react';
+import React, { useCallback, useState } from 'react';
 import { Button } from './ui/button';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { ScrollArea } from './ui/scroll-area';
-import { cn } from '@/lib/utils';
-import { Folder, Plus, Trash2, Edit2, ChevronRight, ChevronDown } from 'lucide-react';
 
 export interface ConnectionGroup {
   id: string;
@@ -113,7 +113,7 @@ export const ConnectionGroupManager: React.FC<ConnectionGroupManagerProps> = ({
   }, []);
 
   const ungroupedConnections = connections.filter(c => !c.group);
-  
+
   const groupedConnections = groups.map(group => ({
     group,
     connections: connections.filter(c => c.group === group.id),
