@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/tauri';
-import { Search, Database, Clock, Star, X, Command, FileText } from 'lucide-react';
+import { Search, Database, Clock, X, Command, FileText } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -304,9 +304,6 @@ export function GlobalSearch({
                       <p className="text-sm text-gray-500 truncate">{result.subtitle}</p>
                     )}
                   </div>
-                  {result.type === 'connection' && result.metadata?.connection?.is_favorite && (
-                    <Star className="h-4 w-4 text-yellow-500 fill-current shrink-0" />
-                  )}
                 </button>
               ))}
             </div>

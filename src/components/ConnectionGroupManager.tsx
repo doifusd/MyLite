@@ -6,7 +6,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { ScrollArea } from './ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { Folder, Plus, Trash2, Edit2, ChevronRight, ChevronDown, Star } from 'lucide-react';
+import { Folder, Plus, Trash2, Edit2, ChevronRight, ChevronDown } from 'lucide-react';
 
 export interface ConnectionGroup {
   id: string;
@@ -112,8 +112,7 @@ export const ConnectionGroupManager: React.FC<ConnectionGroupManagerProps> = ({
     });
   }, []);
 
-  const favoriteConnections = connections.filter(c => c.is_favorite);
-  const ungroupedConnections = connections.filter(c => !c.group && !c.is_favorite);
+  const ungroupedConnections = connections.filter(c => !c.group);
   
   const groupedConnections = groups.map(group => ({
     group,
@@ -124,20 +123,6 @@ export const ConnectionGroupManager: React.FC<ConnectionGroupManagerProps> = ({
     <div className="h-full flex flex-col">
       {/* Quick Filters */}
       <div className="p-2 space-y-1">
-        <button
-          onClick={() => onGroupSelect('favorites')}
-          className={cn(
-            'w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors',
-            selectedGroup === 'favorites'
-              ? 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-300'
-              : 'hover:bg-gray-100 dark:hover:bg-gray-800'
-          )}
-        >
-          <Star className="w-4 h-4 text-yellow-500" />
-          <span className="flex-1 text-left">Favorites</span>
-          <span className="text-xs text-gray-500">{favoriteConnections.length}</span>
-        </button>
-
         <button
           onClick={() => onGroupSelect(null)}
           className={cn(

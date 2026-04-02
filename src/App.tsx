@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/useToast';
 import { cn } from '@/lib/utils';
 import type { Connection, ConnectionColor, ConnectionType } from '@/store/connectionStore';
 import { invoke } from '@tauri-apps/api/tauri';
-import { ChevronDown, ChevronRight, Database, Edit2, Folder, Globe, HelpCircle, Lock, Plus, Search, Server, Shield, Star, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Database, Edit2, Folder, Globe, HelpCircle, Lock, Plus, Search, Server, Shield, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 // Color mapping for Tailwind compatibility
@@ -173,20 +173,7 @@ function App() {
     }
   };
 
-  const toggleFavorite = async (e: React.MouseEvent, conn: ConnectionInfo) => {
-    e.stopPropagation();
-    try {
-      await invoke('toggle_connection_favorite', { connectionId: conn.id });
-      await loadConnections();
-      success(
-        conn.is_favorite ? 'Removed from favorites' : 'Added to favorites',
-        `${conn.name} has been ${conn.is_favorite ? 'removed from' : 'added to'} favorites`
-      );
-    } catch (err) {
-      console.error('Failed to toggle favorite:', err);
-      error('Failed to update favorite', String(err));
-    }
-  };
+
 
   const handleSelectConnection = useCallback((connection: ConnectionInfo) => {
     setSelectedConnection(connection as any);
@@ -212,9 +199,6 @@ function App() {
     }
 
     // Group filter
-    if (selectedGroup === 'favorites') {
-      return conn.is_favorite;
-    }
     if (selectedGroup) {
       return conn.group === selectedGroup;
     }
@@ -292,22 +276,6 @@ function App() {
             {/* Quick Filters */}
             <div className="px-3 py-2 border-b space-y-1">
               <button
-                onClick={() => setSelectedGroup('favorites')}
-                className={cn(
-                  'w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors',
-                  selectedGroup === 'favorites'
-                    ? 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-300'
-                    : 'hover:bg-gray-100 dark:hover:bg-gray-800'
-                )}
-              >
-                <Star className="w-4 h-4 text-yellow-500" />
-                <span className="flex-1 text-left">Favorites</span>
-                <span className="text-xs text-gray-500">
-                  {connections.filter(c => c.is_favorite).length}
-                </span>
-              </button>
-
-              <button
                 onClick={() => setSelectedGroup(null)}
                 className={cn(
                   'w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors',
@@ -361,7 +329,6 @@ function App() {
                                 onSelect={() => setSelectedConnection(conn as any)}
                                 onEdit={() => handleEditConnection(conn as any)}
                                 onDelete={() => deleteConnection(conn.id)}
-                                onToggleFavorite={(e) => toggleFavorite(e, conn)}
                               />
                             ))}
                           </div>
@@ -386,7 +353,6 @@ function App() {
                           onSelect={() => setSelectedConnection(conn as any)}
                           onEdit={() => handleEditConnection(conn as any)}
                           onDelete={() => deleteConnection(conn.id)}
-                          onToggleFavorite={(e) => toggleFavorite(e, conn)}
                         />
                       ))}
                     </div>
@@ -492,10 +458,9 @@ interface ConnectionCardProps {
   onSelect: () => void;
   onEdit: () => void;
   onDelete: () => void;
-  onToggleFavorite: (e: React.MouseEvent) => void;
 }
 
-function ConnectionCard({ conn, isSelected, onSelect, onEdit, onDelete, onToggleFavorite }: ConnectionCardProps) {
+function ConnectionCard({ conn, isSelected, onSelect, onEdit, onDelete }: ConnectionCardProps) {
   const connColor = (conn.color || 'blue') as ConnectionColor;
   const colorStyle = colorMap[connColor];
 
@@ -515,17 +480,6 @@ function ConnectionCard({ conn, isSelected, onSelect, onEdit, onDelete, onToggle
             <span className="truncate">{conn.name}</span>
           </div>
           <div className="flex items-center gap-0.5">
-            <Button
-              variant="ghost"
-              size="icon"
-              className={cn(
-                'h-6 w-6',
-                conn.is_favorite ? 'text-yellow-500' : 'text-gray-400 hover:text-yellow-500'
-              )}
-              onClick={onToggleFavorite}
-            >
-              <Star className={cn('h-3 w-3', conn.is_favorite && 'fill-current')} />
-            </Button>
             <Button
               variant="ghost"
               size="icon"

@@ -2,12 +2,12 @@ use crate::commands::query_history::add_query_to_history_internal;
 use crate::models::connection::{ConnectionConfig, ConnectionInfo};
 use crate::models::query::{ColumnInfo, QueryResult};
 use crate::AppState;
+use rust_decimal::Decimal;
 use serde_json::Value;
 use sqlx::mysql::MySqlRow;
 use sqlx::{Column, Executor, Row, TypeInfo, ValueRef};
 use std::sync::Arc;
 use tauri::State;
-use rust_decimal::Decimal;
 
 /// Helper function to convert a MySQL row value to JSON Value
 /// Supports all MySQL 8.0+ data types
@@ -221,9 +221,10 @@ fn mysql_value_to_json(row: &MySqlRow, idx: usize) -> Value {
         if let Ok(s) = String::from_utf8(val.clone()) {
             // Only return as string if it's valid UTF-8
             // Check if the column name or type hints suggest it should be binary
-            if type_name.to_uppercase().contains("BINARY") 
+            if type_name.to_uppercase().contains("BINARY")
                 || type_name.to_uppercase().contains("BLOB")
-                || type_name.to_uppercase().contains("BIT") {
+                || type_name.to_uppercase().contains("BIT")
+            {
                 // Return as hex for binary types
                 return Value::String(format!("0x{}", hex::encode(&val)));
             }
@@ -728,4 +729,37 @@ pub async fn get_query_count(
         Ok(count) => Ok(count as u64),
         Err(e) => Err(e.to_string()),
     }
+}
+
+/// Save SQL query to a file
+#[tauri::command]
+pub async fn save_query_to_file(
+    _state: State<'_, Arc<AppState>>,
+    sql: String,
+    filename: Option<String>,
+) -> Result<String, String> {
+    use chrono::Local;
+    use std::fs;
+
+    // Create default filename if not provided
+    let filename = filename.unwrap_or_else(|| {
+        let timestamp = Local::now().format("%Y%m%d_%H%M%S");
+        format!("query_{}.sql", timestamp)
+    });
+
+    // Get home directory for saved queries
+    let home = dirs::home_dir().ok_or_else(|| "Could not determine home directory".to_string())?;
+
+    let queries_dir = home.join(".mylite").join("saved_queries");
+
+    // Create directory if it doesn't exist
+    fs::create_dir_all(&queries_dir)
+        .map_err(|e| format!("Failed to create queries directory: {}", e))?;
+
+    let file_path = queries_dir.join(&filename);
+
+    // Write SQL to file
+    fs::write(&file_path, &sql).map_err(|e| format!("Failed to write query to file: {}", e))?;
+
+    Ok(file_path.to_string_lossy().into_owned())
 }

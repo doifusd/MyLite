@@ -23,6 +23,7 @@ rust_decimal = { version = "1.35", features = ["serde"] }
 anyhow = "1.0"
 hex = "0.4"
 thiserror = "1.0"
+dirs = "5.0"
 tauri-plugin-store = { git = "https://github.com/tauri-apps/plugins-workspace", branch = "v1" }
 # SSH tunnel support
 russh = "0.45"

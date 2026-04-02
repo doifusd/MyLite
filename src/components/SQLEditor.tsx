@@ -51,6 +51,17 @@ interface QueryExecutionResult {
   isExecuting: boolean;
 }
 
+// 数据库表和列信息
+interface TableCompletionInfo {
+  table_name: string;
+  columns: string[];
+}
+
+interface DatabaseTablesInfo {
+  database: string;
+  tables: TableCompletionInfo[];
+}
+
 export const SQLEditor: React.FC<SQLEditorProps> = ({
   connectionId,
   database,
@@ -63,8 +74,33 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
   const [results, setResults] = useState<QueryExecutionResult[]>([]);
   const [activeResultTab, setActiveResultTab] = useState<string>('');
   const [history, setHistory] = useState<Array<{ sql: string; timestamp: Date }>>([]);
+  const [tablesInfo, setTablesInfo] = useState<DatabaseTablesInfo | null>(null);
+  const [loadingTables, setLoadingTables] = useState(false);
   const editorRef = useRef<any>(null);
   const resultIdCounter = useRef(0);
+  const monacoRef = useRef<any>(null);
+
+  // Fetch tables and columns for autocomplete
+  useEffect(() => {
+    if (!connectionId || !database) return;
+
+    const fetchTablesAndColumns = async () => {
+      setLoadingTables(true);
+      try {
+        const info = await invoke<DatabaseTablesInfo>('get_database_tables_and_columns', {
+          connectionId,
+          database,
+        });
+        setTablesInfo(info);
+      } catch (error) {
+        console.error('Failed to fetch tables and columns:', error);
+      } finally {
+        setLoadingTables(false);
+      }
+    };
+
+    fetchTablesAndColumns();
+  }, [connectionId, database]);
 
   // Sync with initialSql prop when it changes (e.g., when switching tabs back)
   useEffect(() => {
@@ -76,69 +112,160 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
     }
   }, [initialSql]);
 
+  // 生成自动补全建议
+  const generateCompletionSuggestions = (monaco: any): any[] => {
+    const suggestions = [
+      // MySQL keywords
+      { label: 'SELECT', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'SELECT', sortText: '1' },
+      { label: 'FROM', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'FROM', sortText: '2' },
+      { label: 'WHERE', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'WHERE', sortText: '3' },
+      { label: 'INSERT', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'INSERT INTO', sortText: '4' },
+      { label: 'UPDATE', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'UPDATE', sortText: '5' },
+      { label: 'DELETE', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'DELETE FROM', sortText: '6' },
+      { label: 'CREATE', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'CREATE TABLE', sortText: '7' },
+      { label: 'CREATE INDEX', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'CREATE INDEX idx_name ON table_name (column_name);', sortText: '7a' },
+      { label: 'DROP', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'DROP TABLE', sortText: '8' },
+      { label: 'ALTER', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'ALTER TABLE', sortText: '9' },
+      { label: 'TABLE', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'TABLE', sortText: '10' },
+      { label: 'DATABASE', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'DATABASE', sortText: '11' },
+      { label: 'INDEX', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'INDEX', sortText: '12' },
+      { label: 'JOIN', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'JOIN', sortText: '13' },
+      { label: 'LEFT JOIN', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'LEFT JOIN', sortText: '14' },
+      { label: 'RIGHT JOIN', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'RIGHT JOIN', sortText: '15' },
+      { label: 'INNER JOIN', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'INNER JOIN', sortText: '16' },
+      { label: 'GROUP BY', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'GROUP BY', sortText: '17' },
+      { label: 'ORDER BY', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'ORDER BY', sortText: '18' },
+      { label: 'HAVING', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'HAVING', sortText: '19' },
+      { label: 'LIMIT', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'LIMIT', sortText: '20' },
+      { label: 'OFFSET', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'OFFSET', sortText: '21' },
+      { label: 'UNION', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'UNION', sortText: '22' },
+      { label: 'UNION ALL', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'UNION ALL', sortText: '23' },
+      { label: 'DISTINCT', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'DISTINCT', sortText: '24' },
+      { label: 'AS', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'AS', sortText: '25' },
+      { label: 'ON', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'ON', sortText: '26' },
+      { label: 'AND', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'AND', sortText: '27' },
+      { label: 'OR', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'OR', sortText: '28' },
+      { label: 'NOT', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'NOT', sortText: '29' },
+      { label: 'NULL', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'NULL', sortText: '30' },
+      { label: 'IS NULL', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'IS NULL', sortText: '31' },
+      { label: 'IS NOT NULL', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'IS NOT NULL', sortText: '32' },
+      { label: 'IN', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'IN', sortText: '33' },
+      { label: 'EXISTS', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'EXISTS', sortText: '34' },
+      { label: 'BETWEEN', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'BETWEEN', sortText: '35' },
+      { label: 'LIKE', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'LIKE', sortText: '36' },
+
+      // SQL Functions
+      { label: 'COUNT', kind: monaco.languages.CompletionItemKind.Function, insertText: 'COUNT(*)', sortText: '50' },
+      { label: 'SUM', kind: monaco.languages.CompletionItemKind.Function, insertText: 'SUM()', sortText: '51' },
+      { label: 'AVG', kind: monaco.languages.CompletionItemKind.Function, insertText: 'AVG()', sortText: '52' },
+      { label: 'MAX', kind: monaco.languages.CompletionItemKind.Function, insertText: 'MAX()', sortText: '53' },
+      { label: 'MIN', kind: monaco.languages.CompletionItemKind.Function, insertText: 'MIN()', sortText: '54' },
+      { label: 'CONCAT', kind: monaco.languages.CompletionItemKind.Function, insertText: 'CONCAT()', sortText: '55' },
+      { label: 'SUBSTRING', kind: monaco.languages.CompletionItemKind.Function, insertText: 'SUBSTRING()', sortText: '56' },
+      { label: 'LENGTH', kind: monaco.languages.CompletionItemKind.Function, insertText: 'LENGTH()', sortText: '57' },
+      { label: 'TRIM', kind: monaco.languages.CompletionItemKind.Function, insertText: 'TRIM()', sortText: '58' },
+      { label: 'UPPER', kind: monaco.languages.CompletionItemKind.Function, insertText: 'UPPER()', sortText: '59' },
+      { label: 'LOWER', kind: monaco.languages.CompletionItemKind.Function, insertText: 'LOWER()', sortText: '60' },
+      { label: 'REPLACE', kind: monaco.languages.CompletionItemKind.Function, insertText: 'REPLACE()', sortText: '61' },
+      { label: 'DATE_FORMAT', kind: monaco.languages.CompletionItemKind.Function, insertText: 'DATE_FORMAT()', sortText: '62' },
+      { label: 'NOW', kind: monaco.languages.CompletionItemKind.Function, insertText: 'NOW()', sortText: '63' },
+      { label: 'CURDATE', kind: monaco.languages.CompletionItemKind.Function, insertText: 'CURDATE()', sortText: '64' },
+      { label: 'CURTIME', kind: monaco.languages.CompletionItemKind.Function, insertText: 'CURTIME()', sortText: '65' },
+      { label: 'DATEDIFF', kind: monaco.languages.CompletionItemKind.Function, insertText: 'DATEDIFF()', sortText: '66' },
+      { label: 'DATE_ADD', kind: monaco.languages.CompletionItemKind.Function, insertText: 'DATE_ADD()', sortText: '67' },
+      { label: 'COALESCE', kind: monaco.languages.CompletionItemKind.Function, insertText: 'COALESCE()', sortText: '68' },
+      { label: 'IF', kind: monaco.languages.CompletionItemKind.Function, insertText: 'IF()', sortText: '69' },
+      { label: 'CASE', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'CASE WHEN THEN ELSE END', sortText: '70' },
+    ];
+
+    // 添加表名建议
+    if (tablesInfo && tablesInfo.tables.length > 0) {
+      tablesInfo.tables.forEach((table, index) => {
+        suggestions.push({
+          label: table.table_name,
+          kind: monaco.languages.CompletionItemKind.Struct,
+          insertText: table.table_name,
+          sortText: `f${String(index).padStart(3, '0')}`,
+          detail: `Table in ${database}`,
+          documentation: `Columns: ${table.columns.join(', ')}`,
+        });
+      });
+    }
+
+    // 添加列名建议
+    if (tablesInfo && tablesInfo.tables.length > 0) {
+      tablesInfo.tables.forEach((table) => {
+        table.columns.forEach((column, index) => {
+          suggestions.push({
+            label: column,
+            kind: monaco.languages.CompletionItemKind.Field,
+            insertText: column,
+            sortText: `g${table.table_name}_${String(index).padStart(3, '0')}`,
+            detail: `Column from ${table.table_name}`,
+            documentation: `Column in table ${table.table_name}`,
+          });
+        });
+      });
+    }
+
+    return suggestions;
+  };
+
   const handleEditorMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
+    monacoRef.current = monaco;
 
-    // Add MySQL syntax highlighting
+    // 注册自动补全提供程序
     monaco.languages.registerCompletionItemProvider('sql', {
       provideCompletionItems: () => {
-        const suggestions = [
-          // MySQL keywords
-          { label: 'SELECT', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'SELECT' },
-          { label: 'FROM', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'FROM' },
-          { label: 'WHERE', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'WHERE' },
-          { label: 'INSERT', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'INSERT' },
-          { label: 'UPDATE', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'UPDATE' },
-          { label: 'DELETE', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'DELETE' },
-          { label: 'CREATE', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'CREATE' },
-          { label: 'DROP', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'DROP' },
-          { label: 'ALTER', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'ALTER' },
-          { label: 'TABLE', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'TABLE' },
-          { label: 'DATABASE', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'DATABASE' },
-          { label: 'INDEX', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'INDEX' },
-          { label: 'JOIN', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'JOIN' },
-          { label: 'LEFT', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'LEFT' },
-          { label: 'RIGHT', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'RIGHT' },
-          { label: 'INNER', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'INNER' },
-          { label: 'OUTER', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'OUTER' },
-          { label: 'GROUP', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'GROUP' },
-          { label: 'ORDER', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'ORDER' },
-          { label: 'BY', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'BY' },
-          { label: 'HAVING', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'HAVING' },
-          { label: 'LIMIT', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'LIMIT' },
-          { label: 'OFFSET', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'OFFSET' },
-          { label: 'UNION', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'UNION' },
-          { label: 'ALL', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'ALL' },
-          { label: 'DISTINCT', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'DISTINCT' },
-          { label: 'AS', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'AS' },
-          { label: 'ON', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'ON' },
-          { label: 'AND', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'AND' },
-          { label: 'OR', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'OR' },
-          { label: 'NOT', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'NOT' },
-          { label: 'NULL', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'NULL' },
-          { label: 'IS', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'IS' },
-          { label: 'IN', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'IN' },
-          { label: 'EXISTS', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'EXISTS' },
-          { label: 'BETWEEN', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'BETWEEN' },
-          { label: 'LIKE', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'LIKE' },
-          { label: 'COUNT', kind: monaco.languages.CompletionItemKind.Function, insertText: 'COUNT(*)' },
-          { label: 'SUM', kind: monaco.languages.CompletionItemKind.Function, insertText: 'SUM()' },
-          { label: 'AVG', kind: monaco.languages.CompletionItemKind.Function, insertText: 'AVG()' },
-          { label: 'MAX', kind: monaco.languages.CompletionItemKind.Function, insertText: 'MAX()' },
-          { label: 'MIN', kind: monaco.languages.CompletionItemKind.Function, insertText: 'MIN()' },
-          { label: 'CONCAT', kind: monaco.languages.CompletionItemKind.Function, insertText: 'CONCAT()' },
-          { label: 'SUBSTRING', kind: monaco.languages.CompletionItemKind.Function, insertText: 'SUBSTRING()' },
-          { label: 'DATE_FORMAT', kind: monaco.languages.CompletionItemKind.Function, insertText: 'DATE_FORMAT()' },
-          { label: 'NOW', kind: monaco.languages.CompletionItemKind.Function, insertText: 'NOW()' },
-          { label: 'CURDATE', kind: monaco.languages.CompletionItemKind.Function, insertText: 'CURDATE()' },
-        ];
+        const suggestions = generateCompletionSuggestions(monaco);
         return { suggestions };
       },
+      triggerCharacters: [' ', '.', '(', ','],
     });
 
-    // Add keyboard shortcut for execute
+    // 注册 MySQL 的语言定义和高亮
+    monaco.languages.register({ id: 'mysql' });
+
+    // 如果 SQL 模式没有强化的高亮，则为其添加
+    const sqlRulesId = 'sql';
+    try {
+      const currentDef = monaco.languages.getLanguages().find((l: any) => l.id === sqlRulesId);
+      if (currentDef) {
+        // 增强 SQL 的颜色和高亮
+        monaco.editor.defineTheme('sql-light', {
+          base: 'vs',
+          inherit: true,
+          rules: [
+            { token: 'keyword.sql', foreground: '0000FF', fontStyle: 'bold' },
+            { token: 'keyword.operator.sql', foreground: 'FF0000' },
+            { token: 'string.sql', foreground: '008000' },
+            { token: 'number.sql', foreground: 'FF6600' },
+            { token: 'identifier.sql', foreground: '000000' },
+            { token: 'comment.line.sql', foreground: '008000', fontStyle: 'italic' },
+          ],
+          colors: {
+            'editor.background': '#FFFFFF',
+          },
+        });
+      }
+    } catch (e) {
+      // 主题定义失败，继续使用默认主题
+    }
+
+    // Add keyboard shortcut for execute (Ctrl+Enter / Cmd+Enter)
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
       executeQuery();
+    });
+
+    // Add keyboard shortcut for format (Shift+Alt+F)
+    editor.addCommand(monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.KeyF, () => {
+      formatSql();
+    });
+
+    // Add keyboard shortcut for save (Ctrl+S / Cmd+S)
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+      saveSql();
     });
   };
 
@@ -298,6 +425,30 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
     }
   };
 
+  const saveSql = async () => {
+    const currentSql = editorRef.current?.getValue() || sql;
+    if (!currentSql.trim()) return;
+
+    try {
+      // 生成默认文件名
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
+      const time = new Date().toISOString().split('T')[1].split('.')[0].replace(/:/g, '');
+      const filename = `query_${timestamp}_${time}.sql`;
+
+      const filePath = await invoke<string>('save_query_to_file', {
+        sql: currentSql,
+        filename,
+      });
+
+      // 显示成功消息
+      console.log('Query saved to:', filePath);
+      // 可以添加 toast 消息
+    } catch (error) {
+      console.error('Failed to save query:', error);
+      // 可以添加错误提示
+    }
+  };
+
   return (
     <div className={cn('flex flex-col h-full', className)}>
       {/* Toolbar */}
@@ -325,9 +476,23 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
           Format
         </Button>
 
+        {loadingTables && (
+          <div className="flex items-center gap-1.5 text-xs text-gray-500 ml-2 px-2">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Loading tables...
+          </div>
+        )}
+
         <div className="flex-1" />
 
-        <Button variant="ghost" size="sm" className="gap-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="gap-1"
+          onClick={saveSql}
+          disabled={!sql.trim()}
+          title="Save query to file (Ctrl+S)"
+        >
           <Save className="h-4 w-4" />
           Save
         </Button>
@@ -339,7 +504,7 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
       </div>
 
       {/* SQL Input - Monaco Editor */}
-      <div className="flex-1 min-h-0">
+      <div className="flex-1 min-h-0 relative">
         <Editor
           height="100%"
           language="sql"
@@ -364,6 +529,16 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
             folding: true,
             lineDecorationsWidth: 10,
             lineNumbersMinChars: 3,
+            scrollbar: {
+              vertical: 'auto',
+              horizontal: 'auto',
+            },
+            suggestOnTriggerCharacters: true,
+            quickSuggestions: {
+              other: true,
+              comments: false,
+              strings: false,
+            },
           }}
         />
       </div>

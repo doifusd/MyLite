@@ -1,14 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import React, { useEffect, useState } from 'react';
 
 interface IndexEditorDialogProps {
   isOpen: boolean;
@@ -40,9 +40,12 @@ export const IndexEditorDialog: React.FC<IndexEditorDialogProps> = ({
   const handleSave = () => {
     if (selectedColumns.length === 0) return;
 
+    // For INDEX, UNIQUE, FULLTEXT - require index name
+    if (type !== 'PRIMARY KEY' && !name.trim()) return;
+
     let sql = '';
     const columnsStr = selectedColumns.map(c => `\`${c}\``).join(', ');
-    
+
     if (type === 'PRIMARY KEY') {
       sql = `ALTER TABLE \`${tableName}\` ADD PRIMARY KEY (${columnsStr})`;
     } else if (type === 'UNIQUE') {
@@ -52,18 +55,24 @@ export const IndexEditorDialog: React.FC<IndexEditorDialogProps> = ({
     } else {
       sql = `ALTER TABLE \`${tableName}\` ADD INDEX \`${name}\` (${columnsStr})`;
     }
-    
+
     onSave(sql);
   };
 
   const toggleColumn = (col: string) => {
-    setSelectedColumns(prev => 
+    setSelectedColumns(prev =>
       prev.includes(col) ? prev.filter(c => c !== col) : [...prev, col]
     );
   };
 
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      onClose();
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Add Index</DialogTitle>
@@ -112,7 +121,12 @@ export const IndexEditorDialog: React.FC<IndexEditorDialogProps> = ({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSave} disabled={selectedColumns.length === 0}>Save</Button>
+          <Button
+            onClick={handleSave}
+            disabled={selectedColumns.length === 0 || (type !== 'PRIMARY KEY' && !name.trim())}
+          >
+            Save
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -9,8 +9,8 @@ mod lib_test;
 
 use commands::connection::*;
 use commands::query::*;
-use commands::query_history::*;
 use commands::query_analyzer::*;
+use commands::query_history::*;
 use commands::schema::*;
 use db::connection::ConnectionPool;
 use std::sync::Arc;
@@ -43,11 +43,9 @@ async fn main() -> anyhow::Result<()> {
             store: std::sync::Mutex::new(None),
         }))
         .setup(|app| {
-            let store = tauri_plugin_store::StoreBuilder::new(
-                app.handle(),
-                "connections.json".parse()?,
-            )
-            .build();
+            let store =
+                tauri_plugin_store::StoreBuilder::new(app.handle(), "connections.json".parse()?)
+                    .build();
             let state = app.state::<Arc<AppState>>();
             *state.store.lock().unwrap() = Some(Arc::new(std::sync::Mutex::new(store)));
             Ok(())
@@ -101,6 +99,9 @@ async fn main() -> anyhow::Result<()> {
             analyze_query,
             explain_query,
             optimize_query,
+            // Query autocomplete
+            save_query_to_file,
+            get_database_tables_and_columns,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

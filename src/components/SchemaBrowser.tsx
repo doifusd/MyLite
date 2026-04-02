@@ -1,3 +1,4 @@
+import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { invoke } from '@tauri-apps/api/tauri';
 import {
@@ -14,6 +15,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { CreateTableDialog } from './CreateTableDialog';
 import { DatabasePropertiesDialog } from './DatabasePropertiesDialog';
 import { DesignTableDialog } from './DesignTableDialog';
+import { IndexEditorDialog } from './IndexEditorDialog';
+import { StructureDialog } from './StructureDialog';
 import { TableDDLDialog } from './TableDDLDialog';
 
 interface SchemaTreeItem {
@@ -30,12 +33,14 @@ interface SchemaTreeItem {
 interface SchemaBrowserProps {
   connectionId: string;
   onTableSelect?: (database: string, table: string, tab?: string) => void;
+  onCreateTableSQL?: (sql: string) => void;
   className?: string;
 }
 
 export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
   connectionId,
   onTableSelect,
+  onCreateTableSQL,
   className,
 }) => {
   const [treeData, setTreeData] = useState<SchemaTreeItem[]>([]);
@@ -68,7 +73,7 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
     setTreeData([]);
     setExpandedNodes(new Set());
     fetchDatabases();
-  }, [connectionId, fetchDatabases]);
+  }, [connectionId]);
 
   const updateNode = (
     nodes: SchemaTreeItem[],
@@ -159,6 +164,15 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
   const [designTableOpen, setDesignTableOpen] = useState(false);
   const [selectedTableForDesign, setSelectedTableForDesign] = useState<{ database: string; table: string } | null>(null);
 
+  const [structureDialogOpen, setStructureDialogOpen] = useState(false);
+  const [selectedTableForStructure, setSelectedTableForStructure] = useState<{ database: string; table: string } | null>(null);
+  const [tableStructure, setTableStructure] = useState<any>(null);
+  const [structureLoading, setStructureLoading] = useState(false);
+
+  const [indexEditorOpen, setIndexEditorOpen] = useState(false);
+  const [selectedTableForIndex, setSelectedTableForIndex] = useState<{ database: string; table: string } | null>(null);
+  const [availableColumnsForIndex, setAvailableColumnsForIndex] = useState<string[]>([]);
+
   const handleContextMenu = (e: React.MouseEvent, node: SchemaTreeItem) => {
     if (node.type !== 'table' && node.type !== 'database') return;
     e.preventDefault();
@@ -186,6 +200,127 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
       if (parts.length === 2) {
         onTableSelect(parts[0], parts[1]);
       }
+    }
+  };
+
+  const generateCreateTableTemplate = (database: string, tableName: string): string => {
+    const escapedDb = database;
+    const escapedTable = tableName;
+
+    return `CREATE TABLE \`${escapedDb}\`.\`${escapedTable}\` (
+  \`id\` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  \`name\` varchar(255) NOT NULL DEFAULT '' COMMENT '名称',
+  \`status\` tinyint(1) DEFAULT '1' COMMENT '状态',
+  \`created_at\` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  \`updated_at\` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (\`id\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='${tableName}表';`;
+  };
+
+  const convertToGoType = (mysqlType: string): string => {
+    const baseType = mysqlType.toLowerCase().split('(')[0];
+
+    const typeMap: Record<string, string> = {
+      'tinyint': 'int8',
+      'smallint': 'int16',
+      'mediumint': 'int32',
+      'int': 'int32',
+      'integer': 'int32',
+      'bigint': 'int64',
+      'float': 'float32',
+      'double': 'float64',
+      'decimal': 'float64',
+      'varchar': 'string',
+      'char': 'string',
+      'text': 'string',
+      'mediumtext': 'string',
+      'longtext': 'string',
+      'date': 'string',
+      'datetime': 'string',
+      'timestamp': 'string',
+      'time': 'string',
+      'boolean': 'bool',
+      'bool': 'bool',
+      'json': 'string',
+      'blob': '[]byte',
+      'longblob': '[]byte',
+    };
+
+    return typeMap[baseType] || 'string';
+  };
+
+  const toPascalCase = (str: string): string => {
+    return str
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join('');
+  };
+
+  const generateGoStruct = (tableName: string, columns: any[]): string => {
+    const structName = toPascalCase(tableName);
+    const fields = columns
+      .map((col: any) => {
+        const goType = convertToGoType(col.data_type);
+        const fieldName = toPascalCase(col.name);
+        const dbTag = `\`json:"${col.name}" db:"${col.name}"\``;
+        return `\t${fieldName} ${goType} ${dbTag}`;
+      })
+      .join('\n');
+
+    return `type ${structName} struct {\n${fields}\n}`;
+  };
+
+  const handleShowStructure = async (database: string, table: string) => {
+    setStructureLoading(true);
+    try {
+      const info = await invoke<any>('get_table_info', {
+        connectionId,
+        database,
+        table,
+      });
+
+      // Generate Go struct format
+      const goStructCode = generateGoStruct(table, info.columns || []);
+      const structure = {
+        code: goStructCode,
+        name: table,
+        schema: database,
+      };
+
+      setTableStructure(structure);
+      setSelectedTableForStructure({ database, table });
+      setStructureDialogOpen(true);
+    } catch (error: any) {
+      const message = typeof error === 'string' ? error : (error?.message || 'Unknown error');
+      toast({
+        title: 'Error',
+        description: `Failed to load table structure: ${message}`,
+        variant: 'destructive',
+      });
+    } finally {
+      setStructureLoading(false);
+    }
+  };
+
+  const handleCreateIndex = async (database: string, table: string) => {
+    try {
+      const info = await invoke<any>('get_table_info', {
+        connectionId,
+        database,
+        table,
+      });
+
+      const columns = (info.columns || []).map((col: any) => col.name || col.COLUMN_NAME);
+      setAvailableColumnsForIndex(columns);
+      setSelectedTableForIndex({ database, table });
+      setIndexEditorOpen(true);
+    } catch (error: any) {
+      const message = typeof error === 'string' ? error : (error?.message || 'Unknown error');
+      toast({
+        title: 'Error',
+        description: `Failed to load table columns: ${message}`,
+        variant: 'destructive',
+      });
     }
   };
 
@@ -341,10 +476,33 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
               Show DDL
             </button>
           )}
+          {contextMenu.node.type === 'table' && (
+            <button
+              className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-800"
+              onClick={() => {
+                const parts = contextMenu.node.id.replace('table_', '').split('.');
+                if (parts.length === 2) {
+                  handleShowStructure(parts[0], parts[1]);
+                }
+                setContextMenu(null);
+              }}
+            >
+              Show Structure
+            </button>
+          )}
           <button
             className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-800"
             onClick={() => {
-              if (contextMenu.node.type === 'database') {
+              const parts = contextMenu.node.id.replace('table_', '').split('.');
+              // Check if it's a table or database
+              if (contextMenu.node.type === 'table' && parts.length === 2) {
+                // Generate CREATE TABLE template from existing table
+                const sql = generateCreateTableTemplate(parts[0], parts[1]);
+                if (onCreateTableSQL) {
+                  onCreateTableSQL(sql);
+                }
+              } else if (contextMenu.node.type === 'database') {
+                // Show create table dialog for new table
                 setSelectedDbForCreateTable(contextMenu.node.name);
                 setCreateTableOpen(true);
               }
@@ -353,30 +511,20 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
           >
             Create New Table
           </button>
-          <div className="my-1 border-t" />
-          <div className="my-1 border-t" />
-          <button
-            className="w-full px-4 py-2 text-left text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
-            onClick={async () => {
-              const parts = contextMenu.node.id.replace('table_', '').split('.');
-              if (parts.length === 2) {
-                if (confirm(`Are you sure you want to drop table "${parts[1]}"?\n\nThis action cannot be undone!`)) {
-                  try {
-                    await invoke('execute_sql', {
-                      connectionId,
-                      sql: `DROP TABLE \`${parts[0]}\`.\`${parts[1]}\``,
-                    });
-                    fetchDatabases();
-                  } catch (err: any) {
-                    alert(`Failed to drop table: ${err}`);
-                  }
+          {contextMenu.node.type === 'table' && (
+            <button
+              className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-800"
+              onClick={() => {
+                const parts = contextMenu.node.id.replace('table_', '').split('.');
+                if (parts.length === 2) {
+                  handleCreateIndex(parts[0], parts[1]);
                 }
-              }
-              setContextMenu(null);
-            }}
-          >
-            Drop Table
-          </button>
+                setContextMenu(null);
+              }}
+            >
+              Create Add Index
+            </button>
+          )}
         </div>
       )}
 
@@ -433,12 +581,70 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
               setCreateTableOpen(false);
               setSelectedDbForCreateTable(null);
               fetchDatabases();
+              toast({
+                title: 'Success',
+                description: 'Table created successfully',
+                variant: 'default',
+              });
             } catch (err: any) {
-              alert(`Failed to create table: ${err}`);
+              const message = typeof err === 'string' ? err : (err?.message || 'Unknown error');
+              toast({
+                title: 'Error',
+                description: `Failed to create table: ${message}`,
+                variant: 'destructive',
+              });
             }
           }}
           connectionId={connectionId}
           database={selectedDbForCreateTable}
+        />
+      )}
+
+      {structureDialogOpen && selectedTableForStructure && (
+        <StructureDialog
+          isOpen={structureDialogOpen}
+          onClose={() => {
+            setStructureDialogOpen(false);
+            setSelectedTableForStructure(null);
+            setTableStructure(null);
+          }}
+          table={selectedTableForStructure.table}
+          structure={tableStructure}
+          loading={structureLoading}
+        />
+      )}
+
+      {indexEditorOpen && selectedTableForIndex && (
+        <IndexEditorDialog
+          isOpen={indexEditorOpen}
+          onClose={() => {
+            setIndexEditorOpen(false);
+            setSelectedTableForIndex(null);
+            setAvailableColumnsForIndex([]);
+          }}
+          onSave={async (sql) => {
+            try {
+              await invoke('execute_sql', { connectionId, sql });
+              setIndexEditorOpen(false);
+              setSelectedTableForIndex(null);
+              setAvailableColumnsForIndex([]);
+              fetchDatabases();
+              toast({
+                title: 'Success',
+                description: 'Index created successfully',
+                variant: 'default',
+              });
+            } catch (err: any) {
+              const message = typeof err === 'string' ? err : (err?.message || 'Unknown error');
+              toast({
+                title: 'Error',
+                description: `Failed to create index: ${message}`,
+                variant: 'destructive',
+              });
+            }
+          }}
+          tableName={selectedTableForIndex.table}
+          availableColumns={availableColumnsForIndex}
         />
       )}
     </div>

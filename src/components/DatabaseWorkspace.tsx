@@ -36,6 +36,11 @@ export const DatabaseWorkspace: React.FC<DatabaseWorkspaceProps> = ({
     setActiveTab(tab || 'data');
   };
 
+  const handleCreateTableSQL = (sql: string) => {
+    setSqlContent(sql);
+    setActiveTab('query');
+  };
+
   return (
     <div className={cn('flex flex-col h-full bg-white', className)}>
       {/* Header */}
@@ -77,6 +82,7 @@ export const DatabaseWorkspace: React.FC<DatabaseWorkspaceProps> = ({
             <SchemaBrowser
               connectionId={connectionId}
               onTableSelect={handleTableSelect}
+              onCreateTableSQL={handleCreateTableSQL}
               className="h-full"
             />
           </div>

@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import React, { useState } from 'react';
 
 interface CreateTableDialogProps {
   isOpen: boolean;
@@ -62,13 +62,19 @@ export const CreateTableDialog: React.FC<CreateTableDialogProps> = ({
 
   if (!isOpen) return null;
 
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      onClose();
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-auto">
         <DialogHeader>
           <DialogTitle>Create New Table in {database}</DialogTitle>
         </DialogHeader>
-        
+
         <div className="space-y-4 py-4">
           <div className="space-y-2">
             <Label>Table Name</Label>
@@ -76,6 +82,8 @@ export const CreateTableDialog: React.FC<CreateTableDialogProps> = ({
               value={tableName}
               onChange={(e) => setTableName(e.target.value)}
               placeholder="my_table"
+              autoCapitalize="off"
+              autoCorrect="off"
             />
           </div>
 
@@ -88,6 +96,8 @@ export const CreateTableDialog: React.FC<CreateTableDialogProps> = ({
                   value={col.name}
                   onChange={(e) => updateColumn(index, 'name', e.target.value)}
                   className="flex-1"
+                  autoCapitalize="off"
+                  autoCorrect="off"
                 />
                 <Input
                   placeholder="VARCHAR(255)"

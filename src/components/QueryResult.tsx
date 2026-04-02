@@ -23,14 +23,12 @@ import {
   ChevronLeft,
   ChevronRight,
   Copy,
-  Download,
   FileJson,
   Maximize2,
   Minimize2,
   Plus,
   Save,
   Search,
-  Table2,
   X
 } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -406,47 +404,64 @@ export const QueryResult: React.FC<QueryResultProps> = ({
   };
 
   const handleExport = (format: 'csv' | 'json') => {
-    if (format === 'csv') {
-      const csv = [
-        data.columns.map((c) => c.name).join(','),
-        ...data.rows.map((row) =>
-          row
-            .map((cell) => {
-              if (cell === null) return '';
-              const str = String(cell);
-              if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-                return `"${str.replace(/"/g, '""')}"`;
-              }
-              return str;
-            })
-            .join(',')
-        ),
-      ].join('\n');
+    try {
+      let content = '';
+      let filename = '';
+      let mimeType = '';
 
-      const blob = new Blob([csv], { type: 'text/csv' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `query_result_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } else {
-      // Export as JSON
-      const jsonData = data.rows.map((row) => {
-        const obj: Record<string, any> = {};
-        data.columns.forEach((col, idx) => {
-          obj[col.name] = row[idx];
+      if (format === 'csv') {
+        const csv = [
+          data.columns.map((c) => c.name).join(','),
+          ...data.rows.map((row) =>
+            row
+              .map((cell) => {
+                if (cell === null) return '';
+                const str = String(cell);
+                if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                  return `"${str.replace(/"/g, '""')}"`;
+                }
+                return str;
+              })
+              .join(',')
+          ),
+        ].join('\n');
+        content = csv;
+        mimeType = 'text/csv;charset=utf-8;';
+        filename = `query_result_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`;
+      } else {
+        // Export as JSON
+        const jsonData = data.rows.map((row) => {
+          const obj: Record<string, any> = {};
+          data.columns.forEach((col, idx) => {
+            obj[col.name] = row[idx];
+          });
+          return obj;
         });
-        return obj;
-      });
+        content = JSON.stringify(jsonData, null, 2);
+        mimeType = 'application/json;charset=utf-8;';
+        filename = `query_result_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
+      }
 
-      const blob = new Blob([JSON.stringify(jsonData, null, 2)], { type: 'application/json' });
+      // Create blob and download
+      const blob = new Blob([content], { type: mimeType });
+      const link = document.createElement('a');
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `query_result_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
+
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Clean up
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 100);
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Export failed. Please try again.');
     }
   };
 
@@ -501,33 +516,7 @@ export const QueryResult: React.FC<QueryResultProps> = ({
             )}
             Copy
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleExport('csv')}
-            className="gap-1"
-          >
-            <Download className="h-4 w-4" />
-            CSV
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleExport('json')}
-            className="gap-1"
-          >
-            <FileJson className="h-4 w-4" />
-            JSON
-          </Button>
           <div className="h-4 w-px bg-gray-300 mx-1" />
-          <Button
-            variant={viewMode === 'table' ? 'secondary' : 'outline'}
-            size="sm"
-            onClick={() => setViewMode('table')}
-            className="gap-1"
-          >
-            <Table2 className="h-4 w-4" />
-          </Button>
           <Button
             variant={viewMode === 'json' ? 'secondary' : 'outline'}
             size="sm"
@@ -535,6 +524,7 @@ export const QueryResult: React.FC<QueryResultProps> = ({
             className="gap-1"
           >
             <FileJson className="h-4 w-4" />
+            JSON
           </Button>
         </div>
 

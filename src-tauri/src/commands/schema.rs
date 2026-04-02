@@ -1,5 +1,7 @@
 use crate::models::connection::{ConnectionConfig, ConnectionInfo};
-use crate::models::schema::{ColumnDefinition, IndexInfo, SchemaTreeItem, TableInfo};
+use crate::models::schema::{
+    ColumnDefinition, DatabaseTablesInfo, IndexInfo, SchemaTreeItem, TableCompletionInfo, TableInfo,
+};
 use crate::AppState;
 use sqlx::{Executor, Row};
 use std::sync::Arc;
@@ -442,7 +444,7 @@ pub async fn get_databases_v2(
         .await
         .map_err(|e| e.to_string())?;
 
-    // CAST to VARCHAR to avoid type mismatch with VARBINARY  
+    // CAST to VARCHAR to avoid type mismatch with VARBINARY
     let databases: Vec<String> = sqlx::query_scalar(
         "SELECT CAST(schema_name AS CHAR) FROM information_schema.schemata WHERE schema_name NOT IN ('mysql', 'information_schema', 'performance_schema', 'sys')"
     )
@@ -723,4 +725,52 @@ pub async fn get_collations(
         .collect();
 
     Ok(rows)
+}
+
+#[tauri::command]
+pub async fn get_database_tables_and_columns(
+    state: State<'_, Arc<AppState>>,
+    connection_id: String,
+    database: String,
+) -> Result<DatabaseTablesInfo, String> {
+    let pool = state
+        .pool
+        .get_or_create_pool(
+            &connection_id,
+            &get_connection_config(&state, &connection_id).await?,
+        )
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // Get all tables for the database
+    let tables: Vec<String> = sqlx::query_scalar(&format!(
+        "SELECT CAST(table_name AS CHAR) FROM information_schema.tables WHERE table_schema = '{}'",
+        database
+    ))
+    .fetch_all(&pool)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    let mut tables_info = Vec::new();
+
+    for table_name in tables {
+        // Get columns for this table
+        let columns: Vec<String> = sqlx::query_scalar(&format!(
+            "SELECT CAST(column_name AS CHAR) FROM information_schema.columns WHERE table_schema = '{}' AND table_name = '{}' ORDER BY ordinal_position",
+            database, table_name
+        ))
+        .fetch_all(&pool)
+        .await
+        .map_err(|e| e.to_string())?;
+
+        tables_info.push(TableCompletionInfo {
+            table_name,
+            columns,
+        });
+    }
+
+    Ok(DatabaseTablesInfo {
+        database,
+        tables: tables_info,
+    })
 }

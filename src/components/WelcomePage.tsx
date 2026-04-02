@@ -1,7 +1,6 @@
-import { Database, Plus, Clock, Star, BookOpen, Keyboard, Zap } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import type { ConnectionInfo } from '@/components/ConnectionGroupManager';
+import { Button } from '@/components/ui/button';
+import { Clock, Database, Keyboard, Plus, Zap } from 'lucide-react';
 
 interface WelcomePageProps {
   connections: ConnectionInfo[];
@@ -13,6 +12,18 @@ interface WelcomePageProps {
   onOpenSettings?: () => void;
 }
 
+const AnimatedContainer = ({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) => (
+  <div
+    style={{
+      animation: `slideUpFade 0.8s ease-out forwards`,
+      animationDelay: `${delay}ms`,
+      opacity: 0,
+    }}
+  >
+    {children}
+  </div>
+);
+
 export function WelcomePage({
   connections,
   recentQueries,
@@ -21,244 +32,342 @@ export function WelcomePage({
   onSelectQuery,
   onOpenShortcuts,
 }: WelcomePageProps) {
-  const favoriteConnections = connections.filter(c => c.is_favorite);
   const recentConnections = connections
     .filter(c => c.last_connected_at)
     .sort((a, b) => new Date(b.last_connected_at!).getTime() - new Date(a.last_connected_at!).getTime())
     .slice(0, 5);
 
-  const quickActions = [
-    {
-      icon: Plus,
-      label: 'New Connection',
-      description: 'Create a new database connection',
-      onClick: onNewConnection,
-      color: 'text-blue-500',
-    },
-    {
-      icon: BookOpen,
-      label: 'Documentation',
-      description: 'View MyLite documentation',
-      onClick: () => window.open('https://github.com/yourusername/mylite', '_blank'),
-      color: 'text-green-500',
-    },
-    {
-      icon: Keyboard,
-      label: 'Keyboard Shortcuts',
-      description: 'View all available shortcuts',
-      onClick: onOpenShortcuts,
-      color: 'text-purple-500',
-    },
-  ];
-
   return (
-    <div className="h-full overflow-auto p-8">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 mb-6">
-            <Database className="h-10 w-10 text-white" />
-          </div>
-          <h1 className="text-4xl font-bold mb-3">Welcome to MyLite</h1>
-          <p className="text-lg text-gray-500 max-w-2xl mx-auto">
-            A lightweight, powerful MySQL client for developers. Connect to your databases,
-            run queries, and manage your data with ease.
-          </p>
-          <div className="flex items-center justify-center gap-3 mt-6">
-            <Button size="lg" onClick={onNewConnection}>
-              <Plus className="h-5 w-5 mr-2" />
-              New Connection
-            </Button>
-          </div>
-        </div>
+    <div className="h-full overflow-auto bg-gradient-to-br from-dracula-bg via-dracula-bg-hover to-dracula-bg">
+      <style>{`
+        @keyframes slideUpFade {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        @keyframes floatIn {
+          0% {
+            opacity: 0;
+            transform: scale(0.95) translateY(10px);
+          }
+          100% {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+          }
+        }
+        
+        @keyframes shimmer {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.7; }
+        }
+        
+        .animate-float-in {
+          animation: floatIn 0.6s ease-out forwards;
+        }
+        
+        .welcome-card {
+          position: relative;
+          overflow: hidden;
+          border: 1px solid var(--color-border);
+          background: linear-gradient(135deg, var(--color-bg-surface) 0%, rgba(255,255,255,0.02) 100%);
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .welcome-card:hover {
+          border-color: var(--color-brand);
+          background: linear-gradient(135deg, var(--color-bg-surface) 0%, rgba(189, 147, 249, 0.05) 100%);
+          box-shadow: 0 20px 40px rgba(189, 147, 249, 0.15);
+          transform: translateY(-8px);
+        }
+        
+        .welcome-card::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(189, 147, 249, 0.1), transparent);
+          transition: left 0.5s ease;
+        }
+        
+        .welcome-card:hover::before {
+          left: 100%;
+        }
+        
+        .quick-action-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+          gap: 16px;
+        }
+        
+        .section-title {
+          font-size: 1.875rem;
+          font-weight: 700;
+          letter-spacing: -0.02em;
+          color: var(--color-text);
+          display: flex;
+          align-items center;
+          gap: 12px;
+          margin-bottom: 24px;
+        }
+        
+        .section-title-icon {
+          width: 32px;
+          height: 32px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(135deg, var(--color-brand), var(--color-info));
+          border-radius: 8px;
+          color: white;
+        }
+        
+        .connection-item {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          padding: 16px;
+          border-radius: 12px;
+          background: var(--color-bg-hover);
+          border: 1px solid var(--color-border);
+          transition: all 0.3s ease;
+          cursor: pointer;
+        }
+        
+        .connection-item:hover {
+          background: var(--color-bg-active);
+          border-color: var(--color-brand);
+          transform: translateX(8px);
+        }
+        
+        .connection-icon {
+          flex-shrink: 0;
+          width: 44px;
+          height: 44px;
+          border-radius: 10px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        
+        .query-item {
+          padding: 16px;
+          border-radius: 12px;
+          background: var(--color-bg-hover);
+          border-left: 3px solid var(--color-brand);
+          transition: all 0.3s ease;
+          cursor: pointer;
+        }
+        
+        .query-item:hover {
+          background: var(--color-bg-active);
+          border-left-color: var(--color-info);
+          transform: translateX(6px);
+        }
+        
+        .decorative-dot {
+          position: absolute;
+          width: 300px;
+          height: 300px;
+          border-radius: 50%;
+          opacity: 0.05;
+          pointer-events: none;
+        }
+        
+        .dot-1 {
+          background: var(--color-brand);
+          top: -100px;
+          right: -100px;
+        }
+        
+        .dot-2 {
+          background: var(--color-info);
+          bottom: 100px;
+          left: -150px;
+        }
+      `}</style>
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {quickActions.map((action) => (
-            <Card
-              key={action.label}
-              className="cursor-pointer hover:shadow-md transition-shadow"
-              onClick={action.onClick}
-            >
-              <CardContent className="p-6">
-                <action.icon className={`h-8 w-8 ${action.color} mb-3`} />
-                <h3 className="font-semibold mb-1">{action.label}</h3>
-                <p className="text-sm text-gray-500">{action.description}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+      {/* Decorative Elements */}
+      <div className="decorative-dot dot-1" />
+      <div className="decorative-dot dot-2" />
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Recent Connections */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="h-5 w-5 text-gray-500" />
-                Recent Connections
-              </CardTitle>
-              <CardDescription>
-                Your recently used database connections
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {recentConnections.length === 0 ? (
-                <div className="text-center py-8 text-gray-400">
-                  <Database className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                  <p>No recent connections</p>
-                  <p className="text-sm mt-1">Connect to a database to see it here</p>
+      <div className="relative max-w-7xl mx-auto px-8 py-16">
+        {/* Two Column Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+          {/* Left Column: Content */}
+          <div className="lg:col-span-2">
+            <AnimatedContainer delay={0}>
+              <div className="mb-12">
+                <h1 className="text-5xl lg:text-6xl font-bold mb-6 text-dracula-text leading-tight">
+                  Welcome to
+                  <br />
+                  <span className="relative">
+                    <span className="relative z-10">MyLite</span>
+                    <span className="absolute bottom-2 left-0 right-0 h-4 bg-dracula-brand/20 blur-sm" />
+                  </span>
+                </h1>
+                <p className="text-lg text-dracula-text-secondary leading-relaxed max-w-md">
+                  A lightweight, powerful MySQLclient for developers. Connect to your databases, run queries, and manage your data with elegance.
+                </p>
+              </div>
+            </AnimatedContainer>
+
+            {/* Quick Action Button */}
+            <AnimatedContainer delay={120}>
+              <Button
+                size="lg"
+                onClick={onNewConnection}
+                className="mb-16 bg-dracula-brand hover:bg-dracula-brand-hover text-dracula-bg font-semibold px-8 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all"
+              >
+                <Plus className="h-5 w-5 mr-2" />
+                Start New Connection
+              </Button>
+            </AnimatedContainer>
+
+            {/* Quick Actions - Asymmetric Layout */}
+            <div className="mb-16">
+              <div className="section-title">
+                <div className="section-title-icon">
+                  <Zap className="h-4 w-4" />
                 </div>
-              ) : (
-                <div className="space-y-2">
-                  {recentConnections.map((conn) => (
+                Quick Actions
+              </div>
+              <div className="quick-action-grid">
+                {[
+                  {
+                    icon: Plus,
+                    label: 'New Connection',
+                    description: 'Create a new database connection',
+                    onClick: onNewConnection,
+                    color: 'linear-gradient(135deg, #8be9fd, #bd93f9)',
+                  },
+                  {
+                    icon: Keyboard,
+                    label: 'Keyboard Shortcuts',
+                    description: 'View all available shortcuts',
+                    onClick: onOpenShortcuts,
+                    color: 'linear-gradient(135deg, #bd93f9, #ff79c6)',
+                  },
+                ].map((action, idx) => (
+                  <AnimatedContainer key={action.label} delay={240 + idx * 80}>
                     <button
-                      key={conn.id}
-                      onClick={() => onSelectConnection(conn)}
-                      className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 text-left transition-colors"
+                      onClick={action.onClick}
+                      className="welcome-card p-6 rounded-xl text-left group"
                     >
                       <div
-                        className="w-10 h-10 rounded-lg flex items-center justify-center"
-                        style={{ backgroundColor: conn.color ? `${conn.color}20` : '#e5e7eb' }}
+                        className="w-12 h-12 rounded-lg flex items-center justify-center mb-4 text-white"
+                        style={{ background: action.color }}
                       >
-                        <Database
-                          className="h-5 w-5"
-                          style={{ color: conn.color || '#6b7280' }}
-                        />
+                        <action.icon className="h-6 w-6" />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium truncate">{conn.name}</span>
-                          {conn.is_favorite && (
-                            <Star className="h-3 w-3 text-yellow-500 fill-current" />
-                          )}
+                      <h3 className="font-semibold text-dracula-text mb-2 group-hover:text-dracula-brand transition-colors">
+                        {action.label}
+                      </h3>
+                      <p className="text-sm text-dracula-text-muted">{action.description}</p>
+                    </button>
+                  </AnimatedContainer>
+                ))}
+              </div>
+            </div>
+
+            {/* Recent Connections */}
+            {recentConnections.length > 0 && (
+              <AnimatedContainer delay={400}>
+                <div>
+                  <div className="section-title">
+                    <div className="section-title-icon">
+                      <Clock className="h-4 w-4" />
+                    </div>
+                    Recent Connections
+                  </div>
+                  <div className="space-y-3">
+                    {recentConnections.map((conn, idx) => (
+                      <button
+                        key={conn.id}
+                        onClick={() => onSelectConnection(conn)}
+                        className="connection-item w-full text-left"
+                        style={{ animationDelay: `${idx * 50}ms` }}
+                      >
+                        <div
+                          className="connection-icon"
+                          style={{
+                            backgroundColor: conn.color ? `${conn.color}15` : 'var(--color-bg-hover)',
+                          }}
+                        >
+                          <Database
+                            className="h-5 w-5"
+                            style={{ color: conn.color || 'var(--color-brand)' }}
+                          />
                         </div>
-                        <p className="text-sm text-gray-500">
-                          {conn.host}:{conn.port}
-                        </p>
-                      </div>
-                      <span className="text-xs text-gray-400">
-                        {new Date(conn.last_connected_at!).toLocaleDateString()}
-                      </span>
-                    </button>
-                  ))}
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-dracula-text truncate">{conn.name}</div>
+                          <div className="text-sm text-dracula-text-muted">
+                            {conn.host}:{conn.port}
+                          </div>
+                        </div>
+                        <div className="text-xs text-dracula-text-muted whitespace-nowrap">
+                          {new Date(conn.last_connected_at!).toLocaleDateString()}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </AnimatedContainer>
+            )}
+          </div>
 
-          {/* Favorite Connections */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Star className="h-5 w-5 text-yellow-500" />
-                Favorites
-              </CardTitle>
-              <CardDescription>
-                Your favorite database connections
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {favoriteConnections.length === 0 ? (
-                <div className="text-center py-8 text-gray-400">
-                  <Star className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                  <p>No favorite connections</p>
-                  <p className="text-sm mt-1">
-                    Click the star icon on a connection to add it here
-                  </p>
+          {/* Right Column: Visual + Recent Queries */}
+          <div className="lg:col-span-1">
+            {/* Decorative Visual Section */}
+            <AnimatedContainer delay={150}>
+              <div className="mb-12 sticky top-8">
+                <div className="relative h-80 rounded-2xl overflow-hidden bg-gradient-to-br from-dracula-brand/10 via-dracula-info/5 to-transparent border border-dracula-border/50 backdrop-blur-sm">
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-gradient-to-br from-dracula-brand/20 to-dracula-info/20 rounded-full blur-3xl" />
+                      <Database className="h-24 w-24 text-dracula-brand/30 relative" />
+                    </div>
+                  </div>
                 </div>
-              ) : (
-                <div className="space-y-2">
-                  {favoriteConnections.map((conn) => (
-                    <button
-                      key={conn.id}
-                      onClick={() => onSelectConnection(conn)}
-                      className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 text-left transition-colors"
-                    >
-                      <div
-                        className="w-10 h-10 rounded-lg flex items-center justify-center"
-                        style={{ backgroundColor: conn.color ? `${conn.color}20` : '#e5e7eb' }}
+              </div>
+            </AnimatedContainer>
+
+            {/* Recent Queries Sidebar */}
+            {recentQueries.length > 0 && (
+              <AnimatedContainer delay={300}>
+                <div>
+                  <div className="section-title text-lg">
+                    <Zap className="h-5 w-5 text-dracula-warning" />
+                    Recent
+                  </div>
+                  <div className="space-y-3">
+                    {recentQueries.slice(0, 4).map((query, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => onSelectQuery?.(query.sql)}
+                        className="query-item w-full text-left group"
                       >
-                        <Database
-                          className="h-5 w-5"
-                          style={{ color: conn.color || '#6b7280' }}
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <span className="font-medium truncate">{conn.name}</span>
-                        <p className="text-sm text-gray-500">
-                          {conn.host}:{conn.port}
-                        </p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Recent Queries */}
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Zap className="h-5 w-5 text-purple-500" />
-                Recent Queries
-              </CardTitle>
-              <CardDescription>
-                Your recently executed SQL queries
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {recentQueries.length === 0 ? (
-                <div className="text-center py-8 text-gray-400">
-                  <Zap className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                  <p>No recent queries</p>
-                  <p className="text-sm mt-1">
-                    Execute queries to see them here
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {recentQueries.slice(0, 5).map((query, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => onSelectQuery?.(query.sql)}
-                      className="w-full p-3 rounded-lg hover:bg-gray-50 text-left transition-colors"
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <code className="text-sm font-mono text-gray-700 truncate max-w-md">
-                          {query.sql.substring(0, 80)}
-                          {query.sql.length > 80 && '...'}
+                        <code className="text-xs font-mono text-dracula-brand group-hover:text-dracula-info transition-colors line-clamp-2">
+                          {query.sql.substring(0, 60)}...
                         </code>
-                        <span className="text-xs text-gray-400">
-                          {new Date(query.executed_at).toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-4 text-xs text-gray-500">
-                        <span>{query.row_count} rows</span>
-                        <span>{query.execution_time_ms}ms</span>
-                        {query.success ? (
-                          <span className="text-green-600">Success</span>
-                        ) : (
-                          <span className="text-red-600">Failed</span>
-                        )}
-                      </div>
-                    </button>
-                  ))}
+                        <div className="flex items-center gap-2 mt-2 text-xs text-dracula-text-muted">
+                          <span className="w-1.5 h-1.5 rounded-full" style={{ background: query.success ? 'var(--color-success)' : 'var(--color-error)' }} />
+                          {query.execution_time_ms}ms
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Tips */}
-        <div className="mt-8 p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl">
-          <h3 className="font-semibold mb-2">💡 Pro Tips</h3>
-          <ul className="space-y-2 text-sm text-gray-600">
-            <li>• Press <kbd className="px-1.5 py-0.5 bg-white rounded border">Cmd</kbd> + <kbd className="px-1.5 py-0.5 bg-white rounded border">K</kbd> to open global search</li>
-            <li>• Use <kbd className="px-1.5 py-0.5 bg-white rounded border">Cmd</kbd> + <kbd className="px-1.5 py-0.5 bg-white rounded border">Enter</kbd> to execute queries</li>
-            <li>• Favorite connections for quick access</li>
-            <li>• Use query history to reuse previous queries</li>
-          </ul>
+              </AnimatedContainer>
+            )}
+          </div>
         </div>
       </div>
     </div>

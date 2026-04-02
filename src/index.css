@@ -3,49 +3,167 @@
 @tailwind utilities;
 
 @layer base {
+  /* ═══════════════════════════════ Dracula Theme Tokens ═══════════════════════════════ */
+  
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* ── Light Mode (Dracula Light) ── */
+    --color-bg: #f8f8f2;
+    --color-bg-surface: #ffffff;
+    --color-bg-hover: #f5f5f0;
+    --color-bg-active: #eeeeec;
+    
+    --color-text: #282a36;
+    --color-text-secondary: #44475a;
+    --color-text-muted: #6272a4;
+    
+    --color-border: #e0dfd5;
+    --color-border-light: #f0efe9;
+    
+    /* ── Brand Colors ── */
+    --color-brand: #bd93f9;          /* Purple - Primary */
+    --color-brand-hover: #a78bfa;
+    --color-brand-active: #9370db;
+    
+    /* ── Status Colors ── */
+    --color-success: #50fa7b;        /* Green */
+    --color-warning: #f1fa8c;        /* Yellow */
+    --color-error: #ff5555;          /* Red */
+    --color-info: #8be9fd;           /* Cyan */
+    
+    /* ── Error/Destructive ── */
+    --color-destructive: #ff5555;
+    --color-destructive-hover: #ff4444;
+    
+    /* ── Semantic ── */
+    --color-highlight: #f39c12;
+    --color-muted-bg: #f5f5f0;
+    --color-overlay: rgba(40, 42, 54, 0.8);
+    
+    /* ── Spacing Scale (4px base) ── */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-6: 24px;
+    --space-8: 32px;
+    --space-12: 48px;
+    --space-16: 64px;
+    
+    /* ── Typography ── */
+    --font-sans: 'Inter Variable', system-ui, -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Monaco', monospace;
+    
+    /* ── Radius ── */
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+    --radius-full: 9999px;
+    
+    /* ── Shadow ── */
+    --shadow-sm: 0 1px 2px rgba(40, 42, 54, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(40, 42, 54, 0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(40, 42, 54, 0.15);
+    --shadow-xl: 0 20px 25px -5px rgba(40, 42, 54, 0.2);
+    
+    /* ── Z-index ── */
+    --z-base: 0;
+    --z-above: 10;
+    --z-sticky: 100;
+    --z-overlay: 200;
+    --z-modal: 300;
+    --z-toast: 400;
+  }
+
+  /* ═════════════════════════════════════ Dark Mode ═════════════════════════════════════ */
+  .dark, [data-theme="dark"] {
+    /* ── Dark Mode (Dracula Dark) ── */
+    --color-bg: #282a36;
+    --color-bg-surface: #21222c;
+    --color-bg-hover: #3a3d47;
+    --color-bg-active: #44475a;
+    
+    --color-text: #f8f8f2;
+    --color-text-secondary: #e0dfd5;
+    --color-text-muted: #6272a4;
+    
+    --color-border: #44475a;
+    --color-border-light: #3a3d47;
+    
+    /* ── Brand Colors ── */
+    --color-brand: #bd93f9;          /* Purple - Primary */
+    --color-brand-hover: #d4b8ff;
+    --color-brand-active: #a78bfa;
+    
+    /* ── Status Colors ── */
+    --color-success: #50fa7b;        /* Green */
+    --color-warning: #f1fa8c;        /* Yellow */
+    --color-error: #ff5555;          /* Red */
+    --color-info: #8be9fd;           /* Cyan */
+    
+    /* ── Error/Destructive ── */
+    --color-destructive: #ff5555;
+    --color-destructive-hover: #ff7777;
+    
+    /* ── Semantic ── */
+    --color-highlight: #ffb86c;
+    --color-muted-bg: #3a3d47;
+    --color-overlay: rgba(0, 0, 0, 0.9);
+  }
+
+  /* ═════════════════════════════════ Tailwind Overrides ═════════════════════════════════ */
+  :root {
+    --background: 0 0% 97.3%;
+    --foreground: 240 10% 16.5%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 240 10% 16.5%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
+    --popover-foreground: 240 10% 16.5%;
+    --primary: 268 71% 75%;
+    --primary-foreground: 240 10% 16.5%;
+    --secondary: 220 13% 91%;
+    --secondary-foreground: 240 10% 16.5%;
+    --muted: 220 13% 85%;
+    --muted-foreground: 217 33% 43%;
+    --accent: 268 71% 75%;
+    --accent-foreground: 240 10% 16.5%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 60 9% 98%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 268 71% 75%;
     --radius: 0.5rem;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    --background: 240 10% 16.5%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 20%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 20%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 268 71% 75%;
+    --primary-foreground: 240 10% 16.5%;
+    --secondary: 240 10% 27%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 10% 27%;
+    --muted-foreground: 217 33% 60%;
+    --accent: 268 71% 75%;
+    --accent-foreground: 240 10% 16.5%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 60 9% 98%;
+    --border: 240 10% 27%;
+    --input: 240 10% 27%;
+    --ring: 268 71% 75%;
+  }
+
+  /* ═════════════════════════════════════════════════════════════════════════════════════ */
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
   }
 }
 
