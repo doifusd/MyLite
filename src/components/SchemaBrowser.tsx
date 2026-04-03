@@ -6,10 +6,12 @@ import {
   ChevronRight,
   Columns,
   Database,
+  FileText,
   Key,
   Loader2,
   RefreshCw,
-  Table
+  Table,
+  X
 } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { CreateTableDialog } from './CreateTableDialog';
@@ -34,6 +36,7 @@ interface SchemaBrowserProps {
   connectionId: string;
   onTableSelect?: (database: string, table: string, tab?: string) => void;
   onCreateTableSQL?: (sql: string) => void;
+  onNewQuery?: (database?: string) => void;
   className?: string;
 }
 
@@ -41,6 +44,7 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
   connectionId,
   onTableSelect,
   onCreateTableSQL,
+  onNewQuery,
   className,
 }) => {
   const [treeData, setTreeData] = useState<SchemaTreeItem[]>([]);
@@ -75,6 +79,29 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
     fetchDatabases();
   }, [connectionId]);
 
+  useEffect(() => {
+    const handleQueryUpdated = () => {
+      // 刷新 Queries 文件夹
+      setTreeData((prev) => {
+        const markAsUnloaded = (nodes: SchemaTreeItem[]): SchemaTreeItem[] => {
+          return nodes.map((node) => {
+            if (node.type === 'folder' && node.metadata?.isQueryFolder) {
+              return { ...node, isLoaded: false, children: undefined };
+            }
+            if (node.children) {
+              return { ...node, children: markAsUnloaded(node.children) };
+            }
+            return node;
+          });
+        };
+        return markAsUnloaded(prev);
+      });
+    };
+
+    window.addEventListener('queryUpdated', handleQueryUpdated);
+    return () => window.removeEventListener('queryUpdated', handleQueryUpdated);
+  }, []);
+
   const updateNode = (
     nodes: SchemaTreeItem[],
     nodeId: string,
@@ -106,12 +133,48 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
           connectionId,
           database: node.name,
         });
+
+        // 添加虚拟的 Queries 文件夹
+        children.push({
+          id: `queries_${node.id}`,
+          name: 'Queries',
+          type: 'folder',
+          parent_id: node.id,
+          isLoaded: false,
+          isLoading: false,
+          metadata: {
+            isQueryFolder: true,
+            database: node.name,
+          },
+        });
       } else if (node.type === 'table') {
         children = await invoke<SchemaTreeItem[]>('get_table_schema', {
           connectionId,
           database: node.id.replace('table_', '').split('.')[0],
           table: node.name,
         });
+      } else if (node.type === 'folder' && node.metadata?.isQueryFolder) {
+        // 加载保存的查询
+        const database = node.metadata.database;
+        const key = `saved_queries_${connectionId}_${database}`;
+        const savedQueries = JSON.parse(localStorage.getItem(key) || '[]');
+
+        console.log('Loading queries for:', { database, key, count: savedQueries.length });
+
+        children = savedQueries.map((query: any) => ({
+          id: `query_${query.id}`,
+          name: query.name,
+          type: 'folder', // 使用 folder 类型表示查询项目
+          parent_id: node.id,
+          isLoaded: true,
+          isLoading: false,
+          metadata: {
+            isQueryItem: true,
+            queryId: query.id,
+            sql: query.sql,
+            database,
+          },
+        }));
       }
 
       setTreeData((prev) =>
@@ -131,7 +194,8 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
     const nodeId = node.id;
     const isExpanding = !expandedNodes.has(nodeId);
 
-    if (isExpanding && !node.isLoaded && node.type !== 'folder') {
+    // 加载未加载的节点（包括 Queries 文件夹）
+    if (isExpanding && !node.isLoaded) {
       await loadNodeChildren(node);
     }
 
@@ -189,8 +253,33 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
     return () => window.removeEventListener('click', handleClick);
   }, []);
 
+  const deleteQuery = (queryId: string, database: string) => {
+    const key = `saved_queries_${connectionId}_${database}`;
+    const savedQueries = JSON.parse(localStorage.getItem(key) || '[]');
+    const filtered = savedQueries.filter((q: any) => String(q.id) !== String(queryId));
+    localStorage.setItem(key, JSON.stringify(filtered));
+
+    console.log('Query deleted:', { queryId, database, key, remaining: filtered.length });
+
+    // 刷新树
+    setTreeData((prev) => {
+      const markAsUnloaded = (nodes: SchemaTreeItem[]): SchemaTreeItem[] => {
+        return nodes.map((node) => {
+          if (node.type === 'folder' && node.metadata?.isQueryFolder) {
+            return { ...node, isLoaded: false, children: undefined };
+          }
+          if (node.children) {
+            return { ...node, children: markAsUnloaded(node.children) };
+          }
+          return node;
+        });
+      };
+      return markAsUnloaded(prev);
+    });
+  };
+
   const handleNodeClick = (node: SchemaTreeItem) => {
-    if (node.type === 'database' || node.type === 'table' || node.type === 'folder') {
+    if (node.type === 'database' || node.type === 'table' || (node.type === 'folder' && !node.metadata?.isQueryItem)) {
       toggleNode(node);
     }
 
@@ -200,6 +289,17 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
       if (parts.length === 2) {
         onTableSelect(parts[0], parts[1]);
       }
+    }
+
+    // 处理保存的查询项目点击
+    if (node.metadata?.isQueryItem && onTableSelect) {
+      const { sql, database } = node.metadata;
+      // 使用特殊的表名来传递 SQL，编辑器会识别并加载
+      window.dispatchEvent(
+        new CustomEvent('loadSavedQuery', {
+          detail: { sql, database },
+        })
+      );
     }
   };
 
@@ -324,7 +424,13 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
     }
   };
 
-  const getNodeIcon = (type: string) => {
+  const getNodeIcon = (type: string, metadata?: Record<string, any>) => {
+    if (metadata?.isQueryFolder) {
+      return <FileText className="w-4 h-4 text-indigo-500" />;
+    }
+    if (metadata?.isQueryItem) {
+      return <FileText className="w-4 h-4 text-indigo-400" />;
+    }
     switch (type) {
       case 'database':
         return <Database className="w-4 h-4 text-blue-500" />;
@@ -343,35 +449,58 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
 
   const renderTreeNode = (node: SchemaTreeItem, depth: number = 0) => {
     const isExpanded = expandedNodes.has(node.id);
-    const hasChildren = (node.children && node.children.length > 0) || ((node.type === 'database' || node.type === 'table') && !node.isLoaded);
+    const hasChildren = (node.children && node.children.length > 0) || ((node.type === 'database' || node.type === 'table' || (node.type === 'folder' && node.metadata?.isQueryFolder)) && !node.isLoaded);
     const paddingLeft = depth * 16 + 8;
+    const isQueryItem = node.metadata?.isQueryItem;
 
     return (
       <div key={node.id}>
         <div
           className={cn(
-            'flex items-center gap-1 py-1 px-2 rounded-sm cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800',
+            'flex items-center justify-between gap-1 py-1 px-2 rounded-sm group',
+            !isQueryItem && 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800',
+            isQueryItem && 'cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-900/20',
             node.type === 'table' && 'font-medium'
           )}
           style={{ paddingLeft }}
           onClick={() => handleNodeClick(node)}
           onContextMenu={(e) => handleContextMenu(e, node)}
         >
-          {node.isLoading ? (
-            <Loader2 className="w-3 h-3 text-gray-400 animate-spin" />
-          ) : hasChildren ? (
-            isExpanded ? (
-              <ChevronDown className="w-3 h-3 text-gray-500" />
+          <div className="flex items-center flex-1 min-w-0 gap-1">
+            {node.isLoading ? (
+              <Loader2 className="flex-shrink-0 w-3 h-3 text-gray-400 animate-spin" />
+            ) : hasChildren ? (
+              isExpanded ? (
+                <ChevronDown className="flex-shrink-0 w-3 h-3 text-gray-500" />
+              ) : (
+                <ChevronRight className="flex-shrink-0 w-3 h-3 text-gray-500" />
+              )
             ) : (
-              <ChevronRight className="w-3 h-3 text-gray-500" />
-            )
-          ) : (
-            <span className="w-3" />
+              <span className="flex-shrink-0 w-3" />
+            )}
+
+            {getNodeIcon(node.type, node.metadata)}
+
+            <span className={cn(
+              'text-sm truncate',
+              isQueryItem && 'text-indigo-600 dark:text-indigo-400'
+            )}>
+              {node.name}
+            </span>
+          </div>
+
+          {isQueryItem && node.metadata && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                deleteQuery(node.metadata!.queryId, node.metadata!.database);
+              }}
+              className="flex-shrink-0 p-1 ml-1 text-red-500 transition-opacity rounded opacity-0 group-hover:opacity-100 hover:bg-red-100 dark:hover:bg-red-900/20"
+              title="Delete query"
+            >
+              <X className="w-3 h-3" />
+            </button>
           )}
-
-          {getNodeIcon(node.type)}
-
-          <span className="ml-1 text-sm truncate">{node.name}</span>
         </div>
 
         {isExpanded && node.children && (
@@ -434,6 +563,29 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
           className="fixed z-50 w-48 py-1 text-sm bg-white border rounded shadow-lg dark:bg-gray-900"
           style={{ top: contextMenu.y, left: contextMenu.x }}
         >
+          <button
+            className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-800"
+            onClick={() => {
+              let database: string | undefined;
+              if (contextMenu.node.type === 'database') {
+                database = contextMenu.node.name;
+              } else if (contextMenu.node.type === 'table') {
+                const parts = contextMenu.node.id.replace('table_', '').split('.');
+                if (parts.length === 2) {
+                  database = parts[0];
+                }
+              } else if (contextMenu.node.type === 'folder' && contextMenu.node.metadata?.database) {
+                // 从 Queries 文件夹或查询项目中提取 database
+                database = contextMenu.node.metadata.database;
+              }
+              if (onNewQuery) {
+                onNewQuery(database);
+              }
+              setContextMenu(null);
+            }}
+          >
+            New Query
+          </button>
           {contextMenu.node.type === 'table' && (
             <button
               className="w-full px-4 py-2 font-medium text-left hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -490,27 +642,6 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
               Show Structure
             </button>
           )}
-          <button
-            className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-800"
-            onClick={() => {
-              const parts = contextMenu.node.id.replace('table_', '').split('.');
-              // Check if it's a table or database
-              if (contextMenu.node.type === 'table' && parts.length === 2) {
-                // Generate CREATE TABLE template from existing table
-                const sql = generateCreateTableTemplate(parts[0], parts[1]);
-                if (onCreateTableSQL) {
-                  onCreateTableSQL(sql);
-                }
-              } else if (contextMenu.node.type === 'database') {
-                // Show create table dialog for new table
-                setSelectedDbForCreateTable(contextMenu.node.name);
-                setCreateTableOpen(true);
-              }
-              setContextMenu(null);
-            }}
-          >
-            Create New Table
-          </button>
           {contextMenu.node.type === 'table' && (
             <button
               className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-800"

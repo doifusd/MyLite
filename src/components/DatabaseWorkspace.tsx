@@ -23,11 +23,19 @@ export const DatabaseWorkspace: React.FC<DatabaseWorkspaceProps> = ({
 }) => {
   const [selectedDatabase, setSelectedDatabase] = useState<string | undefined>();
   const [selectedTable, setSelectedTable] = useState<string | undefined>();
-  const [activeTab, setActiveTab] = useState('query');
-  // Persist SQL editor content across tab switches
-  const [sqlContent, setSqlContent] = useState<string>('');
+  const [activeTab, setActiveTab] = useState('query-0');
 
+  // 支持多个查询窗口
+  interface QueryTab {
+    id: string;
+    database?: string;
+    content: string;
+  }
 
+  const [queryTabs, setQueryTabs] = useState<QueryTab[]>([
+    { id: 'query-0', database: undefined, content: '' }
+  ]);
+  const [queryCounter, setQueryCounter] = useState(1);
 
   const handleTableSelect = (database: string, table: string, tab?: string) => {
     setSelectedDatabase(database);
@@ -37,8 +45,30 @@ export const DatabaseWorkspace: React.FC<DatabaseWorkspaceProps> = ({
   };
 
   const handleCreateTableSQL = (sql: string) => {
-    setSqlContent(sql);
-    setActiveTab('query');
+    // 更新当前活跃的query标签
+    setQueryTabs(prev => prev.map(q => q.id === activeTab ? { ...q, content: sql } : q));
+    if (!activeTab.startsWith('query-')) {
+      setActiveTab('query-0');
+    }
+  };
+
+  const handleNewQuery = (database?: string) => {
+    const newId = `query-${queryCounter}`;
+    setQueryTabs(prev => [...prev, { id: newId, database, content: '' }]);
+    setQueryCounter(queryCounter + 1);
+    setActiveTab(newId);
+  };
+
+  const handleCloseQueryTab = (id: string) => {
+    if (queryTabs.length === 1) return; // 至少保留一个查询窗口
+    setQueryTabs(prev => prev.filter(q => q.id !== id));
+    if (activeTab === id) {
+      setActiveTab(queryTabs[0].id);
+    }
+  };
+
+  const handleSqlChange = (content: string) => {
+    setQueryTabs(prev => prev.map(q => q.id === activeTab ? { ...q, content } : q));
   };
 
   return (
@@ -83,6 +113,7 @@ export const DatabaseWorkspace: React.FC<DatabaseWorkspaceProps> = ({
               connectionId={connectionId}
               onTableSelect={handleTableSelect}
               onCreateTableSQL={handleCreateTableSQL}
+              onNewQuery={handleNewQuery}
               className="h-full"
             />
           </div>
@@ -95,13 +126,28 @@ export const DatabaseWorkspace: React.FC<DatabaseWorkspaceProps> = ({
           <div className="flex flex-col h-full">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1">
               <div className="px-4 bg-white border-b">
-                <TabsList className="h-12 gap-6 p-0 bg-transparent">
-                  <TabsTrigger
-                    value="query"
-                    className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none h-full gap-2"
-                  >
-                    <Code className="w-4 h-4" /> Query
-                  </TabsTrigger>
+                <TabsList className="h-12 gap-2 p-0 bg-transparent">
+                  {/* Query Tabs */}
+                  {queryTabs.map((tab) => (
+                    <div key={tab.id} className="flex items-center">
+                      <TabsTrigger
+                        value={tab.id}
+                        className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none h-full gap-2"
+                      >
+                        <Code className="w-4 h-4" /> Query {queryTabs.indexOf(tab) + 1}
+                      </TabsTrigger>
+                      {queryTabs.length > 1 && (
+                        <button
+                          onClick={() => handleCloseQueryTab(tab.id)}
+                          className="ml-1 p-1 hover:bg-gray-100 rounded"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+
+                  {/* Data Tab */}
                   <TabsTrigger
                     value="data"
                     disabled={!selectedTable}
@@ -109,20 +155,28 @@ export const DatabaseWorkspace: React.FC<DatabaseWorkspaceProps> = ({
                   >
                     <Table className="w-4 h-4" /> Data
                   </TabsTrigger>
-
                 </TabsList>
               </div>
 
               <div className="flex-1 overflow-hidden">
-                <TabsContent value="query" className="h-full m-0 border-none">
-                  <SQLEditor
-                    connectionId={connectionId}
-                    database={selectedDatabase}
-                    initialSql={sqlContent}
-                    onSqlChange={setSqlContent}
-                    className="h-full"
-                  />
-                </TabsContent>
+                {/* Query Tabs Content */}
+                {queryTabs.map((tab) => (
+                  <TabsContent
+                    key={tab.id}
+                    value={tab.id}
+                    className="h-full m-0 border-none"
+                  >
+                    <SQLEditor
+                      connectionId={connectionId}
+                      database={tab.database || selectedDatabase}
+                      initialSql={tab.content}
+                      onSqlChange={handleSqlChange}
+                      className="h-full"
+                    />
+                  </TabsContent>
+                ))}
+
+                {/* Data Tab */}
                 <TabsContent value="data" className="h-full m-0 border-none">
                   {selectedDatabase && selectedTable ? (
                     <TableDataView

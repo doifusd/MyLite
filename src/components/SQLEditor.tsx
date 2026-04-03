@@ -1,17 +1,17 @@
 import { QueryResult } from '@/components/QueryResult';
+import { SaveQueryDialog } from '@/components/SaveQueryDialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
+import { useConnectionStore } from '@/store/connectionStore';
 import Editor, { OnMount } from '@monaco-editor/react';
 import { invoke } from '@tauri-apps/api/tauri';
 import {
   AlertCircle,
   CheckCircle2,
   Clock,
-  FolderOpen,
   Loader2,
   Play,
-  Save,
   Table2
 } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -75,32 +75,102 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
   const [activeResultTab, setActiveResultTab] = useState<string>('');
   const [history, setHistory] = useState<Array<{ sql: string; timestamp: Date }>>([]);
   const [tablesInfo, setTablesInfo] = useState<DatabaseTablesInfo | null>(null);
-  const [loadingTables, setLoadingTables] = useState(false);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [selectedConnectionId, setSelectedConnectionId] = useState<string>(connectionId);
+  const [selectedDatabase, setSelectedDatabase] = useState<string | undefined>(database);
+  const [availableDatabases, setAvailableDatabases] = useState<string[]>([]);
   const editorRef = useRef<any>(null);
   const resultIdCounter = useRef(0);
   const monacoRef = useRef<any>(null);
 
+  // Get all connections from store
+  const connections = useConnectionStore((state) => state.connections);
+  const loadConnections = useConnectionStore((state) => state.loadConnections);
+
+  // Load connections on mount
+  useEffect(() => {
+    loadConnections();
+  }, [loadConnections]);
+
+  // Fetch available databases when connection changes
+  useEffect(() => {
+    if (!selectedConnectionId) return;
+
+    const fetchDatabases = async () => {
+      try {
+        const dbs = await invoke<string[]>('get_databases', {
+          connectionId: selectedConnectionId,
+        });
+        setAvailableDatabases(dbs || []);
+
+        // Reset and set first database as default when connection changes
+        // or if current database is not in the new list
+        if (!selectedDatabase || !dbs?.includes(selectedDatabase)) {
+          if (dbs && dbs.length > 0) {
+            setSelectedDatabase(dbs[0]);
+          } else {
+            setSelectedDatabase(undefined);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch databases:', error);
+        setAvailableDatabases([]);
+        setSelectedDatabase(undefined);
+      }
+    };
+
+    fetchDatabases();
+  }, [selectedConnectionId]);
+
+  // Sync selectedConnectionId with connectionId prop and immediately fetch databases
+  useEffect(() => {
+    if (connectionId) {
+      console.log('[SQLEditor] connectionId prop changed:', connectionId);
+      setSelectedConnectionId(connectionId);
+      // Fetch databases for this connection
+      const fetchDbs = async () => {
+        try {
+          const dbs = await invoke<string[]>('get_databases', {
+            connectionId: connectionId,
+          });
+          console.log('[SQLEditor] Fetched databases for connection:', { connectionId, dbs });
+          setAvailableDatabases(dbs || []);
+        } catch (err) {
+          console.error('[SQLEditor] Failed to fetch databases:', err);
+        }
+      };
+      fetchDbs();
+    }
+  }, [connectionId]);
+
+  // Sync selectedDatabase with database prop
+  useEffect(() => {
+    if (database) {
+      setSelectedDatabase(database);
+    }
+  }, [database]);
+
   // Fetch tables and columns for autocomplete
   useEffect(() => {
-    if (!connectionId || !database) return;
+    const dbToUse = selectedDatabase || database;
+    const connToUse = selectedConnectionId || connectionId;
+
+    if (!connToUse || !dbToUse) return;
 
     const fetchTablesAndColumns = async () => {
-      setLoadingTables(true);
       try {
         const info = await invoke<DatabaseTablesInfo>('get_database_tables_and_columns', {
-          connectionId,
-          database,
+          connectionId: connToUse,
+          database: dbToUse,
         });
         setTablesInfo(info);
       } catch (error) {
         console.error('Failed to fetch tables and columns:', error);
-      } finally {
-        setLoadingTables(false);
       }
     };
 
     fetchTablesAndColumns();
-  }, [connectionId, database]);
+  }, [connectionId, database, selectedConnectionId, selectedDatabase]);
 
   // Sync with initialSql prop when it changes (e.g., when switching tabs back)
   useEffect(() => {
@@ -111,6 +181,21 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
       }
     }
   }, [initialSql]);
+
+  // 监听加载保存的查询事件
+  useEffect(() => {
+    const handleLoadSavedQuery = (event: any) => {
+      const { sql: savedSql } = event.detail;
+      setSql(savedSql);
+      if (editorRef.current) {
+        editorRef.current.setValue(savedSql);
+      }
+      onSqlChange?.(savedSql);
+    };
+
+    window.addEventListener('loadSavedQuery', handleLoadSavedQuery);
+    return () => window.removeEventListener('loadSavedQuery', handleLoadSavedQuery);
+  }, [onSqlChange]);
 
   // 生成自动补全建议
   const generateCompletionSuggestions = (monaco: any): any[] => {
@@ -255,17 +340,22 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
 
     // Add keyboard shortcut for execute (Ctrl+Enter / Cmd+Enter)
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
+      console.log('[SQLEditor] Execute shortcut triggered');
       executeQuery();
     });
 
     // Add keyboard shortcut for format (Shift+Alt+F)
     editor.addCommand(monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.KeyF, () => {
+      console.log('[SQLEditor] Format shortcut triggered');
       formatSql();
     });
 
     // Add keyboard shortcut for save (Ctrl+S / Cmd+S)
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-      saveSql();
+      console.log('[SQLEditor] [SAVE SHORTCUT] Cmd+S/Ctrl+S triggered!');
+      console.log('[SQLEditor] [SAVE SHORTCUT] About to set saveDialogOpen=true');
+      setSaveDialogOpen(true);
+      console.log('[SQLEditor] [SAVE SHORTCUT] setSaveDialogOpen called');
     });
   };
 
@@ -337,7 +427,27 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
       }
     }
 
-    if (!currentSql.trim() || !connectionId) return;
+    console.log('[SQLEditor] executeQuery:', {
+      hasSQL: currentSql.trim().length > 0,
+      selectedConnectionId,
+      selectedDatabase,
+      availableDatabases
+    });
+
+    if (!currentSql.trim()) {
+      console.warn('[SQLEditor] SQL is empty');
+      return;
+    }
+
+    if (!selectedConnectionId) {
+      console.warn('[SQLEditor] No connection selected');
+      return;
+    }
+
+    if (!selectedDatabase) {
+      console.warn('[SQLEditor] No database selected');
+      return;
+    }
 
     // 解析多语句
     const statements = parseMultipleStatements(currentSql);
@@ -369,9 +479,10 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
       const startTime = Date.now();
 
       try {
+        console.log('[SQLEditor] Executing statement:', { index: i, database: selectedDatabase, connectionId: selectedConnectionId });
         const data = await invoke<QueryResultData>('execute_query', {
-          connectionId,
-          database: database || null,
+          connectionId: selectedConnectionId,
+          database: selectedDatabase,
           sql: stmt,
         });
 
@@ -390,6 +501,7 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
         }
       } catch (err) {
         const errorMsg = typeof err === 'string' ? err : err instanceof Error ? err.message : 'Query execution failed';
+        console.error('[SQLEditor] Execute error:', errorMsg);
         setResults(prev => prev.map(r =>
           r.id === `result-${i}`
             ? { ...r, error: errorMsg, executionTime: Date.now() - startTime, isExecuting: false }
@@ -400,7 +512,7 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
     }
 
     setIsExecuting(false);
-  }, [sql, connectionId, database]);
+  }, [sql, selectedConnectionId, selectedDatabase]);
 
   const formatSql = () => {
     const currentSql = editorRef.current?.getValue() || sql;
@@ -425,29 +537,121 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
     }
   };
 
-  const saveSql = async () => {
-    const currentSql = editorRef.current?.getValue() || sql;
-    if (!currentSql.trim()) return;
+  const handleSaveQuery = useCallback(async (queryName: string) => {
+    console.log('[SQLEditor] handleSaveQuery called with:', { queryName, database, connectionId });
 
     try {
-      // 生成默认文件名
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
-      const time = new Date().toISOString().split('T')[1].split('.')[0].replace(/:/g, '');
-      const filename = `query_${timestamp}_${time}.sql`;
+      // Validate inputs
+      const trimmedName = queryName.trim();
+      if (!trimmedName) {
+        throw new Error('Query name cannot be empty');
+      }
 
-      const filePath = await invoke<string>('save_query_to_file', {
-        sql: currentSql,
-        filename,
-      });
+      const currentSql = editorRef.current?.getValue() || sql;
+      console.log('[SQLEditor] Current SQL length:', currentSql.length);
+      console.log('[SQLEditor] Current SQL preview:', currentSql.substring(0, 50) + '...');
 
-      // 显示成功消息
-      console.log('Query saved to:', filePath);
-      // 可以添加 toast 消息
+      if (!currentSql || !currentSql.trim()) {
+        throw new Error('Query SQL is empty');
+      }
+
+      if (!connectionId) {
+        throw new Error('No connection ID available. Please establish a database connection first.');
+      }
+
+      // Try to infer database from SQL if not explicitly provided
+      let targetDatabase = database;
+      if (!targetDatabase && currentSql) {
+        // Try to extract database name from queries like "FROM database.table" or "INSERT INTO database.table"
+        const dbMatch = currentSql.match(/(?:FROM|INTO|UPDATE|DELETE\s+FROM)\s+`?(\w+)`?\s*\./i);
+        if (dbMatch && dbMatch[1]) {
+          targetDatabase = dbMatch[1];
+          console.log('[SQLEditor] Inferred database from SQL:', targetDatabase);
+        }
+      }
+
+      if (!targetDatabase) {
+        throw new Error('No database selected. Please click on a table in Schema Browser to select a database, or use "database.table" syntax in your query.');
+      }
+
+      console.log('[SQLEditor] All validations passed, saving query...');
+
+      // 保存查询到本地存储
+      const key = `saved_queries_${connectionId}_${targetDatabase}`;
+      console.log('[SQLEditor] Storage key:', key);
+
+      try {
+        console.log('[SQLEditor] Reading from localStorage...');
+        const storageValue = localStorage.getItem(key);
+        console.log('[SQLEditor] Storage value retrieved, length:', storageValue?.length || 0);
+
+        const savedQueries = JSON.parse(storageValue || '[]');
+        if (!Array.isArray(savedQueries)) {
+          throw new Error('Corrupted saved queries data');
+        }
+        console.log('[SQLEditor] Parsed existing queries:', savedQueries.length);
+
+        // Check for duplicate names
+        if (savedQueries.some((q: any) => q.name === trimmedName)) {
+          throw new Error(`A query named "${trimmedName}" already exists. Please use a different name.`);
+        }
+
+        const newQuery = {
+          id: `${Date.now()}`,
+          name: trimmedName,
+          sql: currentSql,
+          createdAt: new Date().toISOString(),
+        };
+
+        console.log('[SQLEditor] New query object created:', { id: newQuery.id, name: newQuery.name, sqlLength: newQuery.sql.length });
+
+        savedQueries.push(newQuery);
+        console.log('[SQLEditor] Added to array, array length now:', savedQueries.length);
+
+        const jsonString = JSON.stringify(savedQueries);
+        console.log('[SQLEditor] JSON stringified, size:', jsonString.length, 'bytes');
+
+        localStorage.setItem(key, jsonString);
+        console.log('[SQLEditor] localStorage.setItem completed');
+
+        const verifyValue = localStorage.getItem(key);
+        console.log('[SQLEditor] Verification - retrieved from storage, size:', verifyValue?.length || 0);
+        console.log('[SQLEditor] Query saved to localStorage:', {
+          queryName: trimmedName,
+          database: targetDatabase,
+          key,
+          totalQueries: savedQueries.length,
+        });
+
+        // 触发自定义事件以通知 SchemaBrowser 刷新
+        console.log('[SQLEditor] Dispatching queryUpdated event...');
+        window.dispatchEvent(
+          new CustomEvent('queryUpdated', {
+            detail: { connectionId, database: targetDatabase },
+          })
+        );
+        console.log('[SQLEditor] queryUpdated event dispatched');
+      } catch (error: any) {
+        console.error('[SQLEditor] localStorage operation failed:', error);
+        console.error('[SQLEditor] Error type:', error?.name);
+        console.error('[SQLEditor] Error message:', error?.message);
+
+        // Provide more specific error messages
+        if (error?.name === 'QuotaExceededError') {
+          throw new Error('Storage quota exceeded. Please clear some saved queries to make space.');
+        }
+
+        if (error?.message?.includes('Corrupted') || error?.message?.includes('already exists')) {
+          throw error;
+        }
+
+        throw new Error(`Failed to save query: ${error?.message || 'Unknown error'}`);
+      }
     } catch (error) {
-      console.error('Failed to save query:', error);
-      // 可以添加错误提示
+      console.error('[SQLEditor] handleSaveQuery error:', error);
+      throw error;
     }
-  };
+  }, [connectionId, database, sql]);
 
   return (
     <div className={cn('flex flex-col h-full', className)}>
@@ -476,31 +680,44 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
           Format
         </Button>
 
-        {loadingTables && (
-          <div className="flex items-center gap-1.5 text-xs text-gray-500 ml-2 px-2">
-            <Loader2 className="h-3 w-3 animate-spin" />
-            Loading tables...
-          </div>
-        )}
-
         <div className="flex-1" />
+      </div>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          className="gap-1"
-          onClick={saveSql}
-          disabled={!sql.trim()}
-          title="Save query to file (Ctrl+S)"
+      {/* Database Selection Row */}
+      <div className="flex items-center gap-3 px-2 py-2 border-b bg-white text-sm">
+        <label className="font-medium text-gray-600 min-w-fit">Connection:</label>
+        <select
+          value={selectedConnectionId}
+          onChange={(e) => setSelectedConnectionId(e.target.value)}
+          className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          <Save className="h-4 w-4" />
-          Save
-        </Button>
+          <option value="">Select connection...</option>
+          {connections.map((conn) => (
+            <option key={conn.id} value={conn.id}>
+              {conn.name}
+            </option>
+          ))}
+        </select>
 
-        <Button variant="ghost" size="sm" className="gap-1">
-          <FolderOpen className="h-4 w-4" />
-          Open
-        </Button>
+        <label className="font-medium text-gray-600 min-w-fit">Database:</label>
+        <select
+          value={selectedDatabase || ''}
+          onChange={(e) => setSelectedDatabase(e.target.value || undefined)}
+          className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="">Select database...</option>
+          {availableDatabases.map((db) => (
+            <option key={db} value={db}>
+              {db}
+            </option>
+          ))}
+        </select>
+
+        {selectedDatabase && (
+          <span className="ml-auto text-xs text-gray-500">
+            Selected: <code className="bg-gray-100 px-1 py-0.5 rounded">{selectedDatabase}</code>
+          </span>
+        )}
       </div>
 
       {/* SQL Input - Monaco Editor */}
@@ -689,6 +906,13 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
           </>
         )}
       </div>
+
+      <SaveQueryDialog
+        open={saveDialogOpen}
+        onOpenChange={setSaveDialogOpen}
+        onSave={handleSaveQuery}
+        sql={sql}
+      />
     </div>
   );
 };
