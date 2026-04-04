@@ -4,8 +4,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-use crate::models::connection::{ConnectionConfig, ConnectionType, SslConfig};
 use crate::db::ssh_tunnel::SshTunnelManager;
+use crate::models::connection::{ConnectionConfig, ConnectionType, SslConfig};
 
 pub type DbPool = Pool<MySql>;
 
@@ -28,7 +28,12 @@ impl ConnectionPool {
             ConnectionType::SshTunnel => {
                 if let Some(ref ssh_config) = config.ssh_config {
                     // Establish SSH tunnel
-                    let local_port = self.ssh_manager
+                    eprintln!(
+                        "[DB] Establishing SSH tunnel to {}:{}",
+                        ssh_config.ssh_host, ssh_config.ssh_port
+                    );
+                    let local_port = self
+                        .ssh_manager
                         .get_or_create_tunnel(
                             config.id.as_deref().unwrap_or("temp"),
                             ssh_config,
@@ -36,6 +41,7 @@ impl ConnectionPool {
                             config.port,
                         )
                         .await?;
+                    eprintln!("[DB] SSH tunnel established. Local port: {}", local_port);
                     ("127.0.0.1".to_string(), local_port)
                 } else {
                     return Err(anyhow::anyhow!("SSH configuration missing"));
@@ -43,6 +49,11 @@ impl ConnectionPool {
             }
             _ => (config.host.clone(), config.port),
         };
+
+        eprintln!(
+            "[DB] Connecting to {}:{} with username: {}",
+            host, port, config.username
+        );
 
         let mut options = MySqlConnectOptions::new()
             .host(&host)
@@ -75,6 +86,7 @@ impl ConnectionPool {
             _ => {}
         }
 
+        eprintln!("[DB] Attempting to create connection pool...");
         let pool = MySqlPoolOptions::new()
             .max_connections(20)
             .min_connections(2)
@@ -115,25 +127,23 @@ impl ConnectionPool {
         if let Some(pool) = pools.remove(connection_id) {
             let _ = pool.close().await;
         }
-        
+
         // Also close SSH tunnel if exists
         let _ = self.ssh_manager.close_tunnel(connection_id).await;
     }
 
     pub async fn test_connection(&self, config: &ConnectionConfig) -> anyhow::Result<String> {
         let pool = self.create_pool(config).await?;
-        let row: (String,) = sqlx::query_as("SELECT VERSION()")
-            .fetch_one(&pool)
-            .await?;
+        let row: (String,) = sqlx::query_as("SELECT VERSION()").fetch_one(&pool).await?;
         pool.close().await;
-        
+
         // Clean up temporary SSH tunnel if created
         if config.connection_type == ConnectionType::SshTunnel {
             if let Some(ref id) = config.id {
                 let _ = self.ssh_manager.close_tunnel(id).await;
             }
         }
-        
+
         Ok(row.0)
     }
 
@@ -174,12 +184,12 @@ fn configure_ssl(
         _ => MySqlSslMode::Preferred,
     };
 
-        let options = options.ssl_mode(ssl_mode);
+    let options = options.ssl_mode(ssl_mode);
 
     // Note: sqlx doesn't directly support setting CA/Cert/Key files in the same way as native drivers
     // In a production app, you might need to use native-tls or rustls directly
     // For now, we set the SSL mode which enables basic SSL encryption
-    
+
     if let Some(ref cipher) = ssl_config.ssl_cipher {
         // Cipher configuration would require lower-level SSL context manipulation
         // This is a placeholder for future implementation

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -7,25 +7,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Separator } from '@/components/ui/separator';
-import { cn } from '@/lib/utils';
-import { invoke } from '@tauri-apps/api/tauri';
-import {
-  RefreshCw,
-  AlertCircle,
-  CheckCircle2,
-  Server,
-  Shield,
-  Lock,
-  Globe,
-  Eye,
-  EyeOff,
-} from 'lucide-react';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -33,7 +16,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type { Connection as ConnectionConfig, SshConfig, SslConfig, HttpConfig, ConnectionColor } from '@/store/connectionStore';
+import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
+import type { ConnectionColor, Connection as ConnectionConfig, HttpConfig, SshConfig, SslConfig } from '@/store/connectionStore';
+import { invoke } from '@tauri-apps/api/tauri';
+import {
+  AlertCircle,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  FolderOpen,
+  Globe,
+  Lock,
+  RefreshCw,
+  Server,
+  Shield,
+  X,
+} from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 import type { ConnectionGroup } from './ConnectionGroupManager';
 
 // Form config without id for new connections
@@ -171,6 +173,36 @@ export function ConnectionDialog({
     }
   };
 
+  const handlePickPrivateKeyFile = useCallback(async () => {
+    try {
+      // Dynamic import to avoid formatter removing unused import
+      const { open } = await import('@tauri-apps/api/dialog');
+
+      // Get the home directory path
+      const homeDir = await invoke<string>('get_home_dir').catch(() => {
+        // Fallback: try to use a common default
+        return '/home/user';
+      });
+
+      const sshDir = `${homeDir}/.ssh`;
+
+      const selected = await open({
+        defaultPath: sshDir,
+        multiple: false,
+        directory: false,
+      });
+
+      if (selected && typeof selected === 'string') {
+        setConfig((prev) => ({
+          ...prev,
+          ssh_config: { ...prev.ssh_config!, ssh_private_key: selected },
+        }));
+      }
+    } catch (err) {
+      console.error('Failed to pick private key file:', err);
+    }
+  }, []);
+
   const handleSave = () => {
     if (!config.name || !config.host || !config.username) return;
     const saveConfig = initialConfig ? config : { ...config, id: undefined };
@@ -220,19 +252,19 @@ export function ConnectionDialog({
         >
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="direct" className="flex items-center gap-1">
-              <Server className="h-3 w-3" />
+              <Server className="w-3 h-3" />
               Direct
             </TabsTrigger>
-            <TabsTrigger value="ssh" className="flex items-center gap-1">
-              <Lock className="h-3 w-3" />
+            <TabsTrigger value="ssh_tunnel" className="flex items-center gap-1">
+              <Lock className="w-3 h-3" />
               SSH
             </TabsTrigger>
             <TabsTrigger value="ssl" className="flex items-center gap-1">
-              <Shield className="h-3 w-3" />
+              <Shield className="w-3 h-3" />
               SSL
             </TabsTrigger>
             <TabsTrigger value="http" className="flex items-center gap-1">
-              <Globe className="h-3 w-3" />
+              <Globe className="w-3 h-3" />
               HTTP
             </TabsTrigger>
           </TabsList>
@@ -243,17 +275,17 @@ export function ConnectionDialog({
           </TabsContent>
 
           {/* SSH Tunnel Tab */}
-          <TabsContent value="ssh" className="space-y-4">
+          <TabsContent value="ssh_tunnel" className="space-y-4">
             <BasicConnectionFields config={config} updateConfig={updateConfig} />
-            
+
             <Separator />
-            
+
             <div className="space-y-4">
-              <h4 className="text-sm font-medium flex items-center gap-2">
-                <Lock className="h-4 w-4" />
+              <h4 className="flex items-center gap-2 text-sm font-medium">
+                <Lock className="w-4 h-4" />
                 SSH Tunnel Configuration
               </h4>
-              
+
               <div className="grid grid-cols-3 gap-4">
                 <div className="col-span-2 space-y-2">
                   <Label htmlFor="ssh_host">SSH Host</Label>
@@ -299,24 +331,47 @@ export function ConnectionDialog({
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="absolute right-0 top-0 h-full"
+                    className="absolute top-0 right-0 h-full"
                     onClick={() => setShowSshPassword(!showSshPassword)}
                   >
-                    {showSshPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showSshPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </Button>
                 </div>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="ssh_private_key">Private Key (optional)</Label>
-                <Textarea
-                  id="ssh_private_key"
-                  placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"
-                  value={config.ssh_config?.ssh_private_key || ''}
-                  onChange={(e) => updateSshConfig({ ssh_private_key: e.target.value })}
-                  rows={4}
-                  className="font-mono text-xs"
-                />
+                <div className="flex gap-2">
+                  <Input
+                    id="ssh_private_key"
+                    type="text"
+                    placeholder="No key file selected"
+                    value={config.ssh_config?.ssh_private_key || ''}
+                    readOnly
+                    className="flex-1 font-mono text-xs"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePickPrivateKeyFile}
+                    className="gap-2"
+                  >
+                    <FolderOpen className="w-4 h-4" />
+                    Browse
+                  </Button>
+                  {config.ssh_config?.ssh_private_key && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => updateSshConfig({ ssh_private_key: '' })}
+                      className="text-destructive"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
               </div>
 
               {config.ssh_config?.ssh_private_key && (
@@ -336,13 +391,13 @@ export function ConnectionDialog({
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="absolute right-0 top-0 h-full"
+                      className="absolute top-0 right-0 h-full"
                       onClick={() => setShowKeyPassphrase(!showKeyPassphrase)}
                     >
                       {showKeyPassphrase ? (
-                        <EyeOff className="h-4 w-4" />
+                        <EyeOff className="w-4 h-4" />
                       ) : (
-                        <Eye className="h-4 w-4" />
+                        <Eye className="w-4 h-4" />
                       )}
                     </Button>
                   </div>
@@ -354,12 +409,12 @@ export function ConnectionDialog({
           {/* SSL Tab */}
           <TabsContent value="ssl" className="space-y-4">
             <BasicConnectionFields config={config} updateConfig={updateConfig} />
-            
+
             <Separator />
-            
+
             <div className="space-y-4">
-              <h4 className="text-sm font-medium flex items-center gap-2">
-                <Shield className="h-4 w-4" />
+              <h4 className="flex items-center gap-2 text-sm font-medium">
+                <Shield className="w-4 h-4" />
                 SSL/TLS Configuration
               </h4>
 
@@ -489,7 +544,7 @@ export function ConnectionDialog({
 
               <Separator />
 
-              <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
+              <div className="p-3 border border-yellow-200 rounded-md bg-yellow-50">
                 <p className="text-sm text-yellow-800">
                   <strong>Note:</strong> HTTP connection requires a MySQL-to-HTTP proxy service.
                   This is useful for serverless environments or when direct MySQL ports are blocked.
@@ -508,9 +563,9 @@ export function ConnectionDialog({
               testStatus === 'testing' && 'bg-blue-50 text-blue-700'
             )}
           >
-            {testStatus === 'testing' && <RefreshCw className="h-4 w-4 animate-spin" />}
-            {testStatus === 'success' && <CheckCircle2 className="h-4 w-4" />}
-            {testStatus === 'error' && <AlertCircle className="h-4 w-4" />}
+            {testStatus === 'testing' && <RefreshCw className="w-4 h-4 animate-spin" />}
+            {testStatus === 'success' && <CheckCircle2 className="w-4 h-4" />}
+            {testStatus === 'error' && <AlertCircle className="w-4 h-4" />}
             <span>
               {testStatus === 'testing' && 'Testing connection...'}
               {testStatus === 'success' && testMessage}
@@ -520,9 +575,9 @@ export function ConnectionDialog({
         )}
 
         {/* Color Selection */}
-        <div className="space-y-2 pt-4 border-t">
+        <div className="pt-4 space-y-2 border-t">
           <Label className="text-sm font-medium">Connection Color</Label>
-          <div className="flex gap-3 flex-wrap">
+          <div className="flex flex-wrap gap-3">
             {colorOptions.map((option) => (
               <button
                 key={option.value}
@@ -543,7 +598,7 @@ export function ConnectionDialog({
 
         {/* Group Selection */}
         {groups.length > 0 && (
-          <div className="space-y-2 pt-4 border-t">
+          <div className="pt-4 space-y-2 border-t">
             <Label htmlFor="group">Group (optional)</Label>
             <Select
               value={config.group || ''}
@@ -573,7 +628,7 @@ export function ConnectionDialog({
             onClick={testConnection}
             disabled={!config.host || !config.username || testStatus === 'testing'}
           >
-            <RefreshCw className="h-4 w-4 mr-1" />
+            <RefreshCw className="w-4 h-4 mr-1" />
             Test
           </Button>
           <Button
@@ -581,9 +636,9 @@ export function ConnectionDialog({
             disabled={!config.name || !config.host || !config.username || isLoading}
           >
             {isLoading ? (
-              <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
+              <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
             ) : (
-              <CheckCircle2 className="h-4 w-4 mr-1" />
+              <CheckCircle2 className="w-4 h-4 mr-1" />
             )}
             Save
           </Button>
@@ -661,10 +716,10 @@ function BasicConnectionFields({
             type="button"
             variant="ghost"
             size="icon"
-            className="absolute right-0 top-0 h-full"
+            className="absolute top-0 right-0 h-full"
             onClick={() => setShowPassword(!showPassword)}
           >
-            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
           </Button>
         </div>
       </div>

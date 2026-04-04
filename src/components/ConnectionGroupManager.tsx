@@ -24,7 +24,7 @@ export interface ConnectionInfo {
   username: string;
   database?: string;
   color?: string;
-  connection_type: 'direct' | 'ssh' | 'ssl' | 'http';
+  connection_type: 'direct' | 'ssh_tunnel' | 'ssl' | 'http';
   group?: string;
   is_favorite: boolean;
   sort_order: number;

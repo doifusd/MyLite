@@ -34,7 +34,7 @@ const colorMap: Record<ConnectionColor, { bg: string; border: string; text: stri
 function getConnectionTypeIcon(type: ConnectionType, color?: ConnectionColor) {
   const colorClass = color ? colorMap[color]?.text : 'text-gray-400';
   switch (type) {
-    case 'ssh':
+    case 'ssh_tunnel':
       return <Lock className={`h-3 w-3 ${colorClass}`} />;
     case 'ssl':
       return <Shield className={`h-3 w-3 ${colorClass}`} />;
@@ -48,7 +48,7 @@ function getConnectionTypeIcon(type: ConnectionType, color?: ConnectionColor) {
 // Helper function to get connection type label
 function getConnectionTypeLabel(type: ConnectionType) {
   switch (type) {
-    case 'ssh':
+    case 'ssh_tunnel':
       return 'SSH';
     case 'ssl':
       return 'SSL';

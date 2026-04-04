@@ -1,8 +1,8 @@
+import { invoke } from "@tauri-apps/api/tauri";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { invoke } from "@tauri-apps/api/tauri";
 
-export type ConnectionType = 'direct' | 'ssh' | 'ssl' | 'http';
+export type ConnectionType = 'direct' | 'ssh_tunnel' | 'ssl' | 'http';
 
 export interface SshConfig {
   ssh_host: string;
@@ -57,7 +57,7 @@ interface ConnectionState {
   activeConnectionId: string | null;
   isLoading: boolean;
   error: string | null;
-  
+
   // Actions
   loadConnections: () => Promise<void>;
   addConnection: (connection: Omit<Connection, "id">) => Promise<void>;
@@ -81,9 +81,9 @@ export const useConnectionStore = create<ConnectionState>()(
           const connections = await invoke<Connection[]>("get_connections");
           set({ connections, isLoading: false });
         } catch (error) {
-          set({ 
+          set({
             error: error instanceof Error ? error.message : "Failed to load connections",
-            isLoading: false 
+            isLoading: false
           });
         }
       },
@@ -94,9 +94,9 @@ export const useConnectionStore = create<ConnectionState>()(
           await invoke("save_connection", { config: connection });
           await get().loadConnections();
         } catch (error) {
-          set({ 
+          set({
             error: error instanceof Error ? error.message : "Failed to save connection",
-            isLoading: false 
+            isLoading: false
           });
           throw error;
         }
@@ -107,14 +107,14 @@ export const useConnectionStore = create<ConnectionState>()(
         try {
           const existing = get().connections.find(c => c.id === id);
           if (!existing) throw new Error("Connection not found");
-          
+
           const updated = { ...existing, ...connection };
           await invoke("save_connection", { config: updated });
           await get().loadConnections();
         } catch (error) {
-          set({ 
+          set({
             error: error instanceof Error ? error.message : "Failed to update connection",
-            isLoading: false 
+            isLoading: false
           });
           throw error;
         }
@@ -124,19 +124,19 @@ export const useConnectionStore = create<ConnectionState>()(
         set({ isLoading: true, error: null });
         try {
           await invoke("delete_connection", { id });
-          
+
           const newConnections = get().connections.filter(c => c.id !== id);
-          set({ 
+          set({
             connections: newConnections,
-            activeConnectionId: get().activeConnectionId === id 
+            activeConnectionId: get().activeConnectionId === id
               ? (newConnections[0]?.id || null)
               : get().activeConnectionId,
-            isLoading: false 
+            isLoading: false
           });
         } catch (error) {
-          set({ 
+          set({
             error: error instanceof Error ? error.message : "Failed to delete connection",
-            isLoading: false 
+            isLoading: false
           });
           throw error;
         }
@@ -157,9 +157,9 @@ export const useConnectionStore = create<ConnectionState>()(
     }),
     {
       name: "mysql-client-connections",
-      partialize: (state) => ({ 
+      partialize: (state) => ({
         connections: state.connections,
-        activeConnectionId: state.activeConnectionId 
+        activeConnectionId: state.activeConnectionId
       }),
     }
   )

@@ -1,4 +1,7 @@
-use crate::models::connection::{ConnectionConfig, ConnectionInfo, ConnectionTestResult, ConnectionGroup, ConnectionFilter, QuickConnectTemplate};
+use crate::models::connection::{
+    ConnectionConfig, ConnectionFilter, ConnectionGroup, ConnectionInfo, ConnectionTestResult,
+    QuickConnectTemplate,
+};
 use crate::AppState;
 use std::sync::Arc;
 use tauri::State;
@@ -33,9 +36,12 @@ pub async fn save_connection(
         .map_err(|e| format!("Failed to get store: {}", e))?;
 
     let connections = get_connections_from_store(&store)?;
-    
-    let id = config.id.clone().unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
-    
+
+    let id = config
+        .id
+        .clone()
+        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+
     // Update or add connection
     let mut updated = connections
         .into_iter()
@@ -63,7 +69,9 @@ pub async fn save_connection(
 
     {
         let mut store_lock = store.lock().map_err(|e| e.to_string())?;
-        store_lock.insert("connections".to_string(), serde_json::json!(updated)).map_err(|e| e.to_string())?;
+        store_lock
+            .insert("connections".to_string(), serde_json::json!(updated))
+            .map_err(|e| e.to_string())?;
         store_lock.save().map_err(|e| e.to_string())?;
     }
 
@@ -116,7 +124,9 @@ pub async fn delete_connection(
 
     {
         let mut store_lock = store.lock().map_err(|e| e.to_string())?;
-        store_lock.insert("connections".to_string(), serde_json::json!(filtered)).map_err(|e| e.to_string())?;
+        store_lock
+            .insert("connections".to_string(), serde_json::json!(filtered))
+            .map_err(|e| e.to_string())?;
         store_lock.save().map_err(|e| e.to_string())?;
     }
 
@@ -136,7 +146,7 @@ pub async fn get_connection_detail(
         .map_err(|e| format!("Failed to get store: {}", e))?;
 
     let connections = get_connections_from_store(&store)?;
-    
+
     // Find the connection and return full config
     connections
         .into_iter()
@@ -174,27 +184,35 @@ pub async fn toggle_connection_favorite(
         .map_err(|e| format!("Failed to get store: {}", e))?;
 
     let connections = get_connections_from_store(&store)?;
-    
+
     let mut connection = connections
         .clone()
         .into_iter()
         .find(|c| c.id == connection_id)
         .ok_or_else(|| "Connection not found".to_string())?;
-    
+
     connection.is_favorite = !connection.is_favorite;
-    
+
     // Save back
     let updated: Vec<ConnectionInfo> = connections
         .into_iter()
-        .map(|c| if c.id == connection_id { connection.clone() } else { c })
+        .map(|c| {
+            if c.id == connection_id {
+                connection.clone()
+            } else {
+                c
+            }
+        })
         .collect();
-    
+
     {
         let mut store_lock = store.lock().map_err(|e| e.to_string())?;
-        store_lock.insert("connections".to_string(), serde_json::json!(updated)).map_err(|e| e.to_string())?;
+        store_lock
+            .insert("connections".to_string(), serde_json::json!(updated))
+            .map_err(|e| e.to_string())?;
         store_lock.save().map_err(|e| e.to_string())?;
     }
-    
+
     Ok(connection)
 }
 
@@ -210,27 +228,35 @@ pub async fn update_connection_group(
         .map_err(|e| format!("Failed to get store: {}", e))?;
 
     let connections = get_connections_from_store(&store)?;
-    
+
     let mut connection = connections
         .clone()
         .into_iter()
         .find(|c| c.id == connection_id)
         .ok_or_else(|| "Connection not found".to_string())?;
-    
+
     connection.group = group;
-    
+
     // Save back
     let updated: Vec<ConnectionInfo> = connections
         .into_iter()
-        .map(|c| if c.id == connection_id { connection.clone() } else { c })
+        .map(|c| {
+            if c.id == connection_id {
+                connection.clone()
+            } else {
+                c
+            }
+        })
         .collect();
-    
+
     {
         let mut store_lock = store.lock().map_err(|e| e.to_string())?;
-        store_lock.insert("connections".to_string(), serde_json::json!(updated)).map_err(|e| e.to_string())?;
+        store_lock
+            .insert("connections".to_string(), serde_json::json!(updated))
+            .map_err(|e| e.to_string())?;
         store_lock.save().map_err(|e| e.to_string())?;
     }
-    
+
     Ok(connection)
 }
 
@@ -246,7 +272,7 @@ pub async fn update_connection_last_connected(
 
     let connections = get_connections_from_store(&store)?;
     let now = chrono::Utc::now().to_rfc3339();
-    
+
     let updated: Vec<ConnectionInfo> = connections
         .into_iter()
         .map(|mut c| {
@@ -256,13 +282,15 @@ pub async fn update_connection_last_connected(
             c
         })
         .collect();
-    
+
     {
         let mut store_lock = store.lock().map_err(|e| e.to_string())?;
-        store_lock.insert("connections".to_string(), serde_json::json!(updated)).map_err(|e| e.to_string())?;
+        store_lock
+            .insert("connections".to_string(), serde_json::json!(updated))
+            .map_err(|e| e.to_string())?;
         store_lock.save().map_err(|e| e.to_string())?;
     }
-    
+
     Ok(())
 }
 
@@ -296,17 +324,19 @@ pub async fn save_connection_group(
         .map_err(|e| format!("Failed to get store: {}", e))?;
 
     let mut groups = get_connection_groups_internal(&store)?;
-    
+
     // Update or add
     groups.retain(|g| g.id != group.id);
     groups.push(group.clone());
-    
+
     {
         let mut store_lock = store.lock().map_err(|e| e.to_string())?;
-        store_lock.insert("connection_groups".to_string(), serde_json::json!(groups)).map_err(|e| e.to_string())?;
+        store_lock
+            .insert("connection_groups".to_string(), serde_json::json!(groups))
+            .map_err(|e| e.to_string())?;
         store_lock.save().map_err(|e| e.to_string())?;
     }
-    
+
     Ok(group)
 }
 
@@ -321,13 +351,15 @@ pub async fn delete_connection_group(
 
     let mut groups = get_connection_groups_internal(&store)?;
     groups.retain(|g| g.id != group_id);
-    
+
     {
         let mut store_lock = store.lock().map_err(|e| e.to_string())?;
-        store_lock.insert("connection_groups".to_string(), serde_json::json!(groups)).map_err(|e| e.to_string())?;
+        store_lock
+            .insert("connection_groups".to_string(), serde_json::json!(groups))
+            .map_err(|e| e.to_string())?;
         store_lock.save().map_err(|e| e.to_string())?;
     }
-    
+
     // Also clear group from connections
     let connections = get_connections_from_store(&store)?;
     let updated_connections: Vec<ConnectionInfo> = connections
@@ -339,13 +371,18 @@ pub async fn delete_connection_group(
             c
         })
         .collect();
-    
+
     {
         let mut store_lock = store.lock().map_err(|e| e.to_string())?;
-        store_lock.insert("connections".to_string(), serde_json::json!(updated_connections)).map_err(|e| e.to_string())?;
+        store_lock
+            .insert(
+                "connections".to_string(),
+                serde_json::json!(updated_connections),
+            )
+            .map_err(|e| e.to_string())?;
         store_lock.save().map_err(|e| e.to_string())?;
     }
-    
+
     Ok(())
 }
 
@@ -379,17 +416,22 @@ pub async fn save_quick_connect_template(
         .map_err(|e| format!("Failed to get store: {}", e))?;
 
     let mut templates = get_quick_connect_templates_internal(&store)?;
-    
+
     // Update or add
     templates.retain(|t| t.id != template.id);
     templates.push(template.clone());
-    
+
     {
         let mut store_lock = store.lock().map_err(|e| e.to_string())?;
-        store_lock.insert("quick_connect_templates".to_string(), serde_json::json!(templates)).map_err(|e| e.to_string())?;
+        store_lock
+            .insert(
+                "quick_connect_templates".to_string(),
+                serde_json::json!(templates),
+            )
+            .map_err(|e| e.to_string())?;
         store_lock.save().map_err(|e| e.to_string())?;
     }
-    
+
     Ok(template)
 }
 
@@ -404,13 +446,18 @@ pub async fn delete_quick_connect_template(
 
     let mut templates = get_quick_connect_templates_internal(&store)?;
     templates.retain(|t| t.id != template_id);
-    
+
     {
         let mut store_lock = store.lock().map_err(|e| e.to_string())?;
-        store_lock.insert("quick_connect_templates".to_string(), serde_json::json!(templates)).map_err(|e| e.to_string())?;
+        store_lock
+            .insert(
+                "quick_connect_templates".to_string(),
+                serde_json::json!(templates),
+            )
+            .map_err(|e| e.to_string())?;
         store_lock.save().map_err(|e| e.to_string())?;
     }
-    
+
     Ok(())
 }
 
@@ -425,7 +472,7 @@ pub async fn filter_connections(
         .map_err(|e| format!("Failed to get store: {}", e))?;
 
     let connections = get_connections_from_store(&store)?;
-    
+
     // Apply filters
     let mut filtered: Vec<ConnectionInfo> = connections
         .into_iter()
@@ -440,32 +487,32 @@ pub async fn filter_connections(
                     return false;
                 }
             }
-            
+
             // Group filter
             if let Some(ref group_id) = filter.group_id {
                 if c.group.as_ref() != Some(group_id) {
                     return false;
                 }
             }
-            
+
             // Tags filter
             if !filter.tags.is_empty() {
                 if !filter.tags.iter().all(|tag| c.tags.contains(tag)) {
                     return false;
                 }
             }
-            
+
             // Favorite filter
             if let Some(is_fav) = filter.is_favorite {
                 if c.is_favorite != is_fav {
                     return false;
                 }
             }
-            
+
             true
         })
         .collect();
-    
+
     // Apply sorting
     match filter.sort_by {
         crate::models::connection::ConnectionSortBy::Name => {
@@ -482,11 +529,11 @@ pub async fn filter_connections(
             filtered.sort_by(|a, b| a.host.cmp(&b.host));
         }
     }
-    
+
     if !filter.sort_ascending {
         filtered.reverse();
     }
-    
+
     Ok(filtered)
 }
 
@@ -496,8 +543,9 @@ fn get_connections_from_store(
     let store_lock = store.lock().map_err(|e| e.to_string())?;
     match store_lock.get("connections") {
         Some(value) => {
-            let connections: Vec<ConnectionInfo> = serde_json::from_value::<Vec<ConnectionInfo>>(value.clone())
-                .map_err(|e| format!("Failed to parse connections: {}", e))?;
+            let connections: Vec<ConnectionInfo> =
+                serde_json::from_value::<Vec<ConnectionInfo>>(value.clone())
+                    .map_err(|e| format!("Failed to parse connections: {}", e))?;
             Ok(connections)
         }
         None => Ok(vec![]),
@@ -530,4 +578,11 @@ fn get_quick_connect_templates_internal(
         }
         None => Ok(vec![]),
     }
+}
+
+#[tauri::command]
+pub fn get_home_dir() -> Result<String, String> {
+    std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE")) // Fallback for Windows
+        .map_err(|_| "Failed to get home directory".to_string())
 }

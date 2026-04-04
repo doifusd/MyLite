@@ -57,6 +57,7 @@ async fn main() -> anyhow::Result<()> {
             get_connections,
             delete_connection,
             get_connection_detail,
+            get_home_dir,
             // Phase 4.1: Connection grouping and favorites
             toggle_connection_favorite,
             update_connection_group,
