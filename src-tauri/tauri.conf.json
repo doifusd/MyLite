@@ -1,36 +1,30 @@
 {
+  "productName": "MyLite",
+  "version": "0.1.0",
+  "identifier": "com.mylite.app",
   "build": {
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build",
-    "devPath": "http://localhost:1420",
-    "distDir": "../dist",
-    "withGlobalTauri": true
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../dist"
   },
-  "package": {
-    "productName": "MyLite",
-    "version": "0.1.0"
-  },
-  "tauri": {
-    "allowlist": {
-      "all": true
-    },
-    "bundle": {
-      "active": true,
-      "targets": "all",
-      "identifier": "com.mylite.app",
-      "icon": []
-    },
-    "security": {
-      "csp": null
-    },
+  "app": {
     "windows": [
       {
-        "fullscreen": false,
+        "title": "MyLite",
+        "width": 800,
         "height": 600,
         "resizable": true,
-        "title": "MyLite",
-        "width": 800
+        "fullscreen": false
       }
-    ]
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": []
   }
 }

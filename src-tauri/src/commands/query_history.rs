@@ -9,13 +9,13 @@ pub const MAX_HISTORY_ITEMS: usize = 1000;
 
 /// Get query history from store
 pub fn get_history_from_store(
-    store: &std::sync::Mutex<tauri_plugin_store::Store<tauri::Wry>>,
+    store: &std::sync::Arc<tauri_plugin_store::Store<tauri::Wry>>,
 ) -> Result<Vec<QueryHistoryItem>, String> {
-    let store_lock = store.lock().map_err(|e| e.to_string())?;
-    match store_lock.get(QUERY_HISTORY_KEY) {
+    match store.get(QUERY_HISTORY_KEY) {
         Some(value) => {
-            let history: Vec<QueryHistoryItem> = serde_json::from_value::<Vec<QueryHistoryItem>>(value.clone())
-                .map_err(|e| format!("Failed to parse query history: {}", e))?;
+            let history: Vec<QueryHistoryItem> =
+                serde_json::from_value::<Vec<QueryHistoryItem>>(value.clone())
+                    .map_err(|e| format!("Failed to parse query history: {}", e))?;
             Ok(history)
         }
         None => Ok(vec![]),
@@ -24,13 +24,12 @@ pub fn get_history_from_store(
 
 /// Save query history to store
 pub fn save_history_to_store(
-    store: &std::sync::Mutex<tauri_plugin_store::Store<tauri::Wry>>,
+    store: &std::sync::Arc<tauri_plugin_store::Store<tauri::Wry>>,
     history: &[QueryHistoryItem],
 ) -> Result<(), String> {
-    let mut store_lock = store.lock().map_err(|e| e.to_string())?;
     let value = serde_json::to_value(history).map_err(|e| e.to_string())?;
-    let _ = store_lock.insert(QUERY_HISTORY_KEY.to_string(), value);
-    store_lock.save().map_err(|e| e.to_string())?;
+    let _ = store.set(QUERY_HISTORY_KEY.to_string(), value);
+    store.save().map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -103,7 +102,8 @@ pub async fn add_query_to_history(
         affected_rows,
         success,
         error_message,
-    ).await
+    )
+    .await
 }
 
 /// Get query history with optional filtering
@@ -320,10 +320,7 @@ pub async fn get_query_history_tags(
 
     let history = get_history_from_store(&store)?;
 
-    let mut tags: Vec<String> = history
-        .iter()
-        .flat_map(|item| item.tags.clone())
-        .collect();
+    let mut tags: Vec<String> = history.iter().flat_map(|item| item.tags.clone()).collect();
 
     tags.sort();
     tags.dedup();
@@ -344,7 +341,10 @@ pub async fn get_query_history_stats(
     let history = get_history_from_store(&store)?;
 
     let filtered: Vec<_> = if let Some(conn_id) = connection_id {
-        history.into_iter().filter(|i| i.connection_id == conn_id).collect()
+        history
+            .into_iter()
+            .filter(|i| i.connection_id == conn_id)
+            .collect()
     } else {
         history
     };

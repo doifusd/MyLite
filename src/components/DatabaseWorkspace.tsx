@@ -44,6 +44,8 @@ export const DatabaseWorkspace: React.FC<DatabaseWorkspaceProps> = ({
     setActiveTab(tab || 'data');
   };
 
+  // Note: handleCreateTableSQL is no longer used, can be removed if no longer needed
+  /*
   const handleCreateTableSQL = (sql: string) => {
     // 更新当前活跃的query标签
     setQueryTabs(prev => prev.map(q => q.id === activeTab ? { ...q, content: sql } : q));
@@ -51,6 +53,7 @@ export const DatabaseWorkspace: React.FC<DatabaseWorkspaceProps> = ({
       setActiveTab('query-0');
     }
   };
+  */
 
   const handleNewQuery = (database?: string) => {
     const newId = `query-${queryCounter}`;
@@ -112,7 +115,6 @@ export const DatabaseWorkspace: React.FC<DatabaseWorkspaceProps> = ({
             <SchemaBrowser
               connectionId={connectionId}
               onTableSelect={handleTableSelect}
-              onCreateTableSQL={handleCreateTableSQL}
               onNewQuery={handleNewQuery}
               className="h-full"
             />

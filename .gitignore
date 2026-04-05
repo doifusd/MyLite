@@ -6,3 +6,5 @@ node_modules/
 .vscode/
 src-tauri/target/debug/
 src-tauri/target/debug/*
+fix-imports.py
+fix-store-api.md

@@ -84,47 +84,63 @@ fn mysql_value_to_json(row: &MySqlRow, idx: usize) -> Value {
                     .unwrap_or(Value::Null);
             }
         }
-        // Decimal - MySQL sends DECIMAL as ASCII text over the wire
+        // Decimal - MySQL DECIMAL type mapped to rust_decimal::Decimal
         "DECIMAL" | "NUMERIC" => {
-            // Try to decode as Decimal first (most accurate)
-            if let Ok(val) = row.try_get::<Decimal, _>(idx) {
-                return Value::String(val.to_string());
-            }
-            // MySQL sends DECIMAL as ASCII text, preserve exact decimal representation
-            if let Ok(bytes) = row.try_get::<Vec<u8>, _>(idx) {
-                if let Ok(s) = String::from_utf8(bytes) {
-                    return Value::String(s);
+            eprintln!("[DEBUG DECIMAL] Processing DECIMAL column at index {}", idx);
+
+            // Try Decimal type (primary - when sqlx/rust_decimal feature is enabled)
+            match row.try_get::<Decimal, _>(idx) {
+                Ok(val) => {
+                    eprintln!("[DEBUG DECIMAL] ✓ Got Decimal value: {}", val);
+                    return Value::String(val.to_string());
                 }
+                Err(e) => eprintln!("[DEBUG DECIMAL] ✗ Decimal failed: {}", e),
             }
-            // Fallback: try as string
-            if let Ok(val) = row.try_get::<String, _>(idx) {
-                return Value::String(val);
+
+            // Fallback: Try as String (for backward compatibility)
+            match row.try_get::<String, _>(idx) {
+                Ok(s) => {
+                    eprintln!("[DEBUG DECIMAL] ✓ Got String fallback: {:?}", s);
+                    if !s.is_empty() {
+                        return Value::String(s);
+                    }
+                }
+                Err(e) => eprintln!("[DEBUG DECIMAL] ✗ String fallback failed: {}", e),
             }
-            // Last resort: convert to string from f64 (lossy)
-            if let Ok(val) = row.try_get::<f64, _>(idx) {
-                return Value::String(val.to_string());
-            }
+
+            eprintln!("[DEBUG DECIMAL] All attempts failed for column {}", idx);
         }
         // Decimal unsigned variants
         "DECIMAL UNSIGNED" | "NUMERIC UNSIGNED" => {
-            // Try to decode as Decimal first (most accurate)
-            if let Ok(val) = row.try_get::<Decimal, _>(idx) {
-                return Value::String(val.to_string());
-            }
-            // MySQL sends DECIMAL as ASCII text, preserve exact decimal representation
-            if let Ok(bytes) = row.try_get::<Vec<u8>, _>(idx) {
-                if let Ok(s) = String::from_utf8(bytes) {
-                    return Value::String(s);
+            eprintln!(
+                "[DEBUG DECIMAL] Processing DECIMAL UNSIGNED column at index {}",
+                idx
+            );
+
+            // Try Decimal type (primary)
+            match row.try_get::<Decimal, _>(idx) {
+                Ok(val) => {
+                    eprintln!("[DEBUG DECIMAL] ✓ Got Decimal UNSIGNED value: {}", val);
+                    return Value::String(val.to_string());
                 }
+                Err(e) => eprintln!("[DEBUG DECIMAL] ✗ Decimal UNSIGNED failed: {}", e),
             }
-            // Fallback: try as string
-            if let Ok(val) = row.try_get::<String, _>(idx) {
-                return Value::String(val);
+
+            // Fallback: Try as String
+            match row.try_get::<String, _>(idx) {
+                Ok(s) => {
+                    eprintln!("[DEBUG DECIMAL] ✓ Got String UNSIGNED fallback: {:?}", s);
+                    if !s.is_empty() {
+                        return Value::String(s);
+                    }
+                }
+                Err(e) => eprintln!("[DEBUG DECIMAL] ✗ String UNSIGNED fallback failed: {}", e),
             }
-            // Last resort: convert to string from f64 (lossy)
-            if let Ok(val) = row.try_get::<f64, _>(idx) {
-                return Value::String(val.to_string());
-            }
+
+            eprintln!(
+                "[DEBUG DECIMAL] All attempts failed for UNSIGNED column {}",
+                idx
+            );
         }
         // Boolean (TINYINT(1) in MySQL)
         "BOOLEAN" | "BOOL" => {
@@ -244,10 +260,9 @@ fn mysql_value_to_json(row: &MySqlRow, idx: usize) -> Value {
 }
 
 fn get_connections_from_store(
-    store: &std::sync::Mutex<tauri_plugin_store::Store<tauri::Wry>>,
+    store: &std::sync::Arc<tauri_plugin_store::Store<tauri::Wry>>,
 ) -> Result<Vec<ConnectionInfo>, String> {
-    let store_lock = store.lock().map_err(|e| e.to_string())?;
-    match store_lock.get("connections") {
+    match store.get("connections") {
         Some(value) => {
             let connections: Vec<ConnectionInfo> =
                 serde_json::from_value::<Vec<ConnectionInfo>>(value.clone())

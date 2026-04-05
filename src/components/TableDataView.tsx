@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { invoke } from '@tauri-apps/api/tauri';
-import { Loader2, RefreshCw, Upload, Download } from 'lucide-react';
-import { QueryResult } from './QueryResult';
-import { ImportExportDialog } from './ImportExportDialog';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { invoke } from '@tauri-apps/api/core';
+import { Download, Loader2, RefreshCw, Upload } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { ImportExportDialog } from './ImportExportDialog';
+import { QueryResult } from './QueryResult';
 
 interface TableDataViewProps {
   connectionId: string;
@@ -93,9 +93,9 @@ export const TableDataView: React.FC<TableDataViewProps> = ({
           Export
         </Button>
       </div>
-      <QueryResult 
-        data={data} 
-        className="flex-1" 
+      <QueryResult
+        data={data}
+        className="flex-1"
         tableName={table}
         databaseName={database}
         connectionId={connectionId}

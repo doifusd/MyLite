@@ -14,7 +14,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useToast } from '@/hooks/useToast';
 import { cn } from '@/lib/utils';
 import type { Connection, ConnectionColor, ConnectionType } from '@/store/connectionStore';
-import { invoke } from '@tauri-apps/api/tauri';
+import { invoke } from '@tauri-apps/api/core';
 import { ChevronDown, ChevronRight, Database, Edit2, Folder, Globe, HelpCircle, Lock, Plus, Search, Server, Shield, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -81,9 +81,46 @@ function App() {
   const { toasts, removeToast, success, error } = useToast();
 
   useEffect(() => {
-    loadConnections();
-    loadGroups();
-    loadRecentQueries();
+    const initializeApp = async () => {
+      try {
+        // Attempt to load with retries for backend initialization
+        let attempt = 0;
+        const maxAttempts = 5;
+        const baseDelay = 200;
+
+        const tryLoad = async (): Promise<void> => {
+          try {
+            const [connData, groupData, queryData] = await Promise.all([
+              invoke<ConnectionInfo[]>('get_connections'),
+              invoke<ConnectionGroup[]>('get_connection_groups'),
+              invoke<any[]>('get_query_history', { connectionId: null, limit: 10 }),
+            ]);
+
+            setConnections(connData);
+            setGroups(groupData);
+            setExpandedGroups(new Set(groupData.filter(g => g.is_expanded).map(g => g.id)));
+            setRecentQueries(queryData);
+          } catch (err: any) {
+            attempt++;
+            if (attempt < maxAttempts && err?.toString?.().includes('Store not initialized')) {
+              // Backend not ready yet, retry with exponential backoff
+              await new Promise(resolve => setTimeout(resolve, baseDelay * Math.pow(1.5, attempt - 1)));
+              await tryLoad();
+            } else {
+              // Other errors or max attempts reached
+              throw err;
+            }
+          }
+        };
+
+        await tryLoad();
+      } catch (err) {
+        console.error('Failed to initialize app after retries:', err);
+        // Continue loading with empty state
+      }
+    };
+
+    initializeApp();
   }, []);
 
   // Global search shortcut

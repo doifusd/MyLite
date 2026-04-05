@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { invoke } from '@tauri-apps/api/tauri';
-import { Loader2, Copy, Check } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { invoke } from '@tauri-apps/api/core';
+import { Check, Copy, Loader2 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 
 interface TableDDLDialogProps {
   isOpen: boolean;

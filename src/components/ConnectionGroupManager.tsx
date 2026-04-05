@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { invoke } from '@tauri-apps/api/tauri';
+import { invoke } from '@tauri-apps/api/core';
 import { ChevronDown, ChevronRight, Edit2, Folder, Plus, Trash2 } from 'lucide-react';
 import React, { useCallback, useState } from 'react';
 import { Button } from './ui/button';

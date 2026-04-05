@@ -8,10 +8,9 @@ use std::sync::Arc;
 use tauri::State;
 
 fn get_connections_from_store(
-    store: &std::sync::Mutex<tauri_plugin_store::Store<tauri::Wry>>,
+    store: &std::sync::Arc<tauri_plugin_store::Store<tauri::Wry>>,
 ) -> Result<Vec<ConnectionInfo>, String> {
-    let store_lock = store.lock().map_err(|e| e.to_string())?;
-    match store_lock.get("connections") {
+    match store.get("connections") {
         Some(value) => {
             let connections: Vec<ConnectionInfo> =
                 serde_json::from_value::<Vec<ConnectionInfo>>(value.clone())

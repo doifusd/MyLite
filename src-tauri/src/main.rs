@@ -19,11 +19,11 @@ use tauri_plugin_store::Store;
 
 pub struct AppState {
     pub pool: ConnectionPool,
-    pub store: std::sync::Mutex<Option<Arc<std::sync::Mutex<Store<tauri::Wry>>>>>,
+    pub store: std::sync::Mutex<Option<Arc<Store<tauri::Wry>>>>,
 }
 
 impl AppState {
-    pub fn get_store(&self) -> Result<Arc<std::sync::Mutex<Store<tauri::Wry>>>, String> {
+    pub fn get_store(&self) -> Result<Arc<Store<tauri::Wry>>, String> {
         self.store
             .lock()
             .map_err(|e| format!("Failed to lock store: {}", e))?
@@ -32,22 +32,40 @@ impl AppState {
     }
 }
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    let pool = ConnectionPool::new().await?;
-
+fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_store::Builder::default().build())
-        .manage(Arc::new(AppState {
-            pool,
-            store: std::sync::Mutex::new(None),
-        }))
         .setup(|app| {
-            let store =
-                tauri_plugin_store::StoreBuilder::new(app.handle(), "connections.json".parse()?)
-                    .build();
-            let state = app.state::<Arc<AppState>>();
-            *state.store.lock().unwrap() = Some(Arc::new(std::sync::Mutex::new(store)));
+            let handle = app.handle().clone();
+
+            tauri::async_runtime::spawn(async move {
+                match ConnectionPool::new().await {
+                    Ok(pool) => {
+                        match tauri_plugin_store::StoreBuilder::new(
+                            &handle,
+                            "connections.json".parse::<std::path::PathBuf>().unwrap(),
+                        )
+                        .build()
+                        {
+                            Ok(store) => {
+                                let state = Arc::new(AppState {
+                                    pool,
+                                    store: std::sync::Mutex::new(Some(store)),
+                                });
+
+                                handle.manage(state);
+                            }
+                            Err(e) => {
+                                eprintln!("Failed to build store: {}", e);
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("Failed to initialize connection pool: {}", e);
+                    }
+                }
+            });
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -106,6 +124,4 @@ async fn main() -> anyhow::Result<()> {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
-
-    Ok(())
 }

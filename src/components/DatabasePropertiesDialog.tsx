@@ -1,15 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { invoke } from '@tauri-apps/api/tauri';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { invoke } from '@tauri-apps/api/core';
 import { Loader2 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 
 interface DatabasePropertiesDialogProps {
   isOpen: boolean;
@@ -60,9 +60,9 @@ export const DatabasePropertiesDialog: React.FC<DatabasePropertiesDialogProps> =
         return;
       }
       try {
-        const result = await invoke<any[]>('get_collations', { 
+        const result = await invoke<any[]>('get_collations', {
           connectionId,
-          charset 
+          charset
         });
         setCollations(result);
       } catch (err) {
@@ -77,7 +77,7 @@ export const DatabasePropertiesDialog: React.FC<DatabasePropertiesDialogProps> =
     if (collation) {
       sql += ` COLLATE ${collation}`;
     }
-    
+
     try {
       await invoke('execute_query', {
         connectionId,

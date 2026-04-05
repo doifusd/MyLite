@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { useConnectionStore } from '@/store/connectionStore';
 import Editor, { OnMount } from '@monaco-editor/react';
-import { invoke } from '@tauri-apps/api/tauri';
+import { invoke } from '@tauri-apps/api/core';
 import {
   AlertCircle,
   CheckCircle2,
@@ -271,8 +271,6 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
           kind: monaco.languages.CompletionItemKind.Struct,
           insertText: table.table_name,
           sortText: `f${String(index).padStart(3, '0')}`,
-          detail: `Table in ${database}`,
-          documentation: `Columns: ${table.columns.join(', ')}`,
         });
       });
     }
@@ -286,8 +284,6 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
             kind: monaco.languages.CompletionItemKind.Field,
             insertText: column,
             sortText: `g${table.table_name}_${String(index).padStart(3, '0')}`,
-            detail: `Column from ${table.table_name}`,
-            documentation: `Column in table ${table.table_name}`,
           });
         });
       });
@@ -486,6 +482,19 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
           sql: stmt,
         });
 
+        // Debug: Log query results, especially for DECIMAL detection
+        if (data.columns && data.rows) {
+          const decimalCols = data.columns
+            .map((col, idx) => col.data_type.includes('DECIMAL') || col.data_type.includes('NUMERIC') ? { idx, col } : null)
+            .filter(Boolean);
+          if (decimalCols.length > 0) {
+            console.log('[SQLEditor] Found DECIMAL columns:', decimalCols);
+            console.log('[SQLEditor] DECIMAL values:', data.rows.slice(0, 5).map(row =>
+              decimalCols.map((dc: any) => ({ col: dc.col.name, value: row[dc.idx] }))
+            ));
+          }
+        }
+
         setResults(prev => prev.map(r =>
           r.id === `result-${i}`
             ? { ...r, result: data, executionTime: Date.now() - startTime, isExecuting: false }
@@ -664,9 +673,9 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
           className="gap-1"
         >
           {isExecuting ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <Loader2 className="w-4 h-4 animate-spin" />
           ) : (
-            <Play className="h-4 w-4" />
+            <Play className="w-4 h-4" />
           )}
           Execute
         </Button>
@@ -684,12 +693,12 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
       </div>
 
       {/* Database Selection Row */}
-      <div className="flex items-center gap-3 px-2 py-2 border-b bg-white text-sm">
+      <div className="flex items-center gap-3 px-2 py-2 text-sm bg-white border-b">
         <label className="font-medium text-gray-600 min-w-fit">Connection:</label>
         <select
           value={selectedConnectionId}
           onChange={(e) => setSelectedConnectionId(e.target.value)}
-          className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="">Select connection...</option>
           {connections.map((conn) => (
@@ -703,7 +712,7 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
         <select
           value={selectedDatabase || ''}
           onChange={(e) => setSelectedDatabase(e.target.value || undefined)}
-          className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="">Select database...</option>
           {availableDatabases.map((db) => (
@@ -721,7 +730,7 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
       </div>
 
       {/* SQL Input - Monaco Editor */}
-      <div className="flex-1 min-h-0 relative">
+      <div className="relative flex-1 min-h-0">
         <Editor
           height="100%"
           language="sql"
@@ -761,9 +770,9 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
       </div>
 
       {/* Results */}
-      <div className="flex-1 min-h-0 border-t flex flex-col">
-        <Tabs value={activeResultTab} onValueChange={setActiveResultTab} className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="w-full justify-start rounded-none border-b bg-gray-50 px-2 shrink-0 overflow-x-auto">
+      <div className="flex flex-col flex-1 min-h-0 border-t">
+        <Tabs value={activeResultTab} onValueChange={setActiveResultTab} className="flex flex-col flex-1 overflow-hidden">
+          <TabsList className="justify-start w-full px-2 overflow-x-auto border-b rounded-none bg-gray-50 shrink-0">
             {results.length > 0 ? (
               results.map((res, index) => (
                 <TabsTrigger
@@ -776,11 +785,11 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
                 >
                   <span className="text-xs">{index + 1}</span>
                   {res.isExecuting ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
+                    <Loader2 className="w-3 h-3 animate-spin" />
                   ) : res.error ? (
-                    <AlertCircle className="h-3 w-3" />
+                    <AlertCircle className="w-3 h-3" />
                   ) : (
-                    <Table2 className="h-3 w-3" />
+                    <Table2 className="w-3 h-3" />
                   )}
                   <span className="max-w-[100px] truncate text-xs">
                     {res.sql.slice(0, 20)}...
@@ -794,18 +803,18 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
               ))
             ) : (
               <TabsTrigger value="placeholder" disabled className="gap-1">
-                <Table2 className="h-4 w-4" />
+                <Table2 className="w-4 h-4" />
                 Results
               </TabsTrigger>
             )}
             <TabsTrigger value="history" className="gap-1 ml-auto">
-              <Clock className="h-4 w-4" />
+              <Clock className="w-4 h-4" />
               History
               {history.length > 0 && <span className="ml-1 text-xs">({history.length})</span>}
             </TabsTrigger>
           </TabsList>
 
-          <div className="flex-1 overflow-hidden relative">
+          <div className="relative flex-1 overflow-hidden">
             {results.map((res) => (
               <TabsContent
                 key={res.id}
@@ -814,7 +823,7 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
               >
                 {res.isExecuting ? (
                   <div className="flex items-center justify-center h-full">
-                    <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                    <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
                     <span className="ml-2 text-gray-500">Executing...</span>
                   </div>
                 ) : res.error ? (
@@ -823,8 +832,8 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
                       <AlertCircle className="h-5 w-5 mt-0.5" />
                       <div>
                         <p className="font-medium">Query Error</p>
-                        <p className="text-sm mt-1">{res.error}</p>
-                        <code className="text-xs bg-red-50 p-2 rounded mt-2 block">
+                        <p className="mt-1 text-sm">{res.error}</p>
+                        <code className="block p-2 mt-2 text-xs rounded bg-red-50">
                           {res.sql}
                         </code>
                       </div>
@@ -851,7 +860,7 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
                   {history.map((item, index) => (
                     <div
                       key={index}
-                      className="p-3 hover:bg-gray-50 cursor-pointer"
+                      className="p-3 cursor-pointer hover:bg-gray-50"
                       onClick={() => {
                         setSql(item.sql);
                         if (editorRef.current) {
@@ -859,10 +868,10 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
                         }
                       }}
                     >
-                      <code className="text-sm font-mono text-gray-700 block truncate">
+                      <code className="block font-mono text-sm text-gray-700 truncate">
                         {item.sql}
                       </code>
-                      <p className="text-xs text-gray-400 mt-1">
+                      <p className="mt-1 text-xs text-gray-400">
                         {item.timestamp.toLocaleString()}
                       </p>
                     </div>
@@ -885,7 +894,7 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
         {results.length > 0 && (
           <>
             <span className="flex items-center gap-1">
-              <CheckCircle2 className="h-3 w-3 text-green-500" />
+              <CheckCircle2 className="w-3 h-3 text-green-500" />
               {results.filter(r => !r.isExecuting).length}/{results.length} executed
             </span>
             <span>
@@ -899,7 +908,7 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
             </span>
             {results.some(r => r.error) && (
               <span className="flex items-center gap-1 text-red-500">
-                <AlertCircle className="h-3 w-3" />
+                <AlertCircle className="w-3 h-3" />
                 {results.filter(r => r.error).length} errors
               </span>
             )}

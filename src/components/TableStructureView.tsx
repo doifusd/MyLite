@@ -1,17 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { invoke } from '@tauri-apps/api/tauri';
-import { Loader2, RefreshCw, Plus, Trash2, Edit2, Key, Columns as ColumnsIcon } from 'lucide-react';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { invoke } from '@tauri-apps/api/core';
+import { Columns as ColumnsIcon, Edit2, Key, Loader2, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 import { ColumnEditorDialog } from './ColumnEditorDialog';
 import { IndexEditorDialog } from './IndexEditorDialog';
 import { TablePropertiesDialog } from './TablePropertiesDialog';
@@ -116,7 +116,7 @@ export const TableStructureView: React.FC<TableStructureViewProps> = ({
 
   const handleDropIndex = async (indexName: string) => {
     if (!confirm(`Are you sure you want to drop index "${indexName}"?`)) return;
-    const sql = indexName === 'PRIMARY' 
+    const sql = indexName === 'PRIMARY'
       ? `ALTER TABLE \`${table}\` DROP PRIMARY KEY`
       : `ALTER TABLE \`${table}\` DROP INDEX \`${indexName}\``;
     handleAlterTable(sql);
@@ -164,13 +164,13 @@ export const TableStructureView: React.FC<TableStructureViewProps> = ({
             <p className="font-medium">{info.collation || 'N/A'}</p>
           </div>
           <div className="flex items-end">
-             <Button variant="ghost" size="sm" className="h-8 gap-1 ml-auto" onClick={() => setTablePropertiesOpen(true)}>
-               <Edit2 className="h-3 w-3" /> Edit Properties
-             </Button>
+            <Button variant="ghost" size="sm" className="h-8 gap-1 ml-auto" onClick={() => setTablePropertiesOpen(true)}>
+              <Edit2 className="h-3 w-3" /> Edit Properties
+            </Button>
           </div>
         </div>
       </div>
-      
+
       {/* DDL removed: Show via right click context menu */}
 
       {/* Columns */}
@@ -180,9 +180,9 @@ export const TableStructureView: React.FC<TableStructureViewProps> = ({
             <ColumnsIcon className="h-5 w-5" />
             Columns
           </h3>
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             className="gap-1 shadow-sm rounded-full bg-white hover:bg-gray-50 transition-all font-medium border-gray-200 hover:border-blue-200 hover:text-blue-600"
             onClick={() => {
               setEditingColumn(undefined);
@@ -228,9 +228,9 @@ export const TableStructureView: React.FC<TableStructureViewProps> = ({
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         className="h-8 w-8"
                         onClick={() => {
                           setEditingColumn(col);
@@ -239,9 +239,9 @@ export const TableStructureView: React.FC<TableStructureViewProps> = ({
                       >
                         <Edit2 className="h-3 w-3" />
                       </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         className="h-8 w-8 text-red-500"
                         onClick={() => handleDropColumn(col.name)}
                       >
@@ -263,9 +263,9 @@ export const TableStructureView: React.FC<TableStructureViewProps> = ({
             <Key className="h-5 w-5" />
             Indexes
           </h3>
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             className="gap-1 shadow-sm rounded-full bg-white hover:bg-gray-50 transition-all font-medium border-gray-200 hover:border-blue-200 hover:text-blue-600"
             onClick={() => setIndexDialogOpen(true)}
           >
@@ -294,9 +294,9 @@ export const TableStructureView: React.FC<TableStructureViewProps> = ({
                   <TableCell>{idx.columns.join(', ')}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         className="h-8 w-8 text-red-500"
                         onClick={() => handleDropIndex(idx.name)}
                       >

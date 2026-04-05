@@ -68,11 +68,8 @@ pub async fn save_connection(
     });
 
     {
-        let mut store_lock = store.lock().map_err(|e| e.to_string())?;
-        store_lock
-            .insert("connections".to_string(), serde_json::json!(updated))
-            .map_err(|e| e.to_string())?;
-        store_lock.save().map_err(|e| e.to_string())?;
+        store.set("connections".to_string(), serde_json::json!(updated));
+        store.save().map_err(|e| e.to_string())?;
     }
 
     Ok(ConnectionInfo {
@@ -123,11 +120,8 @@ pub async fn delete_connection(
         .collect();
 
     {
-        let mut store_lock = store.lock().map_err(|e| e.to_string())?;
-        store_lock
-            .insert("connections".to_string(), serde_json::json!(filtered))
-            .map_err(|e| e.to_string())?;
-        store_lock.save().map_err(|e| e.to_string())?;
+        store.set("connections".to_string(), serde_json::json!(filtered));
+        store.save().map_err(|e| e.to_string())?;
     }
 
     // Also remove the connection pool and SSH tunnel
@@ -206,11 +200,8 @@ pub async fn toggle_connection_favorite(
         .collect();
 
     {
-        let mut store_lock = store.lock().map_err(|e| e.to_string())?;
-        store_lock
-            .insert("connections".to_string(), serde_json::json!(updated))
-            .map_err(|e| e.to_string())?;
-        store_lock.save().map_err(|e| e.to_string())?;
+        store.set("connections".to_string(), serde_json::json!(updated));
+        store.save().map_err(|e| e.to_string())?;
     }
 
     Ok(connection)
@@ -250,11 +241,8 @@ pub async fn update_connection_group(
         .collect();
 
     {
-        let mut store_lock = store.lock().map_err(|e| e.to_string())?;
-        store_lock
-            .insert("connections".to_string(), serde_json::json!(updated))
-            .map_err(|e| e.to_string())?;
-        store_lock.save().map_err(|e| e.to_string())?;
+        store.set("connections".to_string(), serde_json::json!(updated));
+        store.save().map_err(|e| e.to_string())?;
     }
 
     Ok(connection)
@@ -284,11 +272,8 @@ pub async fn update_connection_last_connected(
         .collect();
 
     {
-        let mut store_lock = store.lock().map_err(|e| e.to_string())?;
-        store_lock
-            .insert("connections".to_string(), serde_json::json!(updated))
-            .map_err(|e| e.to_string())?;
-        store_lock.save().map_err(|e| e.to_string())?;
+        store.set("connections".to_string(), serde_json::json!(updated));
+        store.save().map_err(|e| e.to_string())?;
     }
 
     Ok(())
@@ -303,8 +288,8 @@ pub async fn get_connection_groups(
         .get_store()
         .map_err(|e| format!("Failed to get store: {}", e))?;
 
-    let store_lock = store.lock().map_err(|e| e.to_string())?;
-    match store_lock.get("connection_groups") {
+    
+    match store.get("connection_groups") {
         Some(value) => {
             let groups: Vec<ConnectionGroup> = serde_json::from_value(value.clone())
                 .map_err(|e| format!("Failed to parse groups: {}", e))?;
@@ -330,11 +315,8 @@ pub async fn save_connection_group(
     groups.push(group.clone());
 
     {
-        let mut store_lock = store.lock().map_err(|e| e.to_string())?;
-        store_lock
-            .insert("connection_groups".to_string(), serde_json::json!(groups))
-            .map_err(|e| e.to_string())?;
-        store_lock.save().map_err(|e| e.to_string())?;
+        store.set("connection_groups".to_string(), serde_json::json!(groups));
+        store.save().map_err(|e| e.to_string())?;
     }
 
     Ok(group)
@@ -353,11 +335,8 @@ pub async fn delete_connection_group(
     groups.retain(|g| g.id != group_id);
 
     {
-        let mut store_lock = store.lock().map_err(|e| e.to_string())?;
-        store_lock
-            .insert("connection_groups".to_string(), serde_json::json!(groups))
-            .map_err(|e| e.to_string())?;
-        store_lock.save().map_err(|e| e.to_string())?;
+        store.set("connection_groups".to_string(), serde_json::json!(groups));
+        store.save().map_err(|e| e.to_string())?;
     }
 
     // Also clear group from connections
@@ -373,14 +352,11 @@ pub async fn delete_connection_group(
         .collect();
 
     {
-        let mut store_lock = store.lock().map_err(|e| e.to_string())?;
-        store_lock
-            .insert(
-                "connections".to_string(),
-                serde_json::json!(updated_connections),
-            )
-            .map_err(|e| e.to_string())?;
-        store_lock.save().map_err(|e| e.to_string())?;
+        store.set(
+            "connections".to_string(),
+            serde_json::json!(updated_connections),
+        );
+        store.save().map_err(|e| e.to_string())?;
     }
 
     Ok(())
@@ -395,8 +371,8 @@ pub async fn get_quick_connect_templates(
         .get_store()
         .map_err(|e| format!("Failed to get store: {}", e))?;
 
-    let store_lock = store.lock().map_err(|e| e.to_string())?;
-    match store_lock.get("quick_connect_templates") {
+    
+    match store.get("quick_connect_templates") {
         Some(value) => {
             let templates: Vec<QuickConnectTemplate> = serde_json::from_value(value.clone())
                 .map_err(|e| format!("Failed to parse templates: {}", e))?;
@@ -422,14 +398,11 @@ pub async fn save_quick_connect_template(
     templates.push(template.clone());
 
     {
-        let mut store_lock = store.lock().map_err(|e| e.to_string())?;
-        store_lock
-            .insert(
-                "quick_connect_templates".to_string(),
-                serde_json::json!(templates),
-            )
-            .map_err(|e| e.to_string())?;
-        store_lock.save().map_err(|e| e.to_string())?;
+        store.set(
+            "quick_connect_templates".to_string(),
+            serde_json::json!(templates),
+        );
+        store.save().map_err(|e| e.to_string())?;
     }
 
     Ok(template)
@@ -448,14 +421,11 @@ pub async fn delete_quick_connect_template(
     templates.retain(|t| t.id != template_id);
 
     {
-        let mut store_lock = store.lock().map_err(|e| e.to_string())?;
-        store_lock
-            .insert(
-                "quick_connect_templates".to_string(),
-                serde_json::json!(templates),
-            )
-            .map_err(|e| e.to_string())?;
-        store_lock.save().map_err(|e| e.to_string())?;
+        store.set(
+            "quick_connect_templates".to_string(),
+            serde_json::json!(templates),
+        );
+        store.save().map_err(|e| e.to_string())?;
     }
 
     Ok(())
@@ -538,10 +508,9 @@ pub async fn filter_connections(
 }
 
 fn get_connections_from_store(
-    store: &std::sync::Mutex<tauri_plugin_store::Store<tauri::Wry>>,
+    store: &std::sync::Arc<tauri_plugin_store::Store<tauri::Wry>>,
 ) -> Result<Vec<ConnectionInfo>, String> {
-    let store_lock = store.lock().map_err(|e| e.to_string())?;
-    match store_lock.get("connections") {
+    match store.get("connections") {
         Some(value) => {
             let connections: Vec<ConnectionInfo> =
                 serde_json::from_value::<Vec<ConnectionInfo>>(value.clone())
@@ -553,10 +522,9 @@ fn get_connections_from_store(
 }
 
 fn get_connection_groups_internal(
-    store: &std::sync::Mutex<tauri_plugin_store::Store<tauri::Wry>>,
+    store: &std::sync::Arc<tauri_plugin_store::Store<tauri::Wry>>,
 ) -> Result<Vec<ConnectionGroup>, String> {
-    let store_lock = store.lock().map_err(|e| e.to_string())?;
-    match store_lock.get("connection_groups") {
+    match store.get("connection_groups") {
         Some(value) => {
             let groups: Vec<ConnectionGroup> = serde_json::from_value(value.clone())
                 .map_err(|e| format!("Failed to parse groups: {}", e))?;
@@ -567,10 +535,9 @@ fn get_connection_groups_internal(
 }
 
 fn get_quick_connect_templates_internal(
-    store: &std::sync::Mutex<tauri_plugin_store::Store<tauri::Wry>>,
+    store: &std::sync::Arc<tauri_plugin_store::Store<tauri::Wry>>,
 ) -> Result<Vec<QuickConnectTemplate>, String> {
-    let store_lock = store.lock().map_err(|e| e.to_string())?;
-    match store_lock.get("quick_connect_templates") {
+    match store.get("quick_connect_templates") {
         Some(value) => {
             let templates: Vec<QuickConnectTemplate> = serde_json::from_value(value.clone())
                 .map_err(|e| format!("Failed to parse templates: {}", e))?;

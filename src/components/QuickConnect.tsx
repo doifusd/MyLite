@@ -1,12 +1,12 @@
-import React, { useState, useCallback } from 'react';
-import { invoke } from '@tauri-apps/api/tauri';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
+import { cn } from '@/lib/utils';
+import { invoke } from '@tauri-apps/api/core';
+import { Clock, Edit2, ExternalLink, Plus, Trash2, Zap } from 'lucide-react';
+import React, { useCallback, useState } from 'react';
 import { Button } from './ui/button';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { ScrollArea } from './ui/scroll-area';
-import { cn } from '@/lib/utils';
-import { Zap, Plus, Trash2, Edit2, ExternalLink, Clock } from 'lucide-react';
 
 export interface QuickConnectTemplate {
   id: string;
@@ -171,7 +171,7 @@ export const QuickConnect: React.FC<QuickConnectProps> = ({
           <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
             Quick Connect Templates
           </h3>
-          
+
           {templates.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               <Zap className="w-8 h-8 mx-auto mb-2 opacity-50" />
@@ -380,8 +380,8 @@ export const QuickConnect: React.FC<QuickConnectProps> = ({
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
               Cancel
             </Button>
-            <Button 
-              onClick={handleSaveTemplate} 
+            <Button
+              onClick={handleSaveTemplate}
               disabled={!templateName.trim() || !host.trim() || !username.trim()}
             >
               {editingTemplate ? 'Save' : 'Create'}

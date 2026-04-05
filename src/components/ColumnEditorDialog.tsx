@@ -1,15 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { invoke } from '@tauri-apps/api/tauri';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { invoke } from '@tauri-apps/api/core';
+import React, { useEffect, useState } from 'react';
 
 interface ColumnInfo {
   name: string;
@@ -74,9 +74,9 @@ export const ColumnEditorDialog: React.FC<ColumnEditorDialogProps> = ({
         return;
       }
       try {
-        const result = await invoke<any[]>('get_collations', { 
+        const result = await invoke<any[]>('get_collations', {
           connectionId,
-          charset: formData.character_set 
+          charset: formData.character_set
         });
         setCollations(result);
       } catch (err) {

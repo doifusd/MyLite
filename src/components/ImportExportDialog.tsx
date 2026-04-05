@@ -1,15 +1,15 @@
-import React, { useState } from 'react';
-import { invoke } from '@tauri-apps/api/tauri';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Upload, Download, FileJson, FileSpreadsheet } from 'lucide-react';
+import { invoke } from '@tauri-apps/api/core';
+import { Download, FileJson, FileSpreadsheet, Upload } from 'lucide-react';
+import React, { useState } from 'react';
 
 interface ImportExportDialogProps {
   isOpen: boolean;
@@ -36,10 +36,10 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({
 
   const handleExport = async () => {
     if (!table) return;
-    
+
     setIsExporting(true);
     setExportProgress(0);
-    
+
     try {
       // Fetch all data
       const result = await invoke<any>('execute_query', {
@@ -47,18 +47,18 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({
         database,
         sql: `SELECT * FROM \`${database}\`.\`${table}\``,
       });
-      
+
       if (!result || !result.rows) {
         throw new Error('No data to export');
       }
 
       let content = '';
       let filename = `${table}_export_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}`;
-      
+
       if (exportFormat === 'csv') {
         // CSV Export
         const headers = result.columns.map((c: any) => c.name).join(',');
-        const rows = result.rows.map((row: any[]) => 
+        const rows = result.rows.map((row: any[]) =>
           row.map(cell => {
             if (cell === null) return '';
             const str = String(cell);
@@ -86,7 +86,7 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({
         const inserts = result.rows.map((row: any[]) => {
           const cols: string[] = [];
           const vals: string[] = [];
-          
+
           result.columns.forEach((col: any, idx: number) => {
             cols.push(`\`${col.name}\``);
             const val = row[idx];
@@ -98,7 +98,7 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({
               vals.push(`'${String(val).replace(/'/g, "''")}'`);
             }
           });
-          
+
           return `INSERT INTO \`${database}\`.\`${table}\` (${cols.join(', ')}) VALUES (${vals.join(', ')});`;
         });
         content = inserts.join('\n');
@@ -106,8 +106,8 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({
       }
 
       // Create download
-      const blob = new Blob([content], { 
-        type: exportFormat === 'json' ? 'application/json' : 'text/plain' 
+      const blob = new Blob([content], {
+        type: exportFormat === 'json' ? 'application/json' : 'text/plain'
       });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -115,7 +115,7 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({
       a.download = filename;
       a.click();
       URL.revokeObjectURL(url);
-      
+
       setExportProgress(100);
       setTimeout(() => {
         setIsExporting(false);
@@ -129,38 +129,38 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({
 
   const handleImport = async () => {
     if (!importFile || !table) return;
-    
+
     setIsImporting(true);
     setImportProgress(0);
-    
+
     try {
       const content = await importFile.text();
       const lines = content.split('\n').filter(line => line.trim());
-      
+
       if (importFile.name.endsWith('.csv')) {
         // Parse CSV
         const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
         const rows = lines.slice(1);
-        
+
         let successCount = 0;
         let errorCount = 0;
-        
+
         for (let i = 0; i < rows.length; i++) {
           const row = rows[i];
           // Simple CSV parsing (doesn't handle all edge cases)
-            const values = row.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
-          
-            const cols: string[] = [];
-            const vals: string[] = [];
-          
-              headers.forEach((col, idx) => {
+          const values = row.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+
+          const cols: string[] = [];
+          const vals: string[] = [];
+
+          headers.forEach((col, idx) => {
             if (idx < values.length && values[idx] !== '') {
               cols.push(`\`${col}\``);
               vals.push(`'${values[idx].replace(/'/g, "''")}'`);
             }
           });
-          
-              if (cols.length > 0) {
+
+          if (cols.length > 0) {
             const sql = `INSERT INTO \`${database}\`.\`${table}\` (${cols.join(', ')}) VALUES (${vals.join(', ')});`;
             try {
               await invoke('execute_query', { connectionId, database, sql });
@@ -169,15 +169,15 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({
               errorCount++;
             }
           }
-          
-              setImportProgress(Math.round(((i + 1) / rows.length) * 100));
+
+          setImportProgress(Math.round(((i + 1) / rows.length) * 100));
         }
         alert(`Import complete: ${successCount} rows imported, ${errorCount} errors`);
       } else if (importFile.name.endsWith('.sql')) {
         // Execute SQL file
         const statements = content.split(';').filter(s => s.trim());
         let successCount = 0;
-        
+
         for (let i = 0; i < statements.length; i++) {
           const sql = statements[i].trim() + ';';
           try {
@@ -188,10 +188,10 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({
           }
           setImportProgress(Math.round(((i + 1) / statements.length) * 100));
         }
-        
+
         alert(`Import complete: ${successCount}/${statements.length} statements executed`);
       }
-      
+
       setIsImporting(false);
       onClose();
     } catch (err: any) {
@@ -206,7 +206,7 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({
         <DialogHeader>
           <DialogTitle>Import / Export</DialogTitle>
         </DialogHeader>
-        
+
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="export">
@@ -218,7 +218,7 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({
               Import
             </TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="export" className="space-y-4">
             <div className="space-y-4">
               <div>
@@ -250,17 +250,17 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({
                   </Button>
                 </div>
               </div>
-              
+
               {table && (
                 <div className="text-sm text-gray-500">
                   Exporting table: <span className="font-medium">{database}.{table}</span>
                 </div>
               )}
-              
+
               {isExporting && (
                 <div className="space-y-2">
                   <div className="h-2 bg-gray-200 rounded-full">
-                    <div 
+                    <div
                       className="h-full bg-blue-500 rounded-full transition-all"
                       style={{ width: `${exportProgress}%` }}
                     />
@@ -269,18 +269,18 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({
                 </div>
               )}
             </div>
-            
+
             <DialogFooter>
               <Button variant="outline" onClick={onClose}>Cancel</Button>
-              <Button 
-                onClick={handleExport} 
+              <Button
+                onClick={handleExport}
                 disabled={!table || isExporting}
               >
                 {isExporting ? 'Exporting...' : 'Export'}
               </Button>
             </DialogFooter>
           </TabsContent>
-          
+
           <TabsContent value="import" className="space-y-4">
             <div className="space-y-4">
               <div>
@@ -292,17 +292,17 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({
                   className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                 />
               </div>
-              
+
               {table && (
                 <div className="text-sm text-gray-500">
                   Importing to: <span className="font-medium">{database}.{table}</span>
                 </div>
               )}
-              
+
               {isImporting && (
                 <div className="space-y-2">
                   <div className="h-2 bg-gray-200 rounded-full">
-                    <div 
+                    <div
                       className="h-full bg-blue-500 rounded-full transition-all"
                       style={{ width: `${importProgress}%` }}
                     />
@@ -311,11 +311,11 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({
                 </div>
               )}
             </div>
-            
+
             <DialogFooter>
               <Button variant="outline" onClick={onClose}>Cancel</Button>
-              <Button 
-                onClick={handleImport} 
+              <Button
+                onClick={handleImport}
                 disabled={!importFile || !table || isImporting}
               >
                 {isImporting ? 'Importing...' : 'Import'}

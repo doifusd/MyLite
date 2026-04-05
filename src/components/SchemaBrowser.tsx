@@ -1,6 +1,6 @@
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { invoke } from '@tauri-apps/api/tauri';
+import { invoke } from '@tauri-apps/api/core';
 import {
   ChevronDown,
   ChevronRight,
@@ -35,7 +35,6 @@ interface SchemaTreeItem {
 interface SchemaBrowserProps {
   connectionId: string;
   onTableSelect?: (database: string, table: string, tab?: string) => void;
-  onCreateTableSQL?: (sql: string) => void;
   onNewQuery?: (database?: string) => void;
   className?: string;
 }
@@ -43,7 +42,6 @@ interface SchemaBrowserProps {
 export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
   connectionId,
   onTableSelect,
-  onCreateTableSQL,
   onNewQuery,
   className,
 }) => {
@@ -303,6 +301,9 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
     }
   };
 
+  // Note: generateCreateTableTemplate is defined but not used
+  // Can be removed if no longer needed
+  /*
   const generateCreateTableTemplate = (database: string, tableName: string): string => {
     const escapedDb = database;
     const escapedTable = tableName;
@@ -316,6 +317,7 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
   PRIMARY KEY (\`id\`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='${tableName}表';`;
   };
+  */
 
   const convertToGoType = (mysqlType: string): string => {
     const baseType = mysqlType.toLowerCase().split('(')[0];

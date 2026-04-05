@@ -17,7 +17,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
-import { invoke } from '@tauri-apps/api/tauri';
+import { invoke } from '@tauri-apps/api/core';
 import {
   Check,
   ChevronLeft,
@@ -28,10 +28,9 @@ import {
   Minimize2,
   Plus,
   Save,
-  Search,
   X
 } from 'lucide-react';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { VirtualTable } from './VirtualTable';
 
 interface InsertDialogProps {
@@ -149,7 +148,6 @@ export const QueryResult: React.FC<QueryResultProps> = ({
   const [rowsPerPage, setRowsPerPage] = useState(100);
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'table' | 'json'>('table');
 
   const [editingCell, setEditingCell] = useState<{ rowIndex: number; colIndex: number } | null>(null);
@@ -233,7 +231,7 @@ export const QueryResult: React.FC<QueryResultProps> = ({
   const handleVirtualCellEdit = async (rowIndex: number, colIndex: number, value: any) => {
     if (!tableName || !databaseName || !connectionId) return;
 
-    const row = filteredRows[rowIndex];
+    const row = data.rows[rowIndex];
     const col = data.columns[colIndex];
     const originalValue = row[colIndex];
 
@@ -274,22 +272,10 @@ export const QueryResult: React.FC<QueryResultProps> = ({
 
   const [insertDialogOpen, setInsertDialogOpen] = useState(false);
 
-  // Filter rows based on search term
-  const filteredRows = useMemo(() => {
-    if (!searchTerm) return data.rows;
-    const term = searchTerm.toLowerCase();
-    return data.rows.filter(row =>
-      row.some(cell => {
-        if (cell === null) return false;
-        return String(cell).toLowerCase().includes(term);
-      })
-    );
-  }, [data.rows, searchTerm]);
-
-  const totalPages = Math.ceil(filteredRows.length / rowsPerPage);
+  const totalPages = Math.ceil(data.rows.length / rowsPerPage);
   const startIndex = (currentPage - 1) * rowsPerPage;
-  const endIndex = Math.min(startIndex + rowsPerPage, filteredRows.length);
-  const currentRows = filteredRows.slice(startIndex, endIndex);
+  const endIndex = Math.min(startIndex + rowsPerPage, data.rows.length);
+  const currentRows = data.rows.slice(startIndex, endIndex);
 
   const handleCopy = () => {
     const text = [
@@ -403,67 +389,7 @@ export const QueryResult: React.FC<QueryResultProps> = ({
     }
   };
 
-  const handleExport = (format: 'csv' | 'json') => {
-    try {
-      let content = '';
-      let filename = '';
-      let mimeType = '';
-
-      if (format === 'csv') {
-        const csv = [
-          data.columns.map((c) => c.name).join(','),
-          ...data.rows.map((row) =>
-            row
-              .map((cell) => {
-                if (cell === null) return '';
-                const str = String(cell);
-                if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-                  return `"${str.replace(/"/g, '""')}"`;
-                }
-                return str;
-              })
-              .join(',')
-          ),
-        ].join('\n');
-        content = csv;
-        mimeType = 'text/csv;charset=utf-8;';
-        filename = `query_result_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`;
-      } else {
-        // Export as JSON
-        const jsonData = data.rows.map((row) => {
-          const obj: Record<string, any> = {};
-          data.columns.forEach((col, idx) => {
-            obj[col.name] = row[idx];
-          });
-          return obj;
-        });
-        content = JSON.stringify(jsonData, null, 2);
-        mimeType = 'application/json;charset=utf-8;';
-        filename = `query_result_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
-      }
-
-      // Create blob and download
-      const blob = new Blob([content], { type: mimeType });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-
-      link.setAttribute('href', url);
-      link.setAttribute('download', filename);
-      link.style.visibility = 'hidden';
-
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      // Clean up
-      setTimeout(() => {
-        URL.revokeObjectURL(url);
-      }, 100);
-    } catch (error) {
-      console.error('Export failed:', error);
-      alert('Export failed. Please try again.');
-    }
-  };
+  // Removed unused handleExport function
 
   // Handle non-SELECT results (INSERT, UPDATE, DELETE, etc.)
   if (data.columns.length === 0 && typeof data.affected_rows === 'number') {
@@ -529,30 +455,6 @@ export const QueryResult: React.FC<QueryResultProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Search..."
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="pl-8 w-48"
-            />
-            {searchTerm && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6"
-                onClick={() => setSearchTerm('')}
-              >
-                <X className="h-3 w-3" />
-              </Button>
-            )}
-          </div>
-
           {/* Rows per page */}
           <select
             value={rowsPerPage}
@@ -604,19 +506,18 @@ export const QueryResult: React.FC<QueryResultProps> = ({
         </div>
 
         <Badge variant="secondary" className="font-mono">
-          {filteredRows.length} rows
-          {searchTerm && ` (filtered from ${data.row_count})`}
+          {data.row_count} rows
         </Badge>
       </div>
 
       {/* Results */}
       <div ref={tableAreaRef} className="flex-1 min-h-0">
         {viewMode === 'table' ? (
-          filteredRows.length > 1000 ? (
+          data.rows.length > 1000 ? (
             // Use virtual scrolling for large datasets
             <VirtualTable
               columns={data.columns}
-              rows={filteredRows}
+              rows={data.rows}
               containerHeight={tableAreaHeight}
               className="h-full"
               onCellEdit={tableName && databaseName && connectionId ? handleVirtualCellEdit : undefined}
@@ -782,7 +683,7 @@ export const QueryResult: React.FC<QueryResultProps> = ({
       {/* Footer */}
       <div className="px-3 py-2 border-t bg-gray-50 text-xs text-gray-500 flex items-center justify-between">
         <span>
-          Showing {startIndex + 1} - {endIndex} of {filteredRows.length} rows
+          Showing {startIndex + 1} - {endIndex} of {data.row_count} rows
         </span>
         <span>
           Execution time: {data.execution_time_ms}ms

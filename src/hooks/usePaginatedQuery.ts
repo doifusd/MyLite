@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { invoke } from '@tauri-apps/api/tauri';
+import { invoke } from '@tauri-apps/api/core';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface ColumnInfo {
   name: string;
@@ -50,14 +50,14 @@ export function usePaginatedQuery({
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Track if this is a SELECT-like query
   const isSelectQuery = useRef(false);
-  
+
   useEffect(() => {
     // Check if query is SELECT-like
     const trimmedSql = sql.trim().toUpperCase();
-    isSelectQuery.current = 
+    isSelectQuery.current =
       trimmedSql.startsWith('SELECT') ||
       trimmedSql.startsWith('SHOW') ||
       trimmedSql.startsWith('DESCRIBE') ||
@@ -68,10 +68,10 @@ export function usePaginatedQuery({
 
   const fetchPage = useCallback(async (page: number) => {
     if (!enabled || !sql || !connectionId) return;
-    
+
     setLoading(true);
     setError(null);
-    
+
     try {
       if (isSelectQuery.current) {
         // Use paginated query for SELECT-like queries
@@ -89,7 +89,7 @@ export function usePaginatedQuery({
             sql,
           }).catch(() => 0),
         ]);
-        
+
         setData(result);
         setTotalCount(count);
       } else {
@@ -99,11 +99,11 @@ export function usePaginatedQuery({
           database,
           sql,
         });
-        
+
         setData(result);
         setTotalCount(result.row_count);
       }
-      
+
       setCurrentPage(page);
     } catch (err: any) {
       setError(err.toString());

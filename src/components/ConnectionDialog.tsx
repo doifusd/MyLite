@@ -21,7 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import type { ConnectionColor, Connection as ConnectionConfig, HttpConfig, SshConfig, SslConfig } from '@/store/connectionStore';
-import { invoke } from '@tauri-apps/api/tauri';
+import { invoke } from '@tauri-apps/api/core';
 import {
   AlertCircle,
   CheckCircle2,
@@ -175,8 +175,7 @@ export function ConnectionDialog({
 
   const handlePickPrivateKeyFile = useCallback(async () => {
     try {
-      // Dynamic import to avoid formatter removing unused import
-      const { open } = await import('@tauri-apps/api/dialog');
+      const { dialog } = await import('@tauri-apps/api');
 
       // Get the home directory path
       const homeDir = await invoke<string>('get_home_dir').catch(() => {
@@ -186,7 +185,7 @@ export function ConnectionDialog({
 
       const sshDir = `${homeDir}/.ssh`;
 
-      const selected = await open({
+      const selected = await dialog.open({
         defaultPath: sshDir,
         multiple: false,
         directory: false,
