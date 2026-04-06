@@ -14,6 +14,7 @@ import {
   X
 } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CreateTableDialog } from './CreateTableDialog';
 import { DatabasePropertiesDialog } from './DatabasePropertiesDialog';
 import { DesignTableDialog } from './DesignTableDialog';
@@ -45,6 +46,7 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
   onNewQuery,
   className,
 }) => {
+  const { t } = useTranslation();
   const [treeData, setTreeData] = useState<SchemaTreeItem[]>([]);
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
@@ -531,7 +533,7 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
           className="flex items-center gap-1 mt-2 text-blue-500 hover:text-blue-600"
         >
           <RefreshCw className="w-3 h-3" />
-          Retry
+          {t('schema.browser.retry')}
         </button>
       </div>
     );
@@ -540,11 +542,11 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
   return (
     <div className={cn('overflow-auto relative', className)}>
       <div className="flex items-center justify-between p-2 border-b">
-        <h3 className="text-sm font-medium">Schema Browser</h3>
+        <h3 className="text-sm font-medium">{t('schema.browser.title')}</h3>
         <button
           onClick={fetchDatabases}
           className="p-1 rounded hover:bg-gray-100"
-          title="Refresh"
+          title={t('schema.browser.refresh')}
         >
           <RefreshCw className="w-3 h-3" />
         </button>
@@ -553,7 +555,7 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
       <div className="p-2">
         {treeData.length === 0 ? (
           <p className="py-4 text-sm text-center text-gray-500">
-            No databases found
+            {t('schema.browser.noDatabasesFound')}
           </p>
         ) : (
           treeData.map((node) => renderTreeNode(node))
@@ -586,7 +588,7 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
               setContextMenu(null);
             }}
           >
-            New Query
+            {t('schema.contextMenu.newQuery')}
           </button>
           {contextMenu.node.type === 'table' && (
             <button
@@ -600,7 +602,7 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
                 setContextMenu(null);
               }}
             >
-              Design Table
+              {t('schema.contextMenu.designTable')}
             </button>
           )}
           <button
@@ -613,7 +615,7 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
               setContextMenu(null);
             }}
           >
-            Show Data
+            {t('schema.contextMenu.showData')}
           </button>
           {contextMenu.node.type === 'table' && (
             <button
@@ -627,7 +629,7 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
                 setContextMenu(null);
               }}
             >
-              Show DDL
+              {t('schema.contextMenu.showDDL')}
             </button>
           )}
           {contextMenu.node.type === 'table' && (
@@ -641,7 +643,7 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
                 setContextMenu(null);
               }}
             >
-              Show Structure
+              {t('schema.contextMenu.showStructure')}
             </button>
           )}
           {contextMenu.node.type === 'table' && (
@@ -655,7 +657,7 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
                 setContextMenu(null);
               }}
             >
-              Create Add Index
+              {t('schema.contextMenu.createAddIndex')}
             </button>
           )}
         </div>

@@ -15,6 +15,7 @@ import {
   Table2
 } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { format } from 'sql-formatter';
 
 interface ColumnInfo {
@@ -69,6 +70,7 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
   onSqlChange,
   className,
 }) => {
+  const { t } = useTranslation();
   const [sql, setSql] = useState(initialSql);
   const [isExecuting, setIsExecuting] = useState(false);
   const [results, setResults] = useState<QueryExecutionResult[]>([]);
@@ -677,7 +679,7 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
           ) : (
             <Play className="w-4 h-4" />
           )}
-          Execute
+          {t('ui.execute')}
         </Button>
 
         <Button
@@ -686,7 +688,7 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
           onClick={formatSql}
           disabled={!sql.trim()}
         >
-          Format
+          {t('ui.format')}
         </Button>
 
         <div className="flex-1" />
@@ -853,7 +855,7 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
             <TabsContent value="history" className="absolute inset-0 m-0 data-[state=inactive]:hidden overflow-auto">
               {history.length === 0 ? (
                 <div className="flex items-center justify-center h-full text-gray-400">
-                  <p>No query history</p>
+                  <p>{t('ui.noQueryHistory')}</p>
                 </div>
               ) : (
                 <div className="divide-y">
@@ -882,7 +884,7 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
 
             {results.length === 0 && activeResultTab !== 'history' && (
               <div className="flex items-center justify-center h-full text-gray-400">
-                <p>Execute a query to see results</p>
+                <p>{t('ui.executeQueryToSeeResults')}</p>
               </div>
             )}
           </div>

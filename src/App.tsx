@@ -3,6 +3,7 @@ import { ConnectionGroup, type ConnectionInfo } from '@/components/ConnectionGro
 import { DatabaseWorkspace } from '@/components/DatabaseWorkspace';
 import { GlobalSearch, useGlobalSearchShortcut } from '@/components/GlobalSearch';
 import { KeyboardShortcutsHelp } from '@/components/KeyboardShortcutsHelp';
+import { LanguageToggle } from '@/components/LanguageToggle';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { ToastContainer } from '@/components/Toast';
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,7 @@ import type { Connection, ConnectionColor, ConnectionType } from '@/store/connec
 import { invoke } from '@tauri-apps/api/core';
 import { ChevronDown, ChevronRight, Database, Edit2, Folder, Globe, HelpCircle, Lock, Plus, Search, Server, Shield, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 // Color mapping for Tailwind compatibility
 const colorMap: Record<ConnectionColor, { bg: string; border: string; text: string; lightBg: string }> = {
@@ -79,6 +81,7 @@ function App() {
   // Hooks
   const { theme, setTheme } = useTheme();
   const { toasts, removeToast, success, error } = useToast();
+  const { t } = useTranslation();
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -268,7 +271,7 @@ function App() {
       <header className="h-14 border-b bg-white dark:bg-gray-900 flex items-center justify-between px-4">
         <div className="flex items-center gap-2">
           <Database className="h-6 w-6 text-blue-600" />
-          <h1 className="text-lg font-semibold">MyLite</h1>
+          <h1 className="text-lg font-semibold">{t('app.title')}</h1>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -287,6 +290,7 @@ function App() {
           >
             <HelpCircle className="h-4 w-4" />
           </Button>
+          <LanguageToggle />
           <ThemeToggle theme={theme} onThemeChange={setTheme} />
         </div>
       </header>
@@ -298,11 +302,11 @@ function App() {
           <div className="flex-1 flex flex-col overflow-hidden">
             {/* Search */}
             <div className="p-3 border-b space-y-2">
-              <h2 className="font-medium">Connections</h2>
+              <h2 className="font-medium">{t('connection.title')}</h2>
               <div className="relative">
                 <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder="Search connections..."
+                  placeholder={t('ui.search')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-8"
@@ -322,7 +326,7 @@ function App() {
                 )}
               >
                 <Database className="w-4 h-4 text-blue-500" />
-                <span className="flex-1 text-left">All Connections</span>
+                <span className="flex-1 text-left">{t('connection.allConnections')}</span>
                 <span className="text-xs text-gray-500">{connections.length}</span>
               </button>
             </div>
@@ -332,9 +336,9 @@ function App() {
               {filteredConnections.length === 0 ? (
                 <div className="text-center py-8 text-gray-400">
                   <Database className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p>No connections found</p>
+                  <p>{t('connection.noConnectionsFound')}</p>
                   {searchQuery && (
-                    <p className="text-sm mt-1">Try adjusting your search</p>
+                    <p className="text-sm mt-1">{t('connection.tryAdjustingSearch')}</p>
                   )}
                 </div>
               ) : (
@@ -379,7 +383,7 @@ function App() {
                     <div className="space-y-1">
                       {groupedConnections.some(g => g.connections.length > 0) && (
                         <div className="px-2 py-1 text-xs font-medium text-gray-500">
-                          Ungrouped
+                          {t('connection.ungroupedConnections')}
                         </div>
                       )}
                       {ungroupedConnections.map(conn => (
@@ -408,7 +412,7 @@ function App() {
                 }}
               >
                 <Plus className="h-4 w-4 mr-2" />
-                New Connection
+                {t('connection.new')}
               </Button>
             </div>
           </div>
@@ -441,10 +445,10 @@ function App() {
               <div className="text-center">
                 <Database className="h-16 w-16 mx-auto text-gray-300 mb-4" />
                 <h3 className="text-lg font-medium text-gray-700">
-                  Select a connection
+                  {t('connection.selectConnection')}
                 </h3>
                 <p className="text-gray-500 mt-1">
-                  Choose a connection from the sidebar or create a new one
+                  {t('connection.chooseOrCreate')}
                 </p>
               </div>
             </div>

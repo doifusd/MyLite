@@ -36,6 +36,7 @@ import {
   X,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { ConnectionGroup } from './ConnectionGroupManager';
 
 // Form config without id for new connections
@@ -68,6 +69,7 @@ export function ConnectionDialog({
   initialConfig,
   groups = [],
 }: ConnectionDialogProps) {
+  const { t } = useTranslation();
   const [config, setConfig] = useState<ConnectionFormConfig>({
     name: '',
     host: 'localhost',
@@ -238,9 +240,9 @@ export function ConnectionDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{initialConfig ? 'Edit Connection' : 'New Connection'}</DialogTitle>
+          <DialogTitle>{initialConfig ? t('connection.edit') : t('connection.new')}</DialogTitle>
           <DialogDescription>
-            Configure MySQL database connection with advanced options
+            {t('connection.configureDescription')}
           </DialogDescription>
         </DialogHeader>
 
@@ -620,7 +622,7 @@ export function ConnectionDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t('ui.cancel')}
           </Button>
           <Button
             variant="outline"
@@ -628,7 +630,7 @@ export function ConnectionDialog({
             disabled={!config.host || !config.username || testStatus === 'testing'}
           >
             <RefreshCw className="w-4 h-4 mr-1" />
-            Test
+            {t('connection.testConnection')}
           </Button>
           <Button
             onClick={handleSave}
@@ -639,7 +641,7 @@ export function ConnectionDialog({
             ) : (
               <CheckCircle2 className="w-4 h-4 mr-1" />
             )}
-            Save
+            {t('ui.save')}
           </Button>
         </DialogFooter>
       </DialogContent>

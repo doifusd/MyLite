@@ -1,6 +1,7 @@
 import type { ConnectionInfo } from '@/components/ConnectionGroupManager';
 import { Button } from '@/components/ui/button';
 import { Clock, Database, Keyboard, Plus, Zap } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface WelcomePageProps {
   connections: ConnectionInfo[];
@@ -32,6 +33,7 @@ export function WelcomePage({
   onSelectQuery,
   onOpenShortcuts,
 }: WelcomePageProps) {
+  const { t } = useTranslation();
   const recentConnections = connections
     .filter(c => c.last_connected_at)
     .sort((a, b) => new Date(b.last_connected_at!).getTime() - new Date(a.last_connected_at!).getTime())
@@ -206,15 +208,15 @@ export function WelcomePage({
             <AnimatedContainer delay={0}>
               <div className="mb-12">
                 <h1 className="text-5xl lg:text-6xl font-bold mb-6 text-dracula-text leading-tight">
-                  Welcome to
+                  {t('ui.welcomeTitle')}
                   <br />
                   <span className="relative">
-                    <span className="relative z-10">MyLite</span>
+                    <span className="relative z-10">{t('ui.welcomeMyLite')}</span>
                     <span className="absolute bottom-2 left-0 right-0 h-4 bg-dracula-brand/20 blur-sm" />
                   </span>
                 </h1>
                 <p className="text-lg text-dracula-text-secondary leading-relaxed max-w-md">
-                  A lightweight, powerful MySQLclient for developers. Connect to your databases, run queries, and manage your data with elegance.
+                  {t('ui.welcomeDescription')}
                 </p>
               </div>
             </AnimatedContainer>
@@ -227,7 +229,7 @@ export function WelcomePage({
                 className="mb-16 bg-dracula-brand hover:bg-dracula-brand-hover text-dracula-bg font-semibold px-8 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all"
               >
                 <Plus className="h-5 w-5 mr-2" />
-                Start New Connection
+                {t('ui.startNewConnection')}
               </Button>
             </AnimatedContainer>
 
@@ -237,7 +239,7 @@ export function WelcomePage({
                 <div className="section-title-icon">
                   <Zap className="h-4 w-4" />
                 </div>
-                Quick Actions
+                {t('ui.quickActions')}
               </div>
               <div className="quick-action-grid">
                 {[

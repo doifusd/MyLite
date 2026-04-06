@@ -1,4 +1,3 @@
-import { Keyboard } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -6,6 +5,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { Keyboard } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface KeyboardShortcutsHelpProps {
   open: boolean;
@@ -14,70 +15,77 @@ interface KeyboardShortcutsHelpProps {
 
 interface ShortcutCategory {
   name: string;
+  nameKey: string;
   shortcuts: {
     keys: string[];
-    description: string;
+    descriptionKey: string;
   }[];
 }
 
-const shortcuts: ShortcutCategory[] = [
+const shortcutsConfig: ShortcutCategory[] = [
   {
     name: 'General',
+    nameKey: 'shortcuts.categoryGeneral',
     shortcuts: [
-      { keys: ['Cmd', 'K'], description: 'Open global search' },
-      { keys: ['Cmd', 'N'], description: 'New connection' },
-      { keys: ['Cmd', 'Shift', 'T'], description: 'Toggle theme' },
-      { keys: ['Cmd', ','], description: 'Open settings' },
-      { keys: ['?'], description: 'Show keyboard shortcuts' },
+      { keys: ['Cmd', 'K'], descriptionKey: 'shortcuts.openSearch' },
+      { keys: ['Cmd', 'N'], descriptionKey: 'shortcuts.newConnection' },
+      { keys: ['Cmd', 'Shift', 'T'], descriptionKey: 'shortcuts.toggleTheme' },
+      { keys: ['Cmd', ','], descriptionKey: 'shortcuts.openSettings' },
+      { keys: ['?'], descriptionKey: 'shortcuts.showHelp' },
     ],
   },
   {
     name: 'Navigation',
+    nameKey: 'shortcuts.categoryNavigation',
     shortcuts: [
-      { keys: ['Cmd', '1-9'], description: 'Switch to tab 1-9' },
-      { keys: ['Cmd', 'W'], description: 'Close current tab' },
-      { keys: ['Cmd', 'Shift', '['], description: 'Previous tab' },
-      { keys: ['Cmd', 'Shift', ']'], description: 'Next tab' },
+      { keys: ['Cmd', '1-9'], descriptionKey: 'shortcuts.switchTab' },
+      { keys: ['Cmd', 'W'], descriptionKey: 'shortcuts.closeTab' },
+      { keys: ['Cmd', 'Shift', '['], descriptionKey: 'shortcuts.previousTab' },
+      { keys: ['Cmd', 'Shift', ']'], descriptionKey: 'shortcuts.nextTab' },
     ],
   },
   {
     name: 'Query Editor',
+    nameKey: 'shortcuts.categoryQueryEditor',
     shortcuts: [
-      { keys: ['Cmd', 'Enter'], description: 'Execute query' },
-      { keys: ['Cmd', '/'], description: 'Toggle comment' },
-      { keys: ['Cmd', 'F'], description: 'Find in editor' },
-      { keys: ['Cmd', 'S'], description: 'Save query' },
-      { keys: ['F5'], description: 'Refresh results' },
+      { keys: ['Cmd', 'Enter'], descriptionKey: 'shortcuts.executeQuery' },
+      { keys: ['Cmd', '/'], descriptionKey: 'shortcuts.toggleComment' },
+      { keys: ['Cmd', 'F'], descriptionKey: 'shortcuts.findInEditor' },
+      { keys: ['Cmd', 'S'], descriptionKey: 'shortcuts.saveQuery' },
+      { keys: ['F5'], descriptionKey: 'shortcuts.refreshResults' },
     ],
   },
   {
     name: 'Data Grid',
+    nameKey: 'shortcuts.categoryDataGrid',
     shortcuts: [
-      { keys: ['Cmd', 'C'], description: 'Copy selected cells' },
-      { keys: ['Cmd', 'V'], description: 'Paste into cells' },
-      { keys: ['Delete'], description: 'Delete selected rows' },
-      { keys: ['Cmd', 'Z'], description: 'Undo changes' },
-      { keys: ['Cmd', 'Shift', 'Z'], description: 'Redo changes' },
+      { keys: ['Cmd', 'C'], descriptionKey: 'shortcuts.copy' },
+      { keys: ['Cmd', 'V'], descriptionKey: 'shortcuts.paste' },
+      { keys: ['Delete'], descriptionKey: 'shortcuts.delete' },
+      { keys: ['Cmd', 'Z'], descriptionKey: 'shortcuts.undo' },
+      { keys: ['Cmd', 'Shift', 'Z'], descriptionKey: 'shortcuts.redo' },
     ],
   },
 ];
 
 export function KeyboardShortcutsHelp({ open, onOpenChange }: KeyboardShortcutsHelpProps) {
+  const { t } = useTranslation();
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Keyboard className="h-5 w-5" />
-            Keyboard Shortcuts
+            {t('shortcuts.title')}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          {shortcuts.map((category) => (
-            <div key={category.name}>
+          {shortcutsConfig.map((category) => (
+            <div key={category.nameKey}>
               <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
-                {category.name}
+                {t(category.nameKey)}
               </h3>
               <div className="space-y-2">
                 {category.shortcuts.map((shortcut, idx) => (
@@ -85,7 +93,7 @@ export function KeyboardShortcutsHelp({ open, onOpenChange }: KeyboardShortcutsH
                     key={idx}
                     className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-gray-50"
                   >
-                    <span className="text-sm">{shortcut.description}</span>
+                    <span className="text-sm">{t(shortcut.descriptionKey)}</span>
                     <div className="flex items-center gap-1">
                       {shortcut.keys.map((key, keyIdx) => (
                         <span key={keyIdx} className="flex items-center">

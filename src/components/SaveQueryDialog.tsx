@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface SaveQueryDialogProps {
     open: boolean;
@@ -25,6 +26,7 @@ export const SaveQueryDialog: React.FC<SaveQueryDialogProps> = ({
     onSave,
     sql,
 }) => {
+    const { t } = useTranslation();
     const [queryName, setQueryName] = useState('');
     const [saving, setSaving] = useState(false);
     const inputRef = React.useRef<HTMLInputElement>(null);
@@ -51,8 +53,8 @@ export const SaveQueryDialog: React.FC<SaveQueryDialogProps> = ({
         if (!trimmedName) {
             console.warn('[SaveQueryDialog] Query name is empty, showing error toast');
             toast({
-                title: 'Error',
-                description: 'Please enter a query name',
+                title: t('ui.error'),
+                description: t('query.dialog.errorEmptyName'),
                 variant: 'destructive',
             });
             return;
@@ -71,8 +73,8 @@ export const SaveQueryDialog: React.FC<SaveQueryDialogProps> = ({
 
             // Show success message
             toast({
-                title: 'Success',
-                description: `Query "${trimmedName}" saved successfully`,
+                title: t('ui.success'),
+                description: `${t('query.dialog.saveSuccess')}`,
             });
         } catch (error) {
             console.error('[SaveQueryDialog] Save error caught:', error);
@@ -81,8 +83,8 @@ export const SaveQueryDialog: React.FC<SaveQueryDialogProps> = ({
 
             // Always show error to user
             toast({
-                title: 'Error',
-                description: errorMessage || 'Failed to save query',
+                title: t('ui.error'),
+                description: errorMessage || t('query.dialog.errorSaveFailed'),
                 variant: 'destructive',
             });
         } finally {
@@ -129,18 +131,18 @@ export const SaveQueryDialog: React.FC<SaveQueryDialogProps> = ({
         <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>Save Query</DialogTitle>
+                    <DialogTitle>{t('query.dialog.saveQueryTitle')}</DialogTitle>
                     <DialogDescription>
-                        Give this query a name to save it for later use
+                        {t('query.dialog.saveQueryDescription')}
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
                     <div className="space-y-2">
-                        <Label htmlFor="query-name">Query Name</Label>
+                        <Label htmlFor="query-name">{t('query.dialog.queryName')}</Label>
                         <Input
                             ref={inputRef}
                             id="query-name"
-                            placeholder="e.g., Find active users"
+                            placeholder={t('query.dialog.queryNamePlaceholder')}
                             value={queryName}
                             onChange={(e) => {
                                 const newValue = e.target.value;
@@ -169,7 +171,7 @@ export const SaveQueryDialog: React.FC<SaveQueryDialogProps> = ({
                         }}
                         disabled={saving}
                     >
-                        Cancel
+                        {t('ui.cancel')}
                     </Button>
                     <Button
                         type="button"
@@ -181,7 +183,7 @@ export const SaveQueryDialog: React.FC<SaveQueryDialogProps> = ({
                         }}
                         disabled={isDisabled}
                     >
-                        {saving ? 'Saving...' : 'Save'}
+                        {saving ? `${t('ui.save')}...` : t('ui.save')}
                     </Button>
                 </DialogFooter>
             </DialogContent>

@@ -1,0 +1,8 @@
+
+> mylite@0.1.0 build
+> tsc && vite build
+
+src/App.tsx(154,9): error TS6133: 'loadGroups' is declared but its value is never read.
+src/App.tsx(165,9): error TS6133: 'loadRecentQueries' is declared but its value is never read.
+src/components/ConnectionDialog.tsx(180,15): error TS2339: Property 'dialog' does not exist on type 'typeof import("/Users/sky/.zeroclaw/workspace/mysqlClient/node_modules/@tauri-apps/api/index")'.
+src/components/LanguageToggle.tsx(24,11): error TS6133: 'currentLang' is declared but its value is never read.

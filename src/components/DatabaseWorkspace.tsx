@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { Code, Table, X } from 'lucide-react';
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { SchemaBrowser } from './SchemaBrowser';
 import { SQLEditor } from './SQLEditor';
 import { TableDataView } from './TableDataView';
@@ -21,6 +22,7 @@ export const DatabaseWorkspace: React.FC<DatabaseWorkspaceProps> = ({
   className,
   onClose,
 }) => {
+  const { t } = useTranslation();
   const [selectedDatabase, setSelectedDatabase] = useState<string | undefined>();
   const [selectedTable, setSelectedTable] = useState<string | undefined>();
   const [activeTab, setActiveTab] = useState('query-0');
@@ -102,7 +104,7 @@ export const DatabaseWorkspace: React.FC<DatabaseWorkspaceProps> = ({
             className="text-gray-500 hover:text-gray-700"
           >
             <X className="w-4 h-4 mr-1" />
-            Close
+            {t('ui.close')}
           </Button>
         )}
       </div>
@@ -136,7 +138,7 @@ export const DatabaseWorkspace: React.FC<DatabaseWorkspaceProps> = ({
                         value={tab.id}
                         className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none h-full gap-2"
                       >
-                        <Code className="w-4 h-4" /> Query {queryTabs.indexOf(tab) + 1}
+                        <Code className="w-4 h-4" /> {t('ui.query')} {queryTabs.indexOf(tab) + 1}
                       </TabsTrigger>
                       {queryTabs.length > 1 && (
                         <button
@@ -155,7 +157,7 @@ export const DatabaseWorkspace: React.FC<DatabaseWorkspaceProps> = ({
                     disabled={!selectedTable}
                     className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none h-full gap-2 disabled:opacity-50"
                   >
-                    <Table className="w-4 h-4" /> Data
+                    <Table className="w-4 h-4" /> {t('ui.data')}
                   </TabsTrigger>
                 </TabsList>
               </div>
@@ -189,7 +191,7 @@ export const DatabaseWorkspace: React.FC<DatabaseWorkspaceProps> = ({
                     />
                   ) : (
                     <div className="flex items-center justify-center h-full text-gray-400">
-                      Select a table to view data
+                      {t('ui.selectTableToViewData')}
                     </div>
                   )}
                 </TabsContent>
