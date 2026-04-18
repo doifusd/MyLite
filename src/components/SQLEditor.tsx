@@ -81,7 +81,7 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
   const [selectedDatabase, setSelectedDatabase] = useState<string | undefined>(database);
   const [availableDatabases, setAvailableDatabases] = useState<string[]>([]);
   // const editorRef = useRef<HTMLTextAreaElement>(null);
-  const resultIdCounter = useRef(0);
+  // const resultIdCounter = useRef(0);
   const tablesInfoRef = useRef<DatabaseTablesInfo | null>(null);
 
   // Get all connections from store
@@ -219,7 +219,7 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
 
     for (let i = 0; i < sqlText.length; i++) {
       const char = sqlText[i];
-      const nextChar = sqlText[i + 1];
+      // const nextChar = sqlText[i + 1];
 
       // Handle string boundaries
       if ((char === "'" || char === '"' || char === '`') && (i === 0 || sqlText[i - 1] !== '\\')) {
