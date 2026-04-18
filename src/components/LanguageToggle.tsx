@@ -21,7 +21,7 @@ export function LanguageToggle() {
         localStorage.setItem('appLanguage', lang);
     };
 
-    const currentLang = languages.find(l => l.code === i18n.language) || languages[0];
+    // Note: currentLang reserved for future language indicator display
 
     return (
         <DropdownMenu>

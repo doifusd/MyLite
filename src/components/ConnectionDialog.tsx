@@ -177,30 +177,39 @@ export function ConnectionDialog({
 
   const handlePickPrivateKeyFile = useCallback(async () => {
     try {
-      const { dialog } = await import('@tauri-apps/api');
+      // Check if we're in Tauri context
+      if (typeof window !== 'undefined' && (window as any).__TAURI__) {
+        // @ts-ignore - Tauri dialog API only available in Tauri
+        // Use string concatenation to avoid Vite's static analysis
+        const moduleName = '@tauri-apps/api/' + 'dialog';
+        const dialogModule = await import(/* @vite-ignore */ moduleName);
+        const { open } = dialogModule;
 
-      // Get the home directory path
-      const homeDir = await invoke<string>('get_home_dir').catch(() => {
-        // Fallback: try to use a common default
-        return '/home/user';
-      });
+        // Get the home directory path
+        const homeDir = await invoke<string>('get_home_dir').catch(() => {
+          return '/home/user';
+        });
 
-      const sshDir = `${homeDir}/.ssh`;
+        const sshDir = `${homeDir}/.ssh`;
 
-      const selected = await dialog.open({
-        defaultPath: sshDir,
-        multiple: false,
-        directory: false,
-      });
+        const selected = await open({
+          defaultPath: sshDir,
+          multiple: false,
+          directory: false,
+        });
 
-      if (selected && typeof selected === 'string') {
-        setConfig((prev) => ({
-          ...prev,
-          ssh_config: { ...prev.ssh_config!, ssh_private_key: selected },
-        }));
+        if (selected && typeof selected === 'string') {
+          setConfig((prev) => ({
+            ...prev,
+            ssh_config: { ...prev.ssh_config!, ssh_private_key: selected },
+          }));
+        }
+      } else {
+        // Fallback: show alert if not in Tauri context
+        alert('File picker is only available in desktop app');
       }
-    } catch (err) {
-      console.error('Failed to pick private key file:', err);
+    } catch (err: any) {
+      console.error('Error picking file:', err);
     }
   }, []);
 

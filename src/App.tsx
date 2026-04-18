@@ -151,28 +151,28 @@ function App() {
     }
   };
 
-  const loadGroups = async () => {
-    try {
-      const data = await invoke<ConnectionGroup[]>('get_connection_groups');
-      setGroups(data);
-      // Restore expanded state
-      setExpandedGroups(new Set(data.filter(g => g.is_expanded).map(g => g.id)));
-    } catch (err) {
-      console.error('Failed to load groups:', err);
-    }
-  };
+  // const loadGroups = async () => {
+  //   try {
+  //     const data = await invoke<ConnectionGroup[]>('get_connection_groups');
+  //     setGroups(data);
+  //     // Restore expanded state
+  //     setExpandedGroups(new Set(data.filter(g => g.is_expanded).map(g => g.id)));
+  //   } catch (err) {
+  //     console.error('Failed to load groups:', err);
+  //   }
+  // };
 
-  const loadRecentQueries = async () => {
-    try {
-      const data = await invoke<any[]>('get_query_history', {
-        connectionId: null,
-        limit: 10,
-      });
-      setRecentQueries(data);
-    } catch (err) {
-      console.error('Failed to load recent queries:', err);
-    }
-  };
+  // const loadRecentQueries = async () => {
+  //   try {
+  //     const data = await invoke<any[]>('get_query_history', {
+  //       connectionId: null,
+  //       limit: 10,
+  //     });
+  //     setRecentQueries(data);
+  //   } catch (err) {
+  //     console.error('Failed to load recent queries:', err);
+  //   }
+  // };
 
   const handleSaveConnection = async (config: any) => {
     setIsLoading(true);
