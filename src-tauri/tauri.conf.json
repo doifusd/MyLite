@@ -1,6 +1,6 @@
 {
   "productName": "MyLite",
-  "version": "1.0.3",
+  "version": "../package.json",
   "identifier": "com.mylite.app",
   "build": {
     "beforeDevCommand": "npm run dev",

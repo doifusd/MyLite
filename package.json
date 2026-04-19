@@ -1,15 +1,16 @@
 {
   "name": "mylite",
   "private": true,
-  "version": "1.0.3",
+  "version": "1.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "tauri:dev": "PKG_CONFIG_PATH=/tmp/pkg-config LIBRARY_PATH=/tmp/lib64:/usr/lib/x86_64-linux-gnu LD_LIBRARY_PATH=/tmp/lib64:/usr/lib/x86_64-linux-gnu tauri dev",
-    "tauri:build": "PKG_CONFIG_PATH=/tmp/pkg-config LIBRARY_PATH=/tmp/lib64:/usr/lib/x86_64-linux-gnu LD_LIBRARY_PATH=/tmp/lib64:/usr/lib/x86_64-linux-gnu tauri build"
+    "sync-version": "node scripts/sync-version.js",
+    "tauri:dev": "node scripts/sync-version.js && PKG_CONFIG_PATH=/tmp/pkg-config LIBRARY_PATH=/tmp/lib64:/usr/lib/x86_64-linux-gnu LD_LIBRARY_PATH=/tmp/lib64:/usr/lib/x86_64-linux-gnu tauri dev",
+    "tauri:build": "node scripts/sync-version.js && PKG_CONFIG_PATH=/tmp/pkg-config LIBRARY_PATH=/tmp/lib64:/usr/lib/x86_64-linux-gnu LD_LIBRARY_PATH=/tmp/lib64:/usr/lib/x86_64-linux-gnu tauri build"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
