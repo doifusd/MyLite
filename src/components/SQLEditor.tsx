@@ -42,7 +42,7 @@ interface SQLEditorProps {
   className?: string;
 }
 
-// 单个查询结果
+// Single query execution result
 interface QueryExecutionResult {
   id: string;
   sql: string;
@@ -52,7 +52,7 @@ interface QueryExecutionResult {
   isExecuting: boolean;
 }
 
-// 数据库表和列信息
+// Database table and column info
 interface TableCompletionInfo {
   table_name: string;
   columns: string[];
@@ -162,7 +162,7 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
           connectionId: connToUse,
           database: dbToUse,
         });
-        tablesInfoRef.current = info; // 同时更新ref
+        tablesInfoRef.current = info; // Also update ref
       } catch (error) {
         console.error('Failed to fetch tables and columns:', error);
       }
@@ -178,7 +178,7 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
     }
   }, [initialSql]);
 
-  // 监听加载保存的查询事件
+  // Listen for load saved query events
   useEffect(() => {
     const handleLoadSavedQuery = (event: any) => {
       const { sql: savedSql } = event.detail;
@@ -194,7 +194,7 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
     const currentSql = sql;
 
     try {
-      // 使用 sql-formatter 进行专业格式化
+      // Use sql-formatter for professional formatting
       const formatted = format(currentSql, {
         language: 'mysql',
         keywordCase: 'upper',
@@ -205,12 +205,12 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
       setSql(formatted);
       onSqlChange?.(formatted);
     } catch (err) {
-      // 格式化失败时静默处理，保持原样
+      // Silently handle formatting failure, keep original
       console.warn('SQL format failed:', err);
     }
   };
 
-  // 解析多个SQL语句
+  // Parse multiple SQL statements
   const parseStatements = (sqlText: string): string[] => {
     const statements: string[] = [];
     let current = '';
@@ -271,7 +271,7 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
       }))
     );
 
-    // 顺序执行每个语句
+    // Execute each statement sequentially
     for (let i = 0; i < statements.length; i++) {
       const stmt = statements[i];
       const startTime = Date.now();
@@ -323,7 +323,7 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
           setActiveResultTab(`result-0`);
         }
 
-        // 添加到历史
+        // Add to history
         if (i === statements.length - 1) {
           setHistory(prev => [
             {
@@ -349,7 +349,7 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
               : r
           )
         );
-        // 出错后继续执行其他语句
+        // Continue executing remaining statements after error
       }
     }
 
@@ -395,7 +395,7 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
 
       console.log('[SQLEditor] All validations passed, saving query...');
 
-      // 保存查询到本地存储
+      // Save query to local storage
       const key = `saved_queries_${connectionId}_${targetDatabase}`;
       console.log('[SQLEditor] Storage key:', key);
 
@@ -442,7 +442,7 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
           totalQueries: savedQueries.length,
         });
 
-        // 触发自定义事件以通知 SchemaBrowser 刷新
+        // Dispatch custom event to notify SchemaBrowser to refresh
         console.log('[SQLEditor] Dispatching queryUpdated event...');
         window.dispatchEvent(
           new CustomEvent('queryUpdated', {

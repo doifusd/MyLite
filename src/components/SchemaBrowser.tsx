@@ -81,7 +81,7 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
 
   useEffect(() => {
     const handleQueryUpdated = () => {
-      // 刷新 Queries 文件夹
+      // Refresh Queries folder
       setTreeData((prev) => {
         const markAsUnloaded = (nodes: SchemaTreeItem[]): SchemaTreeItem[] => {
           return nodes.map((node) => {
@@ -134,7 +134,7 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
           database: node.name,
         });
 
-        // 添加虚拟的 Queries 文件夹
+        // Add virtual Queries folder
         children.push({
           id: `queries_${node.id}`,
           name: 'Queries',
@@ -154,7 +154,7 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
           table: node.name,
         });
       } else if (node.type === 'folder' && node.metadata?.isQueryFolder) {
-        // 加载保存的查询
+        // Load saved queries
         const database = node.metadata.database;
         const key = `saved_queries_${connectionId}_${database}`;
         const savedQueries = JSON.parse(localStorage.getItem(key) || '[]');
@@ -164,7 +164,7 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
         children = savedQueries.map((query: any) => ({
           id: `query_${query.id}`,
           name: query.name,
-          type: 'folder', // 使用 folder 类型表示查询项目
+          type: 'folder', // Use folder type to represent query items
           parent_id: node.id,
           isLoaded: true,
           isLoading: false,
@@ -194,7 +194,7 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
     const nodeId = node.id;
     const isExpanding = !expandedNodes.has(nodeId);
 
-    // 加载未加载的节点（包括 Queries 文件夹）
+    // Load unloaded nodes (including Queries folder)
     if (isExpanding && !node.isLoaded) {
       await loadNodeChildren(node);
     }
@@ -261,7 +261,7 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
 
     console.log('Query deleted:', { queryId, database, key, remaining: filtered.length });
 
-    // 刷新树
+    // Refresh tree
     setTreeData((prev) => {
       const markAsUnloaded = (nodes: SchemaTreeItem[]): SchemaTreeItem[] => {
         return nodes.map((node) => {
@@ -291,10 +291,10 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
       }
     }
 
-    // 处理保存的查询项目点击
+    // Handle saved query item click
     if (node.metadata?.isQueryItem && onTableSelect) {
       const { sql, database } = node.metadata;
-      // 使用特殊的表名来传递 SQL，编辑器会识别并加载
+      // Use special table name to pass SQL, editor will recognize and load it
       window.dispatchEvent(
         new CustomEvent('loadSavedQuery', {
           detail: { sql, database },
@@ -579,7 +579,7 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
                   database = parts[0];
                 }
               } else if (contextMenu.node.type === 'folder' && contextMenu.node.metadata?.database) {
-                // 从 Queries 文件夹或查询项目中提取 database
+                // Extract database from Queries folder or query items
                 database = contextMenu.node.metadata.database;
               }
               if (onNewQuery) {

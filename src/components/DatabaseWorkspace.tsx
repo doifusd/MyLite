@@ -27,7 +27,7 @@ export const DatabaseWorkspace: React.FC<DatabaseWorkspaceProps> = ({
   const [selectedTable, setSelectedTable] = useState<string | undefined>();
   const [activeTab, setActiveTab] = useState('query-0');
 
-  // 支持多个查询窗口
+  // Support multiple query windows
   interface QueryTab {
     id: string;
     database?: string;
@@ -49,7 +49,7 @@ export const DatabaseWorkspace: React.FC<DatabaseWorkspaceProps> = ({
   // Note: handleCreateTableSQL is no longer used, can be removed if no longer needed
   /*
   const handleCreateTableSQL = (sql: string) => {
-    // 更新当前活跃的query标签
+    // Update the currently active query tab
     setQueryTabs(prev => prev.map(q => q.id === activeTab ? { ...q, content: sql } : q));
     if (!activeTab.startsWith('query-')) {
       setActiveTab('query-0');
@@ -65,7 +65,7 @@ export const DatabaseWorkspace: React.FC<DatabaseWorkspaceProps> = ({
   };
 
   const handleCloseQueryTab = (id: string) => {
-    if (queryTabs.length === 1) return; // 至少保留一个查询窗口
+    if (queryTabs.length === 1) return; // Keep at least one query window
     setQueryTabs(prev => prev.filter(q => q.id !== id));
     if (activeTab === id) {
       setActiveTab(queryTabs[0].id);

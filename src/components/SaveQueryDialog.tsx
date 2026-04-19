@@ -103,14 +103,14 @@ export const SaveQueryDialog: React.FC<SaveQueryDialogProps> = ({
     const handleOpenChange = useCallback((newOpen: boolean) => {
         console.log('[SaveQueryDialog] Dialog onOpenChange triggered:', { newOpen, currentOpen: open, currentSaving: saving });
 
-        // 防止关闭正在进行的保存操作
+        // Prevent closing during an ongoing save operation
         if (newOpen === false && saving) {
             console.log('[SaveQueryDialog] Preventing close while saving');
             return;
         }
 
         if (!newOpen) {
-            // 重置状态
+            // Reset state
             setQueryName('');
         }
         onOpenChange(newOpen);
