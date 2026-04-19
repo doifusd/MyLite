@@ -125,7 +125,7 @@ export const TableStructureView: React.FC<TableStructureViewProps> = ({
   if (loading) {
     return (
       <div className={cn('flex items-center justify-center h-full', className)}>
-        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -133,10 +133,10 @@ export const TableStructureView: React.FC<TableStructureViewProps> = ({
   if (error) {
     return (
       <div className={cn('p-8 text-center', className)}>
-        <p className="text-red-500 mb-4">{error}</p>
+        <p className="text-destructive mb-4">{error}</p>
         <button
           onClick={fetchInfo}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 mx-auto"
+          className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 mx-auto"
         >
           <RefreshCw className="h-4 w-4" />
           Retry
@@ -148,20 +148,20 @@ export const TableStructureView: React.FC<TableStructureViewProps> = ({
   if (!info) return null;
 
   return (
-    <div className={cn('flex flex-col h-full overflow-auto p-6 md:p-8 space-y-10 bg-[#fafafa]', className)}>
+    <div className={cn('flex flex-col h-full overflow-auto p-6 md:p-8 space-y-10 bg-background', className)}>
       {/* Table Metadata */}
       <div>
         <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
           Table Information
         </h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 p-6 bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 p-6 bg-card rounded-2xl shadow-sm border border-border hover:shadow-md transition-all duration-300">
           <div>
-            <p className="text-xs text-gray-500">Engine</p>
-            <p className="font-medium">{info.engine || 'N/A'}</p>
+            <p className="text-xs text-muted-foreground">Engine</p>
+            <p className="font-medium text-foreground">{info.engine || 'N/A'}</p>
           </div>
           <div>
-            <p className="text-xs text-gray-500">Collation</p>
-            <p className="font-medium">{info.collation || 'N/A'}</p>
+            <p className="text-xs text-muted-foreground">Collation</p>
+            <p className="font-medium text-foreground">{info.collation || 'N/A'}</p>
           </div>
           <div className="flex items-end">
             <Button variant="ghost" size="sm" className="h-8 gap-1 ml-auto" onClick={() => setTablePropertiesOpen(true)}>
@@ -183,7 +183,7 @@ export const TableStructureView: React.FC<TableStructureViewProps> = ({
           <Button
             variant="outline"
             size="sm"
-            className="gap-1 shadow-sm rounded-full bg-white hover:bg-gray-50 transition-all font-medium border-gray-200 hover:border-blue-200 hover:text-blue-600"
+            className="gap-1 shadow-sm rounded-full bg-card hover:bg-accent transition-all font-medium border-border hover:border-primary/30 hover:text-primary"
             onClick={() => {
               setEditingColumn(undefined);
               setColumnDialogOpen(true);
@@ -192,7 +192,7 @@ export const TableStructureView: React.FC<TableStructureViewProps> = ({
             <Plus className="h-4 w-4" /> Add Column
           </Button>
         </div>
-        <div className="bg-white border border-gray-100 ring-1 ring-black/5 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300">
+        <div className="bg-card border border-border ring-1 ring-foreground/5 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300">
           <Table>
             <TableHeader>
               <TableRow>
@@ -212,7 +212,7 @@ export const TableStructureView: React.FC<TableStructureViewProps> = ({
               {info.columns.map((col) => (
                 <TableRow key={col.name}>
                   <TableCell>
-                    {col.is_primary_key && <Key className="h-3 w-3 text-amber-500" />}
+                    {col.is_primary_key && <Key className="h-3 w-3 text-[#ffb86c]" />}
                   </TableCell>
                   <TableCell className="font-medium">{col.name}</TableCell>
                   <TableCell>
@@ -242,7 +242,7 @@ export const TableStructureView: React.FC<TableStructureViewProps> = ({
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-red-500"
+                        className="h-8 w-8 text-[#ff5555] hover:text-[#ff5555] hover:bg-[#ff5555]/10"
                         onClick={() => handleDropColumn(col.name)}
                       >
                         <Trash2 className="h-3 w-3" />
@@ -266,13 +266,13 @@ export const TableStructureView: React.FC<TableStructureViewProps> = ({
           <Button
             variant="outline"
             size="sm"
-            className="gap-1 shadow-sm rounded-full bg-white hover:bg-gray-50 transition-all font-medium border-gray-200 hover:border-blue-200 hover:text-blue-600"
+            className="gap-1 shadow-sm rounded-full bg-card hover:bg-accent transition-all font-medium border-border hover:border-primary/30 hover:text-primary"
             onClick={() => setIndexDialogOpen(true)}
           >
             <Plus className="h-4 w-4" /> Add Index
           </Button>
         </div>
-        <div className="bg-white border border-gray-100 ring-1 ring-black/5 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300">
+        <div className="bg-card border border-border ring-1 ring-foreground/5 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300">
           <Table>
             <TableHeader>
               <TableRow>
@@ -297,7 +297,7 @@ export const TableStructureView: React.FC<TableStructureViewProps> = ({
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-red-500"
+                        className="h-8 w-8 text-[#ff5555] hover:text-[#ff5555] hover:bg-[#ff5555]/10"
                         onClick={() => handleDropIndex(idx.name)}
                       >
                         <Trash2 className="h-3 w-3" />

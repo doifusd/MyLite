@@ -40,7 +40,7 @@ export function WelcomePage({
     .slice(0, 5);
 
   return (
-    <div className="h-full overflow-auto bg-gradient-to-br from-dracula-bg via-dracula-bg-hover to-dracula-bg">
+    <div className="h-full overflow-auto bg-gradient-to-br from-background via-muted/5 to-background">
       <style>{`
         @keyframes slideUpFade {
           from {
@@ -207,15 +207,15 @@ export function WelcomePage({
           <div className="lg:col-span-2">
             <AnimatedContainer delay={0}>
               <div className="mb-12">
-                <h1 className="text-5xl lg:text-6xl font-bold mb-6 text-dracula-text leading-tight">
+                <h1 className="text-5xl lg:text-6xl font-bold mb-6 text-foreground leading-tight">
                   {t('ui.welcomeTitle')}
                   <br />
                   <span className="relative">
                     <span className="relative z-10">{t('ui.welcomeMyLite')}</span>
-                    <span className="absolute bottom-2 left-0 right-0 h-4 bg-dracula-brand/20 blur-sm" />
+                    <span className="absolute bottom-2 left-0 right-0 h-4 bg-primary/20 blur-sm" />
                   </span>
                 </h1>
-                <p className="text-lg text-dracula-text-secondary leading-relaxed max-w-md">
+                <p className="text-lg text-muted-foreground leading-relaxed max-w-md">
                   {t('ui.welcomeDescription')}
                 </p>
               </div>
@@ -226,7 +226,7 @@ export function WelcomePage({
               <Button
                 size="lg"
                 onClick={onNewConnection}
-                className="mb-16 bg-dracula-brand hover:bg-dracula-brand-hover text-dracula-bg font-semibold px-8 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all"
+                className="mb-16 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-8 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all"
               >
                 <Plus className="h-5 w-5 mr-2" />
                 {t('ui.startNewConnection')}
@@ -269,10 +269,10 @@ export function WelcomePage({
                       >
                         <action.icon className="h-6 w-6" />
                       </div>
-                      <h3 className="font-semibold text-dracula-text mb-2 group-hover:text-dracula-brand transition-colors">
+                      <h3 className="font-semibold text-foreground mb-2 group-hover:text-primary transition-colors">
                         {action.label}
                       </h3>
-                      <p className="text-sm text-dracula-text-muted">{action.description}</p>
+                      <p className="text-sm text-muted-foreground">{action.description}</p>
                     </button>
                   </AnimatedContainer>
                 ))}
@@ -309,12 +309,12 @@ export function WelcomePage({
                           />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-dracula-text truncate">{conn.name}</div>
-                          <div className="text-sm text-dracula-text-muted">
+                          <div className="font-semibold text-foreground truncate">{conn.name}</div>
+                          <div className="text-sm text-muted-foreground">
                             {conn.host}:{conn.port}
                           </div>
                         </div>
-                        <div className="text-xs text-dracula-text-muted whitespace-nowrap">
+                        <div className="text-xs text-muted-foreground whitespace-nowrap">
                           {new Date(conn.last_connected_at!).toLocaleDateString()}
                         </div>
                       </button>
@@ -330,11 +330,11 @@ export function WelcomePage({
             {/* Decorative Visual Section */}
             <AnimatedContainer delay={150}>
               <div className="mb-12 sticky top-8">
-                <div className="relative h-80 rounded-2xl overflow-hidden bg-gradient-to-br from-dracula-brand/10 via-dracula-info/5 to-transparent border border-dracula-border/50 backdrop-blur-sm">
+                <div className="relative h-80 rounded-2xl overflow-hidden bg-gradient-to-br from-primary/10 via-info/5 to-transparent border border-border/50 backdrop-blur-sm">
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="relative">
-                      <div className="absolute inset-0 bg-gradient-to-br from-dracula-brand/20 to-dracula-info/20 rounded-full blur-3xl" />
-                      <Database className="h-24 w-24 text-dracula-brand/30 relative" />
+                      <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-info/20 rounded-full blur-3xl" />
+                      <Database className="h-24 w-24 text-primary/30 relative" />
                     </div>
                   </div>
                 </div>
@@ -346,7 +346,7 @@ export function WelcomePage({
               <AnimatedContainer delay={300}>
                 <div>
                   <div className="section-title text-lg">
-                    <Zap className="h-5 w-5 text-dracula-warning" />
+                    <Zap className="h-5 w-5 text-warning" />
                     Recent
                   </div>
                   <div className="space-y-3">
@@ -356,10 +356,10 @@ export function WelcomePage({
                         onClick={() => onSelectQuery?.(query.sql)}
                         className="query-item w-full text-left group"
                       >
-                        <code className="text-xs font-mono text-dracula-brand group-hover:text-dracula-info transition-colors line-clamp-2">
+                        <code className="text-xs font-mono text-primary group-hover:text-info transition-colors line-clamp-2">
                           {query.sql.substring(0, 60)}...
                         </code>
-                        <div className="flex items-center gap-2 mt-2 text-xs text-dracula-text-muted">
+                        <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
                           <span className="w-1.5 h-1.5 rounded-full" style={{ background: query.success ? 'var(--color-success)' : 'var(--color-error)' }} />
                           {query.execution_time_ms}ms
                         </div>

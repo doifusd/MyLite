@@ -84,14 +84,14 @@ export function KeyboardShortcutsHelp({ open, onOpenChange }: KeyboardShortcutsH
         <div className="space-y-6 py-4">
           {shortcutsConfig.map((category) => (
             <div key={category.nameKey}>
-              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                 {t(category.nameKey)}
               </h3>
               <div className="space-y-2">
                 {category.shortcuts.map((shortcut, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-gray-50"
+                    className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-accent/10"
                   >
                     <span className="text-sm">{t(shortcut.descriptionKey)}</span>
                     <div className="flex items-center gap-1">
@@ -99,14 +99,14 @@ export function KeyboardShortcutsHelp({ open, onOpenChange }: KeyboardShortcutsH
                         <span key={keyIdx} className="flex items-center">
                           <kbd
                             className={cn(
-                              'px-2 py-1 text-xs font-mono bg-gray-100 rounded',
-                              'border border-gray-200 shadow-sm'
+                              'px-2 py-1 text-xs font-mono bg-muted rounded',
+                              'border border-border shadow-sm'
                             )}
                           >
                             {key}
                           </kbd>
                           {keyIdx < shortcut.keys.length - 1 && (
-                            <span className="mx-1 text-gray-400">+</span>
+                            <span className="mx-1 text-muted-foreground">+</span>
                           )}
                         </span>
                       ))}
@@ -118,10 +118,10 @@ export function KeyboardShortcutsHelp({ open, onOpenChange }: KeyboardShortcutsH
           ))}
         </div>
 
-        <div className="pt-4 border-t text-sm text-gray-500">
+        <div className="pt-4 border-t text-sm text-muted-foreground">
           <p>
-            <strong>Note:</strong> On Windows/Linux, use <kbd className="px-1.5 py-0.5 bg-gray-100 rounded">Ctrl</kbd> instead of{' '}
-            <kbd className="px-1.5 py-0.5 bg-gray-100 rounded">Cmd</kbd>.
+            <strong>Note:</strong> On Windows/Linux, use <kbd className="px-1.5 py-0.5 bg-muted rounded">Ctrl</kbd> instead of{' '}
+            <kbd className="px-1.5 py-0.5 bg-muted rounded">Cmd</kbd>.
           </p>
         </div>
       </DialogContent>

@@ -77,22 +77,22 @@ export const DatabaseWorkspace: React.FC<DatabaseWorkspaceProps> = ({
   };
 
   return (
-    <div className={cn('flex flex-col h-full bg-white', className)}>
+    <div className={cn('flex flex-col h-full bg-background text-foreground', className)}>
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 border-b bg-gray-50">
+      <div className="flex items-center justify-between px-4 py-2 border-b bg-card">
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 bg-green-500 rounded-full" />
           <span className="text-sm font-medium">{connectionName}</span>
           {selectedDatabase && (
             <>
-              <span className="text-gray-400">/</span>
-              <span className="text-sm text-gray-600">{selectedDatabase}</span>
+              <span className="text-muted-foreground">/</span>
+              <span className="text-sm text-foreground">{selectedDatabase}</span>
             </>
           )}
           {selectedTable && (
             <>
-              <span className="text-gray-400">/</span>
-              <span className="text-sm text-gray-600">{selectedTable}</span>
+              <span className="text-muted-foreground">/</span>
+              <span className="text-sm text-foreground">{selectedTable}</span>
             </>
           )}
         </div>
@@ -101,7 +101,7 @@ export const DatabaseWorkspace: React.FC<DatabaseWorkspaceProps> = ({
             variant="ghost"
             size="sm"
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
+            className="text-muted-foreground hover:text-foreground"
           >
             <X className="w-4 h-4 mr-1" />
             {t('ui.close')}
@@ -129,21 +129,21 @@ export const DatabaseWorkspace: React.FC<DatabaseWorkspaceProps> = ({
         <ResizablePanel defaultSize={80}>
           <div className="flex flex-col h-full">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1">
-              <div className="px-4 bg-white border-b">
+              <div className="px-4 bg-card border-b">
                 <TabsList className="h-12 gap-2 p-0 bg-transparent">
                   {/* Query Tabs */}
                   {queryTabs.map((tab) => (
                     <div key={tab.id} className="flex items-center">
                       <TabsTrigger
                         value={tab.id}
-                        className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none h-full gap-2"
+                        className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-full gap-2"
                       >
                         <Code className="w-4 h-4" /> {t('ui.query')} {queryTabs.indexOf(tab) + 1}
                       </TabsTrigger>
                       {queryTabs.length > 1 && (
                         <button
                           onClick={() => handleCloseQueryTab(tab.id)}
-                          className="ml-1 p-1 hover:bg-gray-100 rounded"
+                          className="ml-1 p-1 hover:bg-accent/10 rounded"
                         >
                           <X className="w-3 h-3" />
                         </button>
@@ -155,7 +155,7 @@ export const DatabaseWorkspace: React.FC<DatabaseWorkspaceProps> = ({
                   <TabsTrigger
                     value="data"
                     disabled={!selectedTable}
-                    className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none h-full gap-2 disabled:opacity-50"
+                    className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-full gap-2 disabled:opacity-50"
                   >
                     <Table className="w-4 h-4" /> {t('ui.data')}
                   </TabsTrigger>
@@ -190,7 +190,7 @@ export const DatabaseWorkspace: React.FC<DatabaseWorkspaceProps> = ({
                       className="h-full"
                     />
                   ) : (
-                    <div className="flex items-center justify-center h-full text-gray-400">
+                    <div className="flex items-center justify-center h-full text-muted-foreground">
                       {t('ui.selectTableToViewData')}
                     </div>
                   )}

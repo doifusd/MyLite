@@ -109,7 +109,7 @@ export const CreateTableDialog: React.FC<CreateTableDialogProps> = ({
                   variant="outline"
                   size="sm"
                   onClick={() => updateColumn(index, 'nullable', !col.nullable)}
-                  className={col.nullable ? 'text-gray-400' : 'text-red-500'}
+                  className={col.nullable ? 'text-muted-foreground' : 'text-destructive'}
                 >
                   {col.nullable ? 'NULL' : 'NOT NULL'}
                 </Button>

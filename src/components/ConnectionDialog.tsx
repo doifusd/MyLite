@@ -496,7 +496,7 @@ export function ConnectionDialog({
                   value={config.http_config?.http_url || ''}
                   onChange={(e) => updateHttpConfig({ http_url: e.target.value })}
                 />
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-muted-foreground">
                   URL of the HTTP-to-MySQL proxy service
                 </p>
               </div>
@@ -554,8 +554,8 @@ export function ConnectionDialog({
 
               <Separator />
 
-              <div className="p-3 border border-yellow-200 rounded-md bg-yellow-50">
-                <p className="text-sm text-yellow-800">
+              <div className="p-3 border border-warning/30 rounded-md bg-warning/10">
+                <p className="text-sm text-warning">
                   <strong>Note:</strong> HTTP connection requires a MySQL-to-HTTP proxy service.
                   This is useful for serverless environments or when direct MySQL ports are blocked.
                 </p>
@@ -568,9 +568,9 @@ export function ConnectionDialog({
           <div
             className={cn(
               'flex items-center gap-2 text-sm p-3 rounded-md',
-              testStatus === 'success' && 'bg-green-50 text-green-700',
-              testStatus === 'error' && 'bg-red-50 text-red-700',
-              testStatus === 'testing' && 'bg-blue-50 text-blue-700'
+              testStatus === 'success' && 'bg-success/10 text-success',
+              testStatus === 'error' && 'bg-destructive/10 text-destructive',
+              testStatus === 'testing' && 'bg-primary/10 text-primary'
             )}
           >
             {testStatus === 'testing' && <RefreshCw className="w-4 h-4 animate-spin" />}
@@ -596,8 +596,8 @@ export function ConnectionDialog({
                 className={cn(
                   'w-8 h-8 rounded-full border-2 transition-all',
                   config.color === option.value
-                    ? 'border-gray-800 scale-110 shadow-md'
-                    : 'border-gray-200 hover:scale-105 hover:border-gray-400'
+                    ? 'border-foreground scale-110 shadow-md'
+                    : 'border-border hover:scale-105 hover:border-muted-foreground'
                 )}
                 style={{ backgroundColor: option.hex }}
                 title={option.label}

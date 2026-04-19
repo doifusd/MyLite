@@ -92,7 +92,7 @@ export const IndexEditorDialog: React.FC<IndexEditorDialogProps> = ({
             <Label htmlFor="idx-type">Index Type</Label>
             <select
               id="idx-type"
-              className="h-9 px-2 rounded-md border bg-white text-sm"
+              className="h-9 px-2 rounded-md border border-input bg-background text-foreground text-sm"
               value={type}
               onChange={(e) => setType(e.target.value as any)}
             >
@@ -106,12 +106,12 @@ export const IndexEditorDialog: React.FC<IndexEditorDialogProps> = ({
             <Label>Columns</Label>
             <div className="max-h-40 overflow-auto border rounded p-2 flex flex-col gap-1">
               {availableColumns.map(col => (
-                <label key={col} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1 rounded">
+                <label key={col} className="flex items-center gap-2 cursor-pointer hover:bg-muted p-1 rounded transition-colors text-foreground">
                   <input
                     type="checkbox"
                     checked={selectedColumns.includes(col)}
                     onChange={() => toggleColumn(col)}
-                    className="rounded border-gray-300"
+                    className="rounded border-border bg-background"
                   />
                   <span className="text-sm">{col}</span>
                 </label>

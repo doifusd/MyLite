@@ -154,8 +154,8 @@ export const SaveQueryDialog: React.FC<SaveQueryDialogProps> = ({
                             autoFocus
                         />
                     </div>
-                    <div className="text-sm text-gray-500">
-                        <p className="p-2 overflow-y-auto font-mono text-xs bg-gray-100 rounded max-h-20">
+                    <div className="text-sm text-muted-foreground">
+                        <p className="p-2 overflow-y-auto font-mono text-xs bg-muted rounded max-h-20">
                             {sql.substring(0, 150)}
                             {sql.length > 150 ? '...' : ''}
                         </p>

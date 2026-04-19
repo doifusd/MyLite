@@ -49,7 +49,7 @@ export const TableDataView: React.FC<TableDataViewProps> = ({
   if (loading) {
     return (
       <div className={cn('flex items-center justify-center h-full', className)}>
-        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -57,10 +57,10 @@ export const TableDataView: React.FC<TableDataViewProps> = ({
   if (error) {
     return (
       <div className={cn('p-8 text-center', className)}>
-        <p className="text-red-500 mb-4">{error}</p>
+        <p className="text-destructive mb-4">{error}</p>
         <button
           onClick={fetchData}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 mx-auto"
+          className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 mx-auto"
         >
           <RefreshCw className="h-4 w-4" />
           Retry
@@ -73,7 +73,7 @@ export const TableDataView: React.FC<TableDataViewProps> = ({
 
   return (
     <div className={cn('flex flex-col h-full', className)}>
-      <div className="flex items-center justify-end px-4 py-2 border-b bg-gray-50 gap-2">
+      <div className="flex items-center justify-end px-4 py-2 border-b bg-muted/30 gap-2">
         <Button
           variant="outline"
           size="sm"

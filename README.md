@@ -72,29 +72,34 @@
 
 ## 📥 Downloads
 
-### Version 1.0.0 (Latest Release)
+Download the latest version from [GitHub Releases](https://github.com/doifusd/MyLite/releases).
 
-**macOS**
-- [MyLite 1.0.0 - Apple Silicon (M1/M2/M3)](dist/MyLite_1.0.0_aarch64.dmg) - 45 MB
-- MyLite 1.0.0 - Intel (x86_64) - *Coming Soon*
+| Platform | File Type | Architecture |
+|----------|-----------|-------------|
+| **macOS** | `.dmg` | Apple Silicon (M1/M2/M3/M4) |
+| **macOS** | `.dmg` | Intel (x86_64) |
+| **Windows** | `.exe` / `.msi` | x64 |
+| **Linux** | `.deb` / `.AppImage` | x64 |
 
-**Windows**
-- MyLite 1.0.0 Setup (Installer) - *Coming Soon*
-- MyLite 1.0.0 Portable (Standalone) - *Coming Soon*
+### ⚠️ macOS: "App is damaged" Warning
 
-**Linux**
-- MyLite 1.0.0 AppImage (amd64) - *Coming Soon*
-- MyLite 1.0.0 DEB Package (amd64) - *Coming Soon*
+Since MyLite is not signed with an Apple Developer certificate, macOS may block the app with a message like **"MyLite is damaged and can't be opened"**. This is a false positive. To fix it:
 
-[View all releases →](https://github.com/sky/mylite/releases)
+```bash
+# Remove the quarantine attribute (run once after installing)
+xattr -cr /Applications/MyLite.app
+```
+
+Then double-click `MyLite.app` to open it normally.
 
 ## 🚀 Quick Start
 
 ### For Users (Download Pre-built Binary)
 
-1. **Download** the appropriate version for your operating system
+1. **Download** the appropriate version for your operating system from [Releases](https://github.com/doifusd/MyLite/releases)
 2. **Install** by running the installer or extracting the archive
-3. **Launch** MyLite and start creating database connections
+3. **macOS users**: Run `xattr -cr /Applications/MyLite.app` if blocked
+4. **Launch** MyLite and start creating database connections
 
 ### For Developers
 

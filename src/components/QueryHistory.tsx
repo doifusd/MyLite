@@ -117,11 +117,11 @@ export function QueryHistory({
   };
 
   return (
-    <div className={cn("flex flex-col h-full bg-white", className)}>
+    <div className={cn("flex flex-col h-full bg-background", className)}>
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b">
         <div className="flex items-center gap-2">
-          <History className="h-4 w-4 text-gray-500" />
+          <History className="h-4 w-4 text-muted-foreground" />
           <span className="font-medium">Query History</span>
           <Badge variant="secondary" className="text-xs">
             {history.length}
@@ -133,12 +133,12 @@ export function QueryHistory({
             size="sm"
             className={cn(
               "h-8 w-8 p-0",
-              showSuccessOnly && "text-green-500"
+              showSuccessOnly && "text-[#50fa7b]"
             )}
             onClick={() => setShowSuccessOnly(!showSuccessOnly)}
             title="Show successful only"
           >
-            <Play className="h-4 w-4" />
+            <Play className="h-4 w-4 fill-current opacity-70" />
           </Button>
           <Button
             variant="ghost"
@@ -153,14 +153,14 @@ export function QueryHistory({
       </div>
 
       {/* Search */}
-      <div className="p-2 border-b">
+      <div className="p-2 border-b bg-muted/10">
         <div className="relative">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
           <Input
             placeholder="Search queries..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8"
+            className="pl-8 h-8 bg-background"
           />
         </div>
       </div>
@@ -181,9 +181,9 @@ export function QueryHistory({
               <div
                 key={item.id}
                 className={cn(
-                  "group rounded-md border p-2 cursor-pointer transition-colors",
-                  "hover:bg-gray-50 hover:border-gray-300",
-                  expandedItems.has(item.id) && "bg-gray-50 border-gray-300"
+                  "group rounded-md border p-2 cursor-pointer transition-all",
+                  "hover:bg-muted/50 hover:border-accent/30",
+                  expandedItems.has(item.id) && "bg-muted/50 border-accent/20"
                 )}
                 onClick={() => handleSelectQuery(item.sql)}
               >
@@ -195,12 +195,12 @@ export function QueryHistory({
                         e.stopPropagation();
                         toggleExpanded(item.id);
                       }}
-                      className="p-0.5 hover:bg-gray-200 rounded"
+                      className="p-0.5 hover:bg-accent/20 rounded"
                     >
                       {expandedItems.has(item.id) ? (
-                        <ChevronDown className="h-3 w-3 text-gray-500" />
+                        <ChevronDown className="h-3 w-3 text-muted-foreground" />
                       ) : (
-                        <ChevronRight className="h-3 w-3 text-gray-500" />
+                        <ChevronRight className="h-3 w-3 text-muted-foreground" />
                       )}
                     </button>
                     <div className="flex-1 min-w-0">
@@ -213,7 +213,7 @@ export function QueryHistory({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-6 w-6 p-0 text-red-500 hover:text-red-600"
+                      className="h-6 w-6 p-0 text-[#ff5555] hover:text-[#ff5555]/80 hover:bg-[#ff5555]/10"
                       onClick={(e) => handleDelete(e, item.id)}
                     >
                       <X className="h-3 w-3" />
@@ -222,26 +222,26 @@ export function QueryHistory({
                 </div>
 
                 {/* Meta Row */}
-                <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
+                <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                   <Clock className="h-3 w-3" />
                   <span>{formatExecutedAt(item.executed_at)}</span>
-                  <span className="text-gray-300">|</span>
+                  <span className="text-border">|</span>
                   <span>{formatExecutionTime(item.execution_time_ms)}</span>
-                  <span className="text-gray-300">|</span>
+                  <span className="text-border">|</span>
                   {item.success ? (
-                    <span className="text-green-600 flex items-center gap-1">
-                      <Play className="h-3 w-3" />
+                    <span className="text-[#50fa7b] flex items-center gap-1">
+                      <Play className="h-2 w-2 fill-current" />
                       {item.row_count > 0 ? `${item.row_count} rows` : 'Success'}
                     </span>
                   ) : (
-                    <span className="text-red-600 flex items-center gap-1">
+                    <span className="text-[#ff5555] flex items-center gap-1">
                       <X className="h-3 w-3" />
                       Failed
                     </span>
                   )}
                   {item.database && (
                     <>
-                      <span className="text-gray-300">|</span>
+                      <span className="text-border">|</span>
                       <span className="flex items-center gap-1">
                         <Database className="h-3 w-3" />
                         {item.database}
@@ -252,12 +252,12 @@ export function QueryHistory({
 
                 {/* Expanded Content */}
                 {expandedItems.has(item.id) && (
-                  <div className="mt-2 pt-2 border-t">
-                    <pre className="text-xs bg-gray-100 p-2 rounded overflow-x-auto">
+                  <div className="mt-2 pt-2 border-t border-border/50">
+                    <pre className="text-xs bg-[#1e1f29] p-2 rounded overflow-x-auto text-[#f8f8f2] border border-border/10">
                       <code>{item.sql}</code>
                     </pre>
                     {item.error_message && (
-                      <div className="mt-2 text-xs text-red-600 bg-red-50 p-2 rounded">
+                      <div className="mt-2 text-xs text-[#ff5555] bg-[#ff5555]/10 p-2 rounded">
                         {item.error_message}
                       </div>
                     )}

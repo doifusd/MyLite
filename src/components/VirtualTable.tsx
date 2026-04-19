@@ -122,7 +122,7 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
               handleCellSave();
             }}
           >
-            <Save className="h-3 w-3 text-green-600" />
+            <Save className="h-3 w-3 text-[#50fa7b]" />
           </Button>
           <Button
             variant="ghost"
@@ -133,14 +133,14 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
               handleCellCancel();
             }}
           >
-            <X className="h-3 w-3 text-red-600" />
+            <X className="h-3 w-3 text-[#ff5555]" />
           </Button>
         </div>
       );
     }
 
     if (cell === null) {
-      return <span className="text-gray-400 italic">NULL</span>;
+      return <span className="text-muted-foreground italic opacity-50">NULL</span>;
     }
 
     if (typeof cell === 'object') {
@@ -180,19 +180,19 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
       <div style={{ height: totalHeight + headerHeight, minWidth: totalWidth }}>
         {/* Header */}
         <div
-          className="sticky top-0 z-20 bg-gray-50 border-b flex"
+          className="sticky top-0 z-20 bg-muted/50 border-b flex"
           style={{ height: headerHeight }}
         >
           {columns.map((col, idx) => (
             <div
               key={col.name}
-              className="flex-shrink-0 px-3 py-2 text-xs font-semibold text-gray-700 border-r last:border-r-0 flex items-center"
+              className="flex-shrink-0 px-3 py-2 text-xs font-semibold text-muted-foreground border-r last:border-r-0 flex items-center"
               style={{ width: columnWidths[idx] }}
               title={col.data_type}
             >
               <span className="truncate">
                 {col.name}
-                <span className="text-gray-400 font-normal ml-1">
+                <span className="text-muted-foreground/50 font-normal ml-1">
                   ({col.data_type})
                 </span>
               </span>
@@ -208,13 +208,13 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
               <ContextMenu key={actualRowIndex}>
                 <ContextMenuTrigger asChild>
                   <div
-                    className="flex hover:bg-gray-50 border-b last:border-b-0"
+                    className="flex hover:bg-muted/40 border-b last:border-b-0 transition-colors"
                     style={{ height: rowHeight }}
                   >
                     {row.map((cell, cellIndex) => (
                       <div
                         key={cellIndex}
-                        className="flex-shrink-0 px-3 py-2 text-sm font-mono whitespace-nowrap overflow-hidden text-ellipsis border-r last:border-r-0 cursor-pointer hover:bg-blue-50 flex items-center"
+                        className="flex-shrink-0 px-3 py-2 text-sm font-mono whitespace-nowrap overflow-hidden text-ellipsis border-r last:border-r-0 cursor-pointer hover:bg-accent/20 flex items-center"
                         style={{ width: columnWidths[cellIndex] }}
                         onClick={() => handleCellClick(rowIndex, cellIndex, cell)}
                       >
@@ -253,7 +253,7 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
                   <ContextMenuItem 
                     onClick={() => onRowDelete?.(row)}
                     disabled={!tableName}
-                    className="text-red-600 focus:text-red-700 focus:bg-red-50"
+                    className="text-destructive focus:text-destructive focus:bg-destructive/10"
                   >
                     Delete Row
                   </ContextMenuItem>

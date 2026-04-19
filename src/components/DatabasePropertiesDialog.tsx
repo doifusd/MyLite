@@ -99,7 +99,7 @@ export const DatabasePropertiesDialog: React.FC<DatabasePropertiesDialogProps> =
         </DialogHeader>
         {loading ? (
           <div className="flex justify-center p-8">
-            <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         ) : (
           <div className="grid gap-4 py-4">

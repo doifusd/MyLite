@@ -347,12 +347,11 @@ const CellInput: React.FC<{
         list={list}
         spellCheck={false}
         className={cn(
-            'w-full bg-transparent font-mono text-xs text-gray-800 dark:text-gray-200',
-            'outline-none px-1 py-0.5 rounded border border-transparent',
-            'hover:border-gray-300 dark:hover:border-[#3a3a4a]',
-            'focus:border-blue-400 dark:focus:border-blue-500',
-            'focus:bg-blue-50 dark:focus:bg-[#1a3150]',
-            'placeholder:text-gray-400 dark:placeholder:text-gray-600',
+            'w-full bg-transparent font-mono text-xs text-foreground',
+            'outline-none px-1 py-0.5 rounded border border-transparent transition-colors',
+            'hover:border-border',
+            'focus:border-primary focus:bg-primary/5',
+            'placeholder:text-muted-foreground/50',
             className,
         )}
     />
@@ -662,14 +661,14 @@ export const DesignTableDialog: React.FC<DesignTableDialogProps> = ({
                 <div className="flex-1 overflow-auto">
                     <table className="w-full text-sm border-collapse">
                         <thead>
-                            <tr className="bg-gray-100 dark:bg-[#2d2d3a] text-gray-600 dark:text-gray-300 text-xs sticky top-0 z-10">
-                                <th className="text-left px-3 py-2 font-medium w-8 border-r border-gray-300 dark:border-[#3a3a4a]">&nbsp;</th>
-                                <th className="text-left px-3 py-2 font-medium border-r border-gray-300 dark:border-[#3a3a4a] min-w-[140px]">Name</th>
-                                <th className="text-left px-3 py-2 font-medium border-r border-gray-300 dark:border-[#3a3a4a] min-w-[110px]">Type</th>
-                                <th className="text-left px-3 py-2 font-medium border-r border-gray-300 dark:border-[#3a3a4a] w-[80px]">Length</th>
-                                <th className="text-left px-3 py-2 font-medium border-r border-gray-300 dark:border-[#3a3a4a] w-[80px]">Decimals</th>
-                                <th className="text-center px-3 py-2 font-medium border-r border-gray-300 dark:border-[#3a3a4a] w-[80px]">Not Null</th>
-                                <th className="text-center px-3 py-2 font-medium border-r border-gray-300 dark:border-[#3a3a4a] w-[50px]">Key</th>
+                            <tr className="bg-muted text-muted-foreground text-xs sticky top-0 z-10">
+                                <th className="text-left px-3 py-2 font-medium w-8 border-r border-border">&nbsp;</th>
+                                <th className="text-left px-3 py-2 font-medium border-r border-border min-w-[140px]">Name</th>
+                                <th className="text-left px-3 py-2 font-medium border-r border-border min-w-[110px]">Type</th>
+                                <th className="text-left px-3 py-2 font-medium border-r border-border w-[80px]">Length</th>
+                                <th className="text-left px-3 py-2 font-medium border-r border-border w-[80px]">Decimals</th>
+                                <th className="text-center px-3 py-2 font-medium border-r border-border w-[80px]">Not Null</th>
+                                <th className="text-center px-3 py-2 font-medium border-r border-border w-[50px]">Key</th>
                                 <th className="text-left px-3 py-2 font-medium min-w-[160px]">Comment</th>
                             </tr>
                         </thead>
@@ -678,21 +677,21 @@ export const DesignTableDialog: React.FC<DesignTableDialogProps> = ({
                                 <tr
                                     key={idx}
                                     className={cn(
-                                        'border-b border-gray-200 dark:border-[#2a2a38] cursor-pointer transition-colors',
+                                        'border-b border-border cursor-pointer transition-colors',
                                         selectedFieldIndex === idx
-                                            ? 'bg-blue-100 dark:bg-[#1e4d7b] hover:bg-blue-100 dark:hover:bg-[#1e4d7b]'
+                                            ? 'bg-primary/20 hover:bg-primary/30'
                                             : idx % 2 === 0
-                                                ? 'bg-white dark:bg-[#1e1e2e] hover:bg-gray-50 dark:hover:bg-[#252535]'
-                                                : 'bg-gray-50 dark:bg-[#22222f] hover:bg-gray-100 dark:hover:bg-[#252535]'
+                                                ? 'bg-background hover:bg-muted/30'
+                                                : 'bg-muted/20 hover:bg-muted/30'
                                     )}
                                     onClick={() => setSelectedFieldIndex(idx)}
                                 >
                                     {/* PK icon */}
-                                    <td className="px-2 py-1 text-center border-r border-gray-200 dark:border-[#2a2a38] w-8">
-                                        {col.is_primary_key && <Key className="h-3.5 w-3.5 text-amber-500 mx-auto" />}
+                                    <td className="px-2 py-1 text-center border-r border-border w-8">
+                                        {col.is_primary_key && <Key className="h-3.5 w-3.5 text-[#bd93f9] mx-auto" />}
                                     </td>
                                     {/* Name */}
-                                    <td className="px-1 py-0.5 border-r border-gray-200 dark:border-[#2a2a38]" onClick={e => e.stopPropagation()}>
+                                    <td className="px-1 py-0.5 border-r border-border" onClick={e => e.stopPropagation()}>
                                         <CellInput
                                             value={col.name}
                                             onChange={v => updateEditableColumn(idx, 'name', v)}
@@ -700,47 +699,47 @@ export const DesignTableDialog: React.FC<DesignTableDialogProps> = ({
                                         />
                                     </td>
                                     {/* Type */}
-                                    <td className="px-1 py-0.5 border-r border-gray-200 dark:border-[#2a2a38]" onClick={e => e.stopPropagation()}>
+                                    <td className="px-1 py-0.5 border-r border-border" onClick={e => e.stopPropagation()}>
                                         <CellInput
                                             value={col.data_type}
                                             onChange={v => updateEditableColumn(idx, 'data_type', v)}
                                             placeholder="varchar"
                                             list="mysql-types"
-                                            className="text-blue-600 dark:text-blue-300"
+                                            className="text-primary"
                                         />
                                     </td>
                                     {/* Length */}
-                                    <td className="px-1 py-0.5 border-r border-gray-200 dark:border-[#2a2a38]" onClick={e => e.stopPropagation()}>
+                                    <td className="px-1 py-0.5 border-r border-border" onClick={e => e.stopPropagation()}>
                                         <CellInput
                                             type="number"
                                             value={col.max_length != null ? String(col.max_length) : ''}
                                             onChange={v => updateEditableColumn(idx, 'max_length', v === '' ? undefined : Number(v))}
                                             placeholder="—"
-                                            className="text-right text-gray-500 dark:text-gray-400"
+                                            className="text-right text-muted-foreground"
                                         />
                                     </td>
                                     {/* Decimals */}
-                                    <td className="px-1 py-0.5 border-r border-gray-200 dark:border-[#2a2a38]" onClick={e => e.stopPropagation()}>
+                                    <td className="px-1 py-0.5 border-r border-border" onClick={e => e.stopPropagation()}>
                                         <CellInput
                                             type="number"
                                             value={col.numeric_scale != null ? String(col.numeric_scale) : ''}
                                             onChange={v => updateEditableColumn(idx, 'numeric_scale', v === '' ? undefined : Number(v))}
                                             placeholder="—"
-                                            className="text-right text-gray-500 dark:text-gray-400"
+                                            className="text-right text-muted-foreground"
                                         />
                                     </td>
                                     {/* Not Null */}
-                                    <td className="px-3 py-1 border-r border-gray-200 dark:border-[#2a2a38] text-center" onClick={e => e.stopPropagation()}>
+                                    <td className="px-3 py-1 border-r border-border text-center" onClick={e => e.stopPropagation()}>
                                         <input
                                             type="checkbox"
                                             checked={!col.is_nullable}
                                             onChange={e => updateEditableColumn(idx, 'is_nullable', !e.target.checked)}
-                                            className="h-3.5 w-3.5 accent-blue-500 cursor-pointer"
+                                            className="h-3.5 w-3.5 accent-primary cursor-pointer"
                                         />
                                     </td>
                                     {/* Key */}
-                                    <td className="px-3 py-1 border-r border-gray-200 dark:border-[#2a2a38] text-center">
-                                        {col.is_primary_key && <Key className="h-3.5 w-3.5 text-amber-500 mx-auto" />}
+                                    <td className="px-3 py-1 border-r border-border text-center">
+                                        {col.is_primary_key && <Key className="h-3.5 w-3.5 text-[#bd93f9] mx-auto" />}
                                     </td>
                                     {/* Comment */}
                                     <td className="px-1 py-0.5" onClick={e => e.stopPropagation()}>
@@ -748,7 +747,7 @@ export const DesignTableDialog: React.FC<DesignTableDialogProps> = ({
                                             value={col.comment ?? ''}
                                             onChange={v => updateEditableColumn(idx, 'comment', v)}
                                             placeholder="(comment)"
-                                            className="text-gray-500 dark:text-gray-400"
+                                            className="text-muted-foreground"
                                         />
                                     </td>
                                 </tr>
@@ -758,21 +757,21 @@ export const DesignTableDialog: React.FC<DesignTableDialogProps> = ({
                 </div>
 
                 {/* Toolbar */}
-                <div className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 dark:bg-[#1a1a28] border-t border-gray-200 dark:border-[#2a2a38]">
+                                <div className="flex items-center gap-1 px-3 py-1.5 bg-muted border-t border-border">
                     <button
                         onClick={handleAddField}
-                        className="flex items-center gap-1 px-2 py-1 text-xs text-gray-600 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-[#2a2a38] transition-colors"
+                        className="flex items-center gap-1 px-2 py-1 text-xs text-foreground rounded hover:bg-background/50 transition-colors"
                     >
                         <Plus className="w-3 h-3" /> Add Field
                     </button>
                     <button
                         onClick={handleDeleteField}
                         disabled={selectedFieldIndex === null}
-                        className="flex items-center gap-1 px-2 py-1 text-xs text-gray-600 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-[#2a2a38] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="flex items-center gap-1 px-2 py-1 text-xs text-foreground rounded hover:bg-background/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                         <Trash2 className="w-3 h-3" /> Delete Field
                     </button>
-                    <span className="ml-auto text-xs text-gray-400 dark:text-gray-600">
+                    <span className="ml-auto text-xs text-muted-foreground">
                         {editableColumns.length} field{editableColumns.length !== 1 ? 's' : ''}
                     </span>
                 </div>
@@ -800,10 +799,10 @@ export const DesignTableDialog: React.FC<DesignTableDialogProps> = ({
             <div className="flex-1 overflow-auto">
                 <table className="w-full text-sm border-collapse">
                     <thead>
-                        <tr className="bg-gray-100 dark:bg-[#2d2d3a] text-gray-600 dark:text-gray-300 text-xs sticky top-0 z-10">
-                            <th className="text-left px-3 py-2 font-medium border-r border-gray-300 dark:border-[#3a3a4a] min-w-[160px]">Name</th>
-                            <th className="text-left px-3 py-2 font-medium border-r border-gray-300 dark:border-[#3a3a4a] w-[120px]">Type</th>
-                            <th className="text-left px-3 py-2 font-medium border-r border-gray-300 dark:border-[#3a3a4a] w-[90px]">Method</th>
+                        <tr className="bg-muted text-muted-foreground text-xs sticky top-0 z-10">
+                            <th className="text-left px-3 py-2 font-medium border-r border-border min-w-[160px]">Name</th>
+                            <th className="text-left px-3 py-2 font-medium border-r border-border w-[120px]">Type</th>
+                            <th className="text-left px-3 py-2 font-medium border-r border-border w-[90px]">Method</th>
                             <th className="text-left px-3 py-2 font-medium min-w-[200px]">Fields</th>
                         </tr>
                     </thead>
@@ -812,17 +811,17 @@ export const DesignTableDialog: React.FC<DesignTableDialogProps> = ({
                             <tr
                                 key={i}
                                 className={cn(
-                                    'border-b border-gray-200 dark:border-[#2a2a38] cursor-pointer transition-colors',
+                                    'border-b border-border cursor-pointer transition-colors',
                                     selectedIndexIndex === i
-                                        ? 'bg-blue-100 dark:bg-[#1e4d7b] hover:bg-blue-100 dark:hover:bg-[#1e4d7b]'
+                                        ? 'bg-primary/20 hover:bg-primary/30'
                                         : i % 2 === 0
-                                            ? 'bg-white dark:bg-[#1e1e2e] hover:bg-gray-50 dark:hover:bg-[#252535]'
-                                            : 'bg-gray-50 dark:bg-[#22222f] hover:bg-gray-100 dark:hover:bg-[#252535]'
+                                            ? 'bg-background hover:bg-muted/30'
+                                            : 'bg-muted/20 hover:bg-muted/30'
                                 )}
                                 onClick={() => setSelectedIndexIndex(i)}
                             >
                                 {/* Name */}
-                                <td className="px-1 py-0.5 border-r border-gray-200 dark:border-[#2a2a38]" onClick={e => e.stopPropagation()}>
+                                <td className="px-1 py-0.5 border-r border-border" onClick={e => e.stopPropagation()}>
                                     <CellInput
                                         value={idx.name}
                                         onChange={v => updateEditableIndex(i, 'name', v)}
@@ -830,7 +829,7 @@ export const DesignTableDialog: React.FC<DesignTableDialogProps> = ({
                                     />
                                 </td>
                                 {/* Type: Normal / Unique / Fulltext / Spatial */}
-                                <td className="px-1 py-0.5 border-r border-gray-200 dark:border-[#2a2a38]" onClick={e => e.stopPropagation()}>
+                                <td className="px-1 py-0.5 border-r border-border" onClick={e => e.stopPropagation()}>
                                     <select
                                         value={indexKind(idx)}
                                         onChange={e => {
@@ -845,7 +844,7 @@ export const DesignTableDialog: React.FC<DesignTableDialogProps> = ({
                                                             : item.index_type,
                                             }));
                                         }}
-                                        className="w-full bg-transparent text-xs text-blue-600 dark:text-blue-300 border border-transparent hover:border-gray-300 dark:hover:border-[#3a3a4a] focus:border-blue-400 dark:focus:border-blue-500 focus:bg-blue-50 dark:focus:bg-[#1a3150] rounded px-1 py-0.5 outline-none cursor-pointer font-mono"
+                                        className="w-full bg-transparent text-xs text-primary border border-transparent hover:border-border focus:border-primary focus:bg-primary/5 rounded px-1 py-0.5 outline-none cursor-pointer font-mono"
                                     >
                                         <option value="normal">Normal</option>
                                         <option value="unique">Unique</option>
@@ -854,13 +853,13 @@ export const DesignTableDialog: React.FC<DesignTableDialogProps> = ({
                                     </select>
                                 </td>
                                 {/* Method: BTREE / HASH — hidden for FULLTEXT/SPATIAL */}
-                                <td className="px-1 py-0.5 border-r border-gray-200 dark:border-[#2a2a38]" onClick={e => e.stopPropagation()}>
+                                <td className="px-1 py-0.5 border-r border-border" onClick={e => e.stopPropagation()}>
                                     {indexKind(idx) === 'fulltext' || indexKind(idx) === 'spatial'
-                                        ? <span className="px-1 text-xs text-gray-400 dark:text-gray-600">—</span>
+                                        ? <span className="px-1 text-xs text-muted-foreground/50">—</span>
                                         : <select
                                             value={idx.index_type || 'BTREE'}
                                             onChange={e => updateEditableIndex(i, 'index_type', e.target.value)}
-                                            className="w-full bg-transparent text-xs text-gray-600 dark:text-gray-400 border border-transparent hover:border-gray-300 dark:hover:border-[#3a3a4a] focus:border-blue-400 dark:focus:border-blue-500 focus:bg-blue-50 dark:focus:bg-[#1a3150] rounded px-1 py-0.5 outline-none cursor-pointer font-mono"
+                                            className="w-full bg-transparent text-xs text-muted-foreground border border-transparent hover:border-border focus:border-primary focus:bg-primary/5 rounded px-1 py-0.5 outline-none cursor-pointer font-mono"
                                         >
                                             <option value="BTREE">BTREE</option>
                                             <option value="HASH">HASH</option>
@@ -870,14 +869,14 @@ export const DesignTableDialog: React.FC<DesignTableDialogProps> = ({
                                 {/* Fields (display only, edited in detail panel) */}
                                 <td className="px-3 py-1.5 text-xs font-mono">
                                     {idx.columns.length > 0
-                                        ? <span className="text-gray-600 dark:text-gray-300">{idx.columns.join(', ')}</span>
-                                        : <span className="italic text-gray-400 dark:text-gray-600">click row to select columns</span>}
+                                        ? <span className="text-foreground">{idx.columns.join(', ')}</span>
+                                        : <span className="italic text-muted-foreground/50">click row to select columns</span>}
                                 </td>
                             </tr>
                         ))}
                         {editableIndexes.length === 0 && (
                             <tr>
-                                <td colSpan={4} className="px-4 py-8 text-xs text-center text-gray-400 dark:text-gray-600">
+                                <td colSpan={4} className="px-4 py-8 text-xs text-center text-muted-foreground">
                                     No indexes — press Add Index to create one
                                 </td>
                             </tr>
@@ -887,21 +886,21 @@ export const DesignTableDialog: React.FC<DesignTableDialogProps> = ({
             </div>
 
             {/* Toolbar */}
-            <div className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 dark:bg-[#1a1a28] border-t border-gray-200 dark:border-[#2a2a38]">
+            <div className="flex items-center gap-1 px-3 py-1.5 bg-muted border-t border-border">
                 <button
                     onClick={handleAddIndex}
-                    className="flex items-center gap-1 px-2 py-1 text-xs text-gray-600 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-[#2a2a38] transition-colors"
+                    className="flex items-center gap-1 px-2 py-1 text-xs text-foreground rounded hover:bg-background/50 transition-colors"
                 >
                     <Plus className="w-3 h-3" /> Add Index
                 </button>
                 <button
                     onClick={handleDeleteIndex}
                     disabled={selectedIndexIndex === null}
-                    className="flex items-center gap-1 px-2 py-1 text-xs text-gray-600 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-[#2a2a38] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="flex items-center gap-1 px-2 py-1 text-xs text-foreground rounded hover:bg-background/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                     <Trash2 className="w-3 h-3" /> Delete Index
                 </button>
-                <span className="ml-auto text-xs text-gray-400 dark:text-gray-600">
+                <span className="ml-auto text-xs text-muted-foreground">
                     {editableIndexes.length} index{editableIndexes.length !== 1 ? 'es' : ''}
                 </span>
             </div>
@@ -920,10 +919,10 @@ export const DesignTableDialog: React.FC<DesignTableDialogProps> = ({
     const renderOptions = () => {
         if (!tableInfo) return null;
 
-        const selectCls = 'flex-1 h-7 bg-gray-50 dark:bg-[#252535] border border-gray-300 dark:border-[#3a3a4a] rounded px-2 text-xs text-gray-700 dark:text-gray-300 font-mono focus:outline-none focus:border-blue-400 dark:focus:border-blue-500 cursor-pointer';
-        const inputCls = 'flex-1 h-7 bg-gray-50 dark:bg-[#252535] border border-gray-300 dark:border-[#3a3a4a] rounded px-2 text-xs text-gray-700 dark:text-gray-300 font-mono focus:outline-none focus:border-blue-400 dark:focus:border-blue-500 placeholder:text-gray-400';
-        const readonlyCls = 'flex-1 h-7 bg-gray-100 dark:bg-[#1e1e2e] border border-gray-200 dark:border-[#2a2a38] rounded px-2 flex items-center text-xs text-gray-500 dark:text-gray-500 font-mono';
-        const labelCls = 'w-44 text-xs text-gray-500 dark:text-gray-400 shrink-0 text-right pr-2';
+        const selectCls = 'flex-1 h-7 bg-muted/50 border border-border rounded px-2 text-xs text-foreground font-mono focus:outline-none focus:border-primary cursor-pointer';
+        const inputCls = 'flex-1 h-7 bg-muted/50 border border-border rounded px-2 text-xs text-foreground font-mono focus:outline-none focus:border-primary placeholder:text-muted-foreground/50';
+        const readonlyCls = 'flex-1 h-7 bg-muted/30 border border-border rounded px-2 flex items-center text-xs text-muted-foreground font-mono';
+        const labelCls = 'w-44 text-xs text-muted-foreground shrink-0 text-right pr-2';
         const rowCls = 'flex items-center gap-2';
 
         const Row = ({ label, children }: { label: string; children: React.ReactNode }) => (
@@ -1135,9 +1134,9 @@ export const DesignTableDialog: React.FC<DesignTableDialogProps> = ({
                                 type="checkbox"
                                 checked={editableEncryption}
                                 onChange={e => setEditableEncryption(e.target.checked)}
-                                className="w-3.5 h-3.5 rounded border-gray-300 dark:border-[#3a3a4a] accent-blue-500"
+                                className="w-3.5 h-3.5 rounded border-border accent-primary"
                             />
-                            <span className="text-xs text-gray-700 dark:text-gray-300">Encryption</span>
+                            <span className="text-xs text-foreground">Encryption</span>
                         </label>
                     </Row>
                 </div>
@@ -1149,13 +1148,13 @@ export const DesignTableDialog: React.FC<DesignTableDialogProps> = ({
         if (!tableInfo) return null;
         return (
             <div className="flex flex-col h-full gap-3 p-6">
-                <p className="text-xs text-gray-500 dark:text-gray-400">Table comment</p>
+                <p className="text-xs text-muted-foreground">Table comment</p>
                 <textarea
                     value={editableComment}
                     onChange={e => setEditableComment(e.target.value)}
                     placeholder="(no comment)"
                     spellCheck={false}
-                    className="flex-1 bg-gray-50 dark:bg-[#252535] border border-gray-300 dark:border-[#3a3a4a] rounded p-3 text-sm text-gray-700 dark:text-gray-300 font-mono resize-none min-h-[80px] focus:outline-none focus:border-blue-400 dark:focus:border-blue-500 placeholder:text-gray-400 dark:placeholder:text-gray-600"
+                    className="flex-1 bg-muted/50 border border-border rounded p-3 text-sm text-foreground font-mono resize-none min-h-[80px] focus:outline-none focus:border-primary placeholder:text-muted-foreground/50"
                 />
             </div>
         );
@@ -1166,31 +1165,31 @@ export const DesignTableDialog: React.FC<DesignTableDialogProps> = ({
         const ddl = tableInfo?.create_sql ?? '';
         return (
             <div className="flex flex-col h-full overflow-hidden">
-                <div className="flex items-center justify-between gap-2 px-4 py-2 bg-gray-100 dark:bg-[#1a1a28] border-b border-gray-200 dark:border-[#2a2a38]">
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                <div className="flex items-center justify-between gap-2 px-4 py-2 bg-muted border-b border-border">
+                    <span className="text-xs text-muted-foreground">
                         {hasPending
-                            ? <span className="font-medium text-amber-500">{pendingStatements.length} pending change{pendingStatements.length !== 1 ? 's' : ''}</span>
+                            ? <span className="font-medium text-[#bd93f9]">{pendingStatements.length} pending change{pendingStatements.length !== 1 ? 's' : ''}</span>
                             : <span>No pending changes — showing current DDL</span>
                         }
                     </span>
                     <Button
                         size="sm"
                         variant="ghost"
-                        className="gap-1 text-xs text-gray-500 dark:text-gray-400 h-7 hover:text-gray-900 dark:hover:text-white"
+                        className="gap-1 text-xs text-muted-foreground h-7 hover:text-foreground"
                         onClick={hasPending ? handleCopyPending : handleCopyDdl}
                     >
-                        {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+                        {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
                         {copied ? 'Copied!' : (hasPending ? 'Copy SQL' : 'Copy DDL')}
                     </Button>
                 </div>
                 <div className="flex-1 p-4 overflow-auto">
                     {hasPending ? (
-                        <pre className="font-mono text-xs leading-relaxed whitespace-pre-wrap text-amber-700 dark:text-amber-300">
+                        <pre className="font-mono text-xs leading-relaxed whitespace-pre-wrap text-foreground">
                             {pendingStatements.join(';\n') + ';'}
                         </pre>
                     ) : (
-                        <pre className="font-mono text-xs leading-relaxed text-gray-600 whitespace-pre-wrap dark:text-gray-400">
-                            {ddl || <span className="text-gray-400 dark:text-gray-600">No DDL available</span>}
+                        <pre className="font-mono text-xs leading-relaxed text-muted-foreground whitespace-pre-wrap">
+                            {ddl || <span className="text-muted-foreground/50">No DDL available</span>}
                         </pre>
                     )}
                 </div>
@@ -1202,13 +1201,13 @@ export const DesignTableDialog: React.FC<DesignTableDialogProps> = ({
         if (loading) {
             return (
                 <div className="flex items-center justify-center h-full">
-                    <Loader2 className="w-8 h-8 text-gray-400 animate-spin" />
+                    <Loader2 className="w-8 h-8 text-muted-foreground animate-spin" />
                 </div>
             );
         }
         if (error) {
             return (
-                <div className="flex items-center justify-center h-full px-6 text-sm text-center text-red-400">
+                <div className="flex items-center justify-center h-full px-6 text-sm text-center text-destructive">
                     {error}
                 </div>
             );
@@ -1226,16 +1225,16 @@ export const DesignTableDialog: React.FC<DesignTableDialogProps> = ({
         <>
             <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
                 <DialogContent
-                    className="max-w-[92vw] w-[92vw] max-h-[88vh] h-[88vh] flex flex-col p-0 gap-0 rounded-xl overflow-hidden bg-white dark:bg-[#1e1e2e] border border-gray-200 dark:border-[#2a2a38] shadow-2xl outline-none focus-visible:outline-none"
+                    className="max-w-[92vw] w-[92vw] max-h-[88vh] h-[88vh] flex flex-col p-0 gap-0 rounded-xl overflow-hidden bg-background border border-border shadow-2xl outline-none focus-visible:outline-none"
                     style={{ fontFamily: 'inherit' }}
                 >
                     {/* Title bar */}
-                    <DialogHeader className="shrink-0 px-5 py-3 bg-gray-50 dark:bg-[#16161f] border-b border-gray-200 dark:border-[#2a2a38]">
-                        <DialogTitle className="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-gray-200">
-                            <Key className="w-4 h-4 text-amber-500" />
-                            Design Table — <span className="font-mono text-blue-600 dark:text-blue-300">{database}.{tableName}</span>
+                    <DialogHeader className="shrink-0 px-5 py-3 bg-card border-b border-border">
+                        <DialogTitle className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                            <Key className="w-4 h-4 text-[#bd93f9]" />
+                            Design Table — <span className="font-mono text-primary">{database}.{tableName}</span>
                             {hasChanges && (
-                                <span className="ml-2 px-1.5 py-0.5 text-[10px] font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded border border-amber-300 dark:border-amber-700">
+                                <span className="ml-2 px-1.5 py-0.5 text-[10px] font-medium bg-primary/10 text-primary rounded border border-primary/30">
                                     {pendingStatements.length} unsaved
                                 </span>
                             )}
@@ -1243,7 +1242,7 @@ export const DesignTableDialog: React.FC<DesignTableDialogProps> = ({
                     </DialogHeader>
 
                     {/* Tab bar */}
-                    <div className="shrink-0 flex border-b border-gray-200 dark:border-[#2a2a38] bg-gray-100 dark:bg-[#1a1a28] px-2 pt-1.5">
+                    <div className="shrink-0 flex border-b border-border bg-muted/50 px-2 pt-1.5">
                         {TABS.map((tab) => (
                             <button
                                 key={tab.id}
@@ -1251,8 +1250,8 @@ export const DesignTableDialog: React.FC<DesignTableDialogProps> = ({
                                 className={cn(
                                     'px-4 py-1.5 text-xs font-medium rounded-t-md border border-b-0 mr-0.5 transition-colors',
                                     activeTab === tab.id
-                                        ? 'bg-white dark:bg-[#1e1e2e] border-gray-300 dark:border-[#3a3a4a] text-gray-900 dark:text-gray-100'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#22222f]'
+                                        ? 'bg-background border-border text-foreground'
+                                        : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted'
                                 )}
                             >
                                 {tab.label}
@@ -1267,32 +1266,32 @@ export const DesignTableDialog: React.FC<DesignTableDialogProps> = ({
 
                     {/* Save error */}
                     {saveError && (
-                        <div className="px-4 py-2 font-mono text-xs text-red-600 break-all border-t border-red-200 shrink-0 bg-red-50 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400">
+                        <div className="px-4 py-2 font-mono text-xs text-destructive break-all border-t border-destructive/20 shrink-0 bg-destructive/10">
                             {saveError}
                         </div>
                     )}
 
                     {/* Status bar / footer */}
-                    <div className="shrink-0 flex items-center justify-between px-4 py-1.5 bg-gray-50 dark:bg-[#16161f] border-t border-gray-200 dark:border-[#2a2a38] text-[11px] text-gray-400 dark:text-gray-600">
+                    <div className="shrink-0 flex items-center justify-between px-4 py-1.5 bg-card border-t border-border text-[11px] text-muted-foreground">
                         <span>
                             {tableInfo
                                 ? `${editableColumns.length} fields · ${editableIndexes.length} indexes · Engine: ${editableEngine || tableInfo.engine || 'N/A'}`
                                 : loading ? 'Loading…' : ''}
                             {hasChanges && (
-                                <span className="ml-2 text-amber-500">{pendingStatements.length} pending change{pendingStatements.length !== 1 ? 's' : ''}</span>
+                                <span className="ml-2 text-primary">{pendingStatements.length} pending change{pendingStatements.length !== 1 ? 's' : ''}</span>
                             )}
                         </span>
                         <div className="flex items-center gap-2">
                             <button
                                 onClick={handleCancel}
-                                className="px-3 py-0.5 rounded text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-[#2a2a38] transition-colors"
+                                className="px-3 py-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                             >
                                 {hasChanges ? 'Reset' : 'Close'}
                             </button>
                             {hasChanges && (
                                 <button
                                     onClick={onClose}
-                                    className="px-3 py-0.5 rounded text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-[#2a2a38] transition-colors"
+                                    className="px-3 py-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                                 >
                                     Close
                                 </button>
@@ -1303,8 +1302,8 @@ export const DesignTableDialog: React.FC<DesignTableDialogProps> = ({
                                 className={cn(
                                     'px-4 py-0.5 rounded text-xs font-medium transition-colors',
                                     hasChanges && !saving
-                                        ? 'bg-blue-600 dark:bg-blue-700 text-white hover:bg-blue-700 dark:hover:bg-blue-600'
-                                        : 'bg-gray-200 dark:bg-[#2a2a38] text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                                        ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                                        : 'bg-muted text-muted-foreground cursor-not-allowed'
                                 )}
                             >
                                 {saving
@@ -1330,12 +1329,12 @@ interface FieldDetailsPanelProps {
     onCharsetChange: (charset: string) => void;
 }
 
-const LABEL_CLS = 'text-[11px] text-gray-500 dark:text-gray-400 w-24 shrink-0';
+const LABEL_CLS = 'text-[11px] text-muted-foreground w-24 shrink-0';
 const INPUT_CLS = cn(
-    'flex-1 h-6 bg-gray-50 dark:bg-[#252535] border border-gray-300 dark:border-[#3a3a4a]',
-    'rounded px-2 text-[11px] text-gray-700 dark:text-gray-300 font-mono',
-    'focus:outline-none focus:border-blue-400 dark:focus:border-blue-500',
-    'placeholder:text-gray-400 dark:placeholder:text-gray-600',
+    'flex-1 h-6 bg-muted/50 border border-border',
+    'rounded px-2 text-[11px] text-foreground font-mono',
+    'focus:outline-none focus:border-primary',
+    'placeholder:text-muted-foreground/50',
 );
 
 // ─── Index Details Panel ──────────────────────────────────────────────────────
@@ -1365,13 +1364,13 @@ const IndexDetailsPanel: React.FC<IndexDetailsPanelProps> = ({ idx, availableCol
     };
 
     return (
-        <div className="shrink-0 border-t border-gray-200 dark:border-[#2a2a38] bg-gray-50 dark:bg-[#16161f] px-4 py-3">
+        <div className="shrink-0 border-t border-border bg-card px-4 py-3">
             <div className="flex items-start gap-8">
                 {/* Column checkboxes */}
                 <div className="flex-1">
-                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-2 font-medium">Included columns</p>
+                    <p className="text-[11px] text-muted-foreground mb-2 font-medium">Included columns</p>
                     {availableColumns.length === 0 ? (
-                        <span className="text-[11px] text-gray-400 dark:text-gray-600 italic">No columns defined yet</span>
+                        <span className="text-[11px] text-muted-foreground/50 italic">No columns defined yet</span>
                     ) : (
                         <div className="flex flex-wrap gap-x-5 gap-y-1.5">
                             {availableColumns.map(colName => (
@@ -1380,9 +1379,9 @@ const IndexDetailsPanel: React.FC<IndexDetailsPanelProps> = ({ idx, availableCol
                                         type="checkbox"
                                         checked={idx.columns.includes(colName)}
                                         onChange={() => toggleColumn(colName)}
-                                        className="h-3.5 w-3.5 accent-blue-500"
+                                        className="h-3.5 w-3.5 accent-primary"
                                     />
-                                    <span className="text-[11px] text-gray-700 dark:text-gray-300 font-mono">{colName}</span>
+                                    <span className="text-[11px] text-foreground font-mono">{colName}</span>
                                 </label>
                             ))}
                         </div>
@@ -1391,21 +1390,21 @@ const IndexDetailsPanel: React.FC<IndexDetailsPanelProps> = ({ idx, availableCol
                 {/* Column order (only when composite index) */}
                 {idx.columns.length > 1 && (
                     <div className="shrink-0 min-w-[180px]">
-                        <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-2 font-medium">Column order</p>
+                        <p className="text-[11px] text-muted-foreground mb-2 font-medium">Column order</p>
                         <div className="flex flex-col gap-1">
                             {idx.columns.map((col, i) => (
                                 <div key={col} className="flex items-center gap-1">
-                                    <span className="text-[10px] text-gray-400 dark:text-gray-600 w-4 text-right">{i + 1}.</span>
-                                    <span className="flex-1 text-[11px] font-mono text-gray-700 dark:text-gray-300 px-1.5 py-0.5 bg-white dark:bg-[#252535] border border-gray-200 dark:border-[#3a3a4a] rounded">{col}</span>
+                                    <span className="text-[10px] text-muted-foreground/50 w-4 text-right">{i + 1}.</span>
+                                    <span className="flex-1 text-[11px] font-mono text-foreground px-1.5 py-0.5 bg-background border border-border rounded">{col}</span>
                                     <button
                                         onClick={() => moveColumn(col, -1)}
                                         disabled={i === 0}
-                                        className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-30 px-0.5"
+                                        className="text-muted-foreground hover:text-foreground disabled:opacity-30 px-0.5"
                                     >↑</button>
                                     <button
                                         onClick={() => moveColumn(col, 1)}
                                         disabled={i === idx.columns.length - 1}
-                                        className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-30 px-0.5"
+                                        className="text-muted-foreground hover:text-foreground disabled:opacity-30 px-0.5"
                                     >↓</button>
                                 </div>
                             ))}
@@ -1420,7 +1419,7 @@ const IndexDetailsPanel: React.FC<IndexDetailsPanelProps> = ({ idx, availableCol
 // ─── Field Details Panel ──────────────────────────────────────────────────────
 
 const FieldDetailsPanel: React.FC<FieldDetailsPanelProps> = ({ col, onChange, charsets, collations, onCharsetChange }) => (
-    <div className="shrink-0 border-t border-gray-200 dark:border-[#2a2a38] bg-gray-50 dark:bg-[#16161f] px-4 py-3 grid grid-cols-3 gap-x-6 gap-y-2.5">
+    <div className="shrink-0 border-t border-border bg-card px-4 py-3 grid grid-cols-3 gap-x-6 gap-y-2.5">
         {/* Default value */}
         <div className="flex items-center gap-2">
             <span className={LABEL_CLS}>Default</span>
@@ -1469,9 +1468,9 @@ const FieldDetailsPanel: React.FC<FieldDetailsPanelProps> = ({ col, onChange, ch
                     type="checkbox"
                     checked={col.is_auto_increment}
                     onChange={e => onChange('is_auto_increment', e.target.checked)}
-                    className="h-3.5 w-3.5 accent-blue-500"
+                    className="h-3.5 w-3.5 accent-primary"
                 />
-                <span className="text-[11px] text-gray-600 dark:text-gray-400">{col.is_auto_increment ? 'Yes' : 'No'}</span>
+                <span className="text-[11px] text-foreground">{col.is_auto_increment ? 'Yes' : 'No'}</span>
             </label>
         </div>
         {/* Primary Key */}
@@ -1482,9 +1481,9 @@ const FieldDetailsPanel: React.FC<FieldDetailsPanelProps> = ({ col, onChange, ch
                     type="checkbox"
                     checked={col.is_primary_key}
                     onChange={e => onChange('is_primary_key', e.target.checked)}
-                    className="h-3.5 w-3.5 accent-amber-500"
+                    className="h-3.5 w-3.5 accent-[#bd93f9]"
                 />
-                <span className="text-[11px] text-gray-600 dark:text-gray-400">{col.is_primary_key ? 'Yes' : 'No'}</span>
+                <span className="text-[11px] text-foreground">{col.is_primary_key ? 'Yes' : 'No'}</span>
             </label>
         </div>
         {/* Comment */}

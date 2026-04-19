@@ -22,19 +22,19 @@ import { useTranslation } from 'react-i18next';
 
 // Color mapping for Tailwind compatibility
 const colorMap: Record<ConnectionColor, { bg: string; border: string; text: string; lightBg: string }> = {
-  blue: { bg: 'bg-blue-500', border: 'border-blue-500', text: 'text-blue-500', lightBg: '#eff6ff' },
-  green: { bg: 'bg-green-500', border: 'border-green-500', text: 'text-green-500', lightBg: '#f0fdf4' },
-  purple: { bg: 'bg-purple-500', border: 'border-purple-500', text: 'text-purple-500', lightBg: '#faf5ff' },
-  orange: { bg: 'bg-orange-500', border: 'border-orange-500', text: 'text-orange-500', lightBg: '#fff7ed' },
-  red: { bg: 'bg-red-500', border: 'border-red-500', text: 'text-red-500', lightBg: '#fef2f2' },
-  cyan: { bg: 'bg-cyan-500', border: 'border-cyan-500', text: 'text-cyan-500', lightBg: '#ecfeff' },
-  pink: { bg: 'bg-pink-500', border: 'border-pink-500', text: 'text-pink-500', lightBg: '#fdf2f8' },
-  indigo: { bg: 'bg-indigo-500', border: 'border-indigo-500', text: 'text-indigo-500', lightBg: '#eef2ff' },
+  blue: { bg: 'bg-[#8be9fd]', border: 'border-[#8be9fd]', text: 'text-[#8be9fd]', lightBg: 'rgba(139, 233, 253, 0.1)' },
+  green: { bg: 'bg-[#50fa7b]', border: 'border-[#50fa7b]', text: 'text-[#50fa7b]', lightBg: 'rgba(80, 250, 123, 0.1)' },
+  purple: { bg: 'bg-[#bd93f9]', border: 'border-[#bd93f9]', text: 'text-[#bd93f9]', lightBg: 'rgba(189, 147, 249, 0.1)' },
+  orange: { bg: 'bg-[#ffb86c]', border: 'border-[#ffb86c]', text: 'text-[#ffb86c]', lightBg: 'rgba(255, 184, 108, 0.1)' },
+  red: { bg: 'bg-[#ff5555]', border: 'border-[#ff5555]', text: 'text-[#ff5555]', lightBg: 'rgba(255, 85, 85, 0.1)' },
+  cyan: { bg: 'bg-[#8be9fd]', border: 'border-[#8be9fd]', text: 'text-[#8be9fd]', lightBg: 'rgba(139, 233, 253, 0.1)' },
+  pink: { bg: 'bg-[#ff79c6]', border: 'border-[#ff79c6]', text: 'text-[#ff79c6]', lightBg: 'rgba(255, 121, 198, 0.1)' },
+  indigo: { bg: 'bg-[#bd93f9]', border: 'border-[#bd93f9]', text: 'text-[#bd93f9]', lightBg: 'rgba(189, 147, 249, 0.1)' },
 };
 
 // Helper function to get connection type icon
 function getConnectionTypeIcon(type: ConnectionType, color?: ConnectionColor) {
-  const colorClass = color ? colorMap[color]?.text : 'text-gray-400';
+  const colorClass = color ? colorMap[color]?.text : 'text-muted-foreground';
   switch (type) {
     case 'ssh_tunnel':
       return <Lock className={`h-3 w-3 ${colorClass}`} />;
@@ -266,11 +266,11 @@ function App() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
+    <div className="h-screen flex flex-col bg-background text-foreground">
       {/* Header */}
-      <header className="h-14 border-b bg-white dark:bg-gray-900 flex items-center justify-between px-4">
+      <header className="h-14 border-b bg-card flex items-center justify-between px-4">
         <div className="flex items-center gap-2">
-          <Database className="h-6 w-6 text-blue-600" />
+          <Database className="h-6 w-6 text-primary" />
           <h1 className="text-lg font-semibold">{t('app.title')}</h1>
         </div>
         <div className="flex items-center gap-2">
@@ -298,13 +298,13 @@ function App() {
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Connection List Sidebar - Always Visible */}
-        <div className="w-80 border-r bg-white flex flex-col">
+        <div className="w-80 border-r bg-card flex flex-col">
           <div className="flex-1 flex flex-col overflow-hidden">
             {/* Search */}
             <div className="p-3 border-b space-y-2">
               <h2 className="font-medium">{t('connection.title')}</h2>
               <div className="relative">
-                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder={t('ui.search')}
                   value={searchQuery}
@@ -321,20 +321,20 @@ function App() {
                 className={cn(
                   'w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors',
                   selectedGroup === null
-                    ? 'bg-blue-500/20 text-blue-700 dark:text-blue-300'
-                    : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                    ? 'bg-primary/20 text-primary'
+                    : 'hover:bg-accent/20'
                 )}
               >
-                <Database className="w-4 h-4 text-blue-500" />
+                <Database className="w-4 h-4 text-primary" />
                 <span className="flex-1 text-left">{t('connection.allConnections')}</span>
-                <span className="text-xs text-gray-500">{connections.length}</span>
+                <span className="text-xs text-muted-foreground">{connections.length}</span>
               </button>
             </div>
 
             {/* Connection List */}
             <div className="flex-1 overflow-auto p-2">
               {filteredConnections.length === 0 ? (
-                <div className="text-center py-8 text-gray-400">
+                <div className="text-center py-8 text-muted-foreground">
                   <Database className="h-12 w-12 mx-auto mb-3 opacity-50" />
                   <p>{t('connection.noConnectionsFound')}</p>
                   {searchQuery && (
@@ -349,7 +349,7 @@ function App() {
                       <div key={group.id}>
                         <button
                           onClick={() => toggleGroupExpanded(group.id)}
-                          className="w-full flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100 rounded"
+                          className="w-full flex items-center gap-1 px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-accent/20 rounded"
                         >
                           {expandedGroups.has(group.id) ? (
                             <ChevronDown className="w-3 h-3" />
@@ -382,7 +382,7 @@ function App() {
                   {ungroupedConnections.length > 0 && (
                     <div className="space-y-1">
                       {groupedConnections.some(g => g.connections.length > 0) && (
-                        <div className="px-2 py-1 text-xs font-medium text-gray-500">
+                        <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
                           {t('connection.ungroupedConnections')}
                         </div>
                       )}
@@ -403,7 +403,7 @@ function App() {
             </div>
 
             {/* New Connection Button - Fixed at bottom */}
-            <div className="p-3 border-t bg-gray-50 dark:bg-gray-900">
+            <div className="p-3 border-t bg-muted/30">
               <Button
                 className="w-full"
                 onClick={() => {
@@ -443,11 +443,11 @@ function App() {
           ) : (
             <div className="h-full flex items-center justify-center">
               <div className="text-center">
-                <Database className="h-16 w-16 mx-auto text-gray-300 mb-4" />
-                <h3 className="text-lg font-medium text-gray-700">
+                <Database className="h-16 w-16 mx-auto text-muted-foreground/30 mb-4" />
+                <h3 className="text-lg font-medium text-muted-foreground">
                   {t('connection.selectConnection')}
                 </h3>
-                <p className="text-gray-500 mt-1">
+                <p className="text-muted-foreground/60 mt-1">
                   {t('connection.chooseOrCreate')}
                 </p>
               </div>
@@ -509,9 +509,9 @@ function ConnectionCard({ conn, isSelected, onSelect, onEdit, onDelete }: Connec
     <Card
       className={cn(
         'cursor-pointer transition-all hover:shadow-md',
-        isSelected ? `ring-2 ring-blue-500 ${colorStyle.border}` : 'border-gray-200'
+        isSelected ? `ring-2 ring-primary ${colorStyle.border}` : 'border-border'
       )}
-      style={{ backgroundColor: colorStyle.lightBg }}
+      style={{ backgroundColor: isSelected ? colorStyle.lightBg : undefined }}
       onClick={onSelect}
     >
       <CardHeader className="pb-2">
@@ -524,7 +524,7 @@ function ConnectionCard({ conn, isSelected, onSelect, onEdit, onDelete }: Connec
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6 text-gray-400 hover:text-blue-500"
+              className="h-6 w-6 text-muted-foreground hover:text-primary"
               onClick={(e) => {
                 e.stopPropagation();
                 onEdit();
@@ -535,7 +535,7 @@ function ConnectionCard({ conn, isSelected, onSelect, onEdit, onDelete }: Connec
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6 text-gray-400 hover:text-red-500"
+              className="h-6 w-6 text-muted-foreground hover:text-destructive"
               onClick={(e) => {
                 e.stopPropagation();
                 onDelete();
@@ -546,14 +546,14 @@ function ConnectionCard({ conn, isSelected, onSelect, onEdit, onDelete }: Connec
           </div>
         </CardTitle>
         <CardDescription className="text-xs flex items-center gap-1">
-          <span className="px-1.5 py-0.5 bg-gray-100 rounded text-gray-600">
+          <span className="px-1.5 py-0.5 bg-muted rounded text-foreground">
             {getConnectionTypeLabel(conn.connection_type)}
           </span>
           {conn.host}:{conn.port}
         </CardDescription>
       </CardHeader>
       <CardContent className="pt-0">
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-muted-foreground">
           {conn.username}@{conn.database || 'no database'}
         </p>
         {conn.tags.length > 0 && (
@@ -561,7 +561,7 @@ function ConnectionCard({ conn, isSelected, onSelect, onEdit, onDelete }: Connec
             {conn.tags.map(tag => (
               <span
                 key={tag}
-                className="px-1.5 py-0.5 text-xs bg-white/50 rounded text-gray-600"
+                className="px-1.5 py-0.5 text-xs bg-muted/50 rounded text-foreground"
               >
                 {tag}
               </span>

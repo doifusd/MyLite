@@ -252,20 +252,20 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({
               </div>
 
               {table && (
-                <div className="text-sm text-gray-500">
-                  Exporting table: <span className="font-medium">{database}.{table}</span>
+                <div className="text-sm text-muted-foreground">
+                  Exporting table: <span className="font-medium text-foreground">{database}.{table}</span>
                 </div>
               )}
 
               {isExporting && (
                 <div className="space-y-2">
-                  <div className="h-2 bg-gray-200 rounded-full">
+                  <div className="h-2 bg-muted rounded-full">
                     <div
-                      className="h-full bg-blue-500 rounded-full transition-all"
+                      className="h-full bg-primary rounded-full transition-all"
                       style={{ width: `${exportProgress}%` }}
                     />
                   </div>
-                  <p className="text-xs text-gray-500 text-center">{exportProgress}%</p>
+                  <p className="text-xs text-muted-foreground text-center">{exportProgress}%</p>
                 </div>
               )}
             </div>
@@ -289,25 +289,25 @@ export const ImportExportDialog: React.FC<ImportExportDialogProps> = ({
                   type="file"
                   accept=".csv,.sql"
                   onChange={(e) => setImportFile(e.target.files?.[0] || null)}
-                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                  className="block w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer"
                 />
               </div>
 
               {table && (
-                <div className="text-sm text-gray-500">
-                  Importing to: <span className="font-medium">{database}.{table}</span>
+                <div className="text-sm text-muted-foreground">
+                  Importing to: <span className="font-medium text-foreground">{database}.{table}</span>
                 </div>
               )}
 
               {isImporting && (
                 <div className="space-y-2">
-                  <div className="h-2 bg-gray-200 rounded-full">
+                  <div className="h-2 bg-muted rounded-full">
                     <div
-                      className="h-full bg-blue-500 rounded-full transition-all"
+                      className="h-full bg-primary rounded-full transition-all"
                       style={{ width: `${importProgress}%` }}
                     />
                   </div>
-                  <p className="text-xs text-gray-500 text-center">{importProgress}%</p>
+                  <p className="text-xs text-muted-foreground text-center">{importProgress}%</p>
                 </div>
               )}
             </div>

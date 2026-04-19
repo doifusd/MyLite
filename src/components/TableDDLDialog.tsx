@@ -73,19 +73,19 @@ export const TableDDLDialog: React.FC<TableDDLDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[700px] max-h-[85vh] flex flex-col items-start pt-10 px-8 pb-8 gap-6 outline-none shadow-2xl bg-white border border-gray-100 ring-1 ring-black/5 rounded-3xl overflow-hidden focus-visible:outline-none focus:outline-none">
+      <DialogContent className="sm:max-w-[700px] max-h-[85vh] flex flex-col items-start pt-10 px-8 pb-8 gap-6 outline-none shadow-2xl bg-card border border-border rounded-2xl overflow-hidden focus-visible:outline-none focus:outline-none">
         <DialogHeader className="w-full text-left">
-          <DialogTitle className="text-xl font-semibold m-0 text-slate-800">
+          <DialogTitle className="text-xl font-semibold m-0 text-foreground">
             DDL for `{tableName}`
           </DialogTitle>
         </DialogHeader>
 
         {loading ? (
           <div className="flex items-center justify-center p-8 w-full">
-            <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : error ? (
-          <div className="w-full p-4 text-red-500 bg-red-50 rounded-lg">
+          <div className="w-full p-4 text-destructive bg-destructive/10 rounded-lg">
             {error}
           </div>
         ) : (
@@ -101,7 +101,7 @@ export const TableDDLDialog: React.FC<TableDDLDialogProps> = ({
                 {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
               </Button>
             )}
-            <div className="bg-[#0f172a] text-blue-50 p-6 rounded-2xl shadow-inner border border-slate-800 overflow-y-auto font-mono text-sm leading-relaxed whitespace-pre-wrap max-h-[60vh] w-full">
+            <div className="bg-muted/30 text-foreground p-6 rounded-xl shadow-inner border border-border overflow-y-auto font-mono text-sm leading-relaxed whitespace-pre-wrap max-h-[60vh] w-full">
               {ddl}
             </div>
           </div>

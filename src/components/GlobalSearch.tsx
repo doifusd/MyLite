@@ -217,7 +217,7 @@ export function GlobalSearch({
 
         <div className="p-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search connections, tables, queries..."
               value={query}
@@ -237,17 +237,17 @@ export function GlobalSearch({
             )}
           </div>
 
-          <div className="flex items-center gap-2 mt-2 text-xs text-gray-500">
+          <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
-              <kbd className="px-1.5 py-0.5 bg-gray-100 rounded">↑↓</kbd>
+              <kbd className="px-1.5 py-0.5 bg-muted rounded">↑↓</kbd>
               Navigate
             </span>
             <span className="flex items-center gap-1">
-              <kbd className="px-1.5 py-0.5 bg-gray-100 rounded">Enter</kbd>
+              <kbd className="px-1.5 py-0.5 bg-muted rounded">Enter</kbd>
               Select
             </span>
             <span className="flex items-center gap-1">
-              <kbd className="px-1.5 py-0.5 bg-gray-100 rounded">Esc</kbd>
+              <kbd className="px-1.5 py-0.5 bg-muted rounded">Esc</kbd>
               Close
             </span>
           </div>
@@ -255,20 +255,20 @@ export function GlobalSearch({
 
         <div className="max-h-[400px] overflow-y-auto border-t">
           {isLoading ? (
-            <div className="p-8 text-center text-gray-500">
-              <div className="animate-spin h-6 w-6 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-2" />
+            <div className="p-8 text-center text-muted-foreground">
+              <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full mx-auto mb-2" />
               Searching...
             </div>
           ) : results.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">
-              <Search className="h-12 w-12 mx-auto mb-3 opacity-30" />
+            <div className="p-8 text-center text-muted-foreground">
+              <Search className="h-12 w-12 mx-auto mb-3 opacity-30 text-primary" />
               <p>No results found</p>
               <p className="text-sm mt-1">Try searching for connections or queries</p>
             </div>
           ) : (
             <div className="py-2">
               {!query && (
-                <div className="px-4 py-2 text-xs font-medium text-gray-500 uppercase">
+                <div className="px-4 py-2 text-xs font-medium text-muted-foreground uppercase">
                   Recent Items
                 </div>
               )}
@@ -277,31 +277,31 @@ export function GlobalSearch({
                   key={result.id}
                   onClick={result.action}
                   className={cn(
-                    'w-full px-4 py-3 flex items-start gap-3 text-left transition-colors',
+                    'w-full px-4 py-3 flex items-start gap-3 text-left transition-all',
                     index === selectedIndex
-                      ? 'bg-blue-50 dark:bg-blue-900/20'
-                      : 'hover:bg-gray-50 dark:hover:bg-gray-800'
+                      ? 'bg-accent/30 border-l-2 border-primary'
+                      : 'hover:bg-accent/20 border-l-2 border-transparent'
                   )}
                   onMouseEnter={() => setSelectedIndex(index)}
                 >
                   <div className={cn(
-                    'mt-0.5',
-                    result.type === 'connection' && 'text-blue-500',
-                    result.type === 'table' && 'text-green-500',
-                    result.type === 'query' && 'text-purple-500',
-                    result.type === 'database' && 'text-orange-500'
+                    'mt-0.5 shrink-0',
+                    result.type === 'connection' && 'text-[#bd93f9]',
+                    result.type === 'table' && 'text-[#50fa7b]',
+                    result.type === 'query' && 'text-[#bd93f9]',
+                    result.type === 'database' && 'text-[#ffb86c]'
                   )}>
                     {result.icon}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-medium truncate">{result.title}</span>
-                      <span className="text-xs px-1.5 py-0.5 bg-gray-100 rounded text-gray-600 shrink-0">
+                      <span className="text-xs px-1.5 py-0.5 bg-muted rounded text-muted-foreground shrink-0">
                         {getTypeLabel(result.type)}
                       </span>
                     </div>
                     {result.subtitle && (
-                      <p className="text-sm text-gray-500 truncate">{result.subtitle}</p>
+                      <p className="text-sm text-muted-foreground truncate">{result.subtitle}</p>
                     )}
                   </div>
                 </button>
@@ -310,7 +310,7 @@ export function GlobalSearch({
           )}
         </div>
 
-        <div className="p-3 border-t bg-gray-50 text-xs text-gray-500 flex items-center justify-between">
+        <div className="p-3 border-t bg-muted/30 text-xs text-muted-foreground flex items-center justify-between">
           <span>{results.length} results</span>
           <span className="flex items-center gap-1">
             <Command className="h-3 w-3" />

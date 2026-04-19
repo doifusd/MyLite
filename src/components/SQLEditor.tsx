@@ -475,7 +475,7 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
   return (
     <div className={cn('flex flex-col h-full', className)}>
       {/* Toolbar */}
-      <div className="flex items-center gap-2 p-2 border-b bg-gray-50">
+      <div className="flex items-center gap-2 p-2 border-b bg-muted/50">
         <Button
           size="sm"
           onClick={executeQuery}
@@ -503,12 +503,12 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
       </div>
 
       {/* Database Selection Row */}
-      <div className="flex items-center gap-3 px-2 py-2 text-sm bg-white border-b">
-        <label className="font-medium text-gray-600 min-w-fit">Connection:</label>
+      <div className="flex items-center gap-3 px-2 py-2 text-sm bg-card border-b">
+        <label className="font-medium text-muted-foreground min-w-fit">Connection:</label>
         <select
           value={selectedConnectionId}
           onChange={(e) => setSelectedConnectionId(e.target.value)}
-          className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="px-2 py-1 text-sm border border-input bg-background rounded focus:outline-none focus:ring-2 focus:ring-primary"
         >
           <option value="">Select connection...</option>
           {connections.map((conn) => (
@@ -518,11 +518,11 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
           ))}
         </select>
 
-        <label className="font-medium text-gray-600 min-w-fit">Database:</label>
+        <label className="font-medium text-muted-foreground min-w-fit">Database:</label>
         <select
           value={selectedDatabase || ''}
           onChange={(e) => setSelectedDatabase(e.target.value || undefined)}
-          className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="px-2 py-1 text-sm border border-input bg-background rounded focus:outline-none focus:ring-2 focus:ring-primary"
         >
           <option value="">Select database...</option>
           {availableDatabases.map((db) => (
@@ -533,8 +533,8 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
         </select>
 
         {selectedDatabase && (
-          <span className="ml-auto text-xs text-gray-500">
-            Selected: <code className="bg-gray-100 px-1 py-0.5 rounded">{selectedDatabase}</code>
+          <span className="ml-auto text-xs text-muted-foreground">
+            Selected: <code className="bg-muted px-1 py-0.5 rounded">{selectedDatabase}</code>
           </span>
         )}
       </div>
@@ -560,7 +560,7 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
       {/* Results */}
       <div className="flex flex-col flex-1 min-h-0 border-t">
         <Tabs value={activeResultTab} onValueChange={setActiveResultTab} className="flex flex-col flex-1 overflow-hidden">
-          <TabsList className="justify-start w-full px-2 overflow-x-auto border-b rounded-none bg-gray-50 shrink-0">
+          <TabsList className="justify-start w-full px-2 overflow-x-auto border-b rounded-none bg-muted/30 shrink-0">
             {results.length > 0 ? (
               results.map((res, index) => (
                 <TabsTrigger
@@ -568,7 +568,7 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
                   value={res.id}
                   className={cn(
                     "gap-1 min-w-fit",
-                    res.error && "text-red-600"
+                    res.error && "text-destructive"
                   )}
                 >
                   <span className="text-xs">{index + 1}</span>
@@ -583,7 +583,7 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
                     {res.sql.slice(0, 20)}...
                   </span>
                   {res.result && (
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-muted-foreground">
                       ({res.result.row_count || res.result.affected_rows || 0})
                     </span>
                   )}
@@ -611,17 +611,17 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
               >
                 {res.isExecuting ? (
                   <div className="flex items-center justify-center h-full">
-                    <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
-                    <span className="ml-2 text-gray-500">Executing...</span>
+                    <Loader2 className="w-6 h-6 text-muted-foreground animate-spin" />
+                    <span className="ml-2 text-muted-foreground">Executing...</span>
                   </div>
                 ) : res.error ? (
                   <div className="p-4">
-                    <div className="flex items-start gap-2 text-red-600">
+                    <div className="flex items-start gap-2 text-destructive">
                       <AlertCircle className="h-5 w-5 mt-0.5" />
                       <div>
                         <p className="font-medium">Query Error</p>
                         <p className="mt-1 text-sm">{res.error}</p>
-                        <code className="block p-2 mt-2 text-xs rounded bg-red-50">
+                        <code className="block p-2 mt-2 text-xs rounded bg-destructive/10">
                           {res.sql}
                         </code>
                       </div>
@@ -640,23 +640,23 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
 
             <TabsContent value="history" className="absolute inset-0 m-0 data-[state=inactive]:hidden overflow-auto">
               {history.length === 0 ? (
-                <div className="flex items-center justify-center h-full text-gray-400">
+                <div className="flex items-center justify-center h-full text-muted-foreground">
                   <p>{t('ui.noQueryHistory')}</p>
                 </div>
               ) : (
-                <div className="divide-y">
+                <div className="divide-y border-border">
                   {history.map((item, index) => (
                     <div
                       key={index}
-                      className="p-3 cursor-pointer hover:bg-gray-50"
+                      className="p-3 cursor-pointer hover:bg-accent/20"
                       onClick={() => {
                         setSql(item.sql);
                       }}
                     >
-                      <code className="block font-mono text-sm text-gray-700 truncate">
+                      <code className="block font-mono text-sm text-foreground truncate">
                         {item.sql}
                       </code>
-                      <p className="mt-1 text-xs text-gray-400">
+                      <p className="mt-1 text-xs text-muted-foreground">
                         {item.timestamp.toLocaleString()}
                       </p>
                     </div>
@@ -666,7 +666,7 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
             </TabsContent>
 
             {results.length === 0 && activeResultTab !== 'history' && (
-              <div className="flex items-center justify-center h-full text-gray-400">
+              <div className="flex items-center justify-center h-full text-muted-foreground">
                 <p>{t('ui.executeQueryToSeeResults')}</p>
               </div>
             )}
@@ -675,11 +675,11 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
       </div>
 
       {/* Status Bar */}
-      <div className="flex items-center gap-4 px-3 py-1.5 border-t bg-gray-50 text-xs text-gray-500">
+      <div className="flex items-center gap-4 px-3 py-1.5 border-t bg-muted text-xs text-muted-foreground">
         {results.length > 0 && (
           <>
             <span className="flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3 text-green-500" />
+              <CheckCircle2 className="w-3 h-3 text-success" />
               {results.filter(r => !r.isExecuting).length}/{results.length} executed
             </span>
             <span>
@@ -692,7 +692,7 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
               {results.reduce((sum, r) => sum + r.executionTime, 0)}ms total
             </span>
             {results.some(r => r.error) && (
-              <span className="flex items-center gap-1 text-red-500">
+              <span className="flex items-center gap-1 text-destructive">
                 <AlertCircle className="w-3 h-3" />
                 {results.filter(r => r.error).length} errors
               </span>

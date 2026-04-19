@@ -113,48 +113,48 @@
 
   /* ═════════════════════════════════ Tailwind Overrides ═════════════════════════════════ */
   :root {
-    --background: 0 0% 97.3%;
-    --foreground: 240 10% 16.5%;
+    --background: 60 30% 96%;        /* #f8f8f2 */
+    --foreground: 231 15% 18%;      /* #282a36 */
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 16.5%;
+    --card-foreground: 231 15% 18%;
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 16.5%;
-    --primary: 268 71% 75%;
-    --primary-foreground: 240 10% 16.5%;
-    --secondary: 220 13% 91%;
-    --secondary-foreground: 240 10% 16.5%;
-    --muted: 220 13% 85%;
-    --muted-foreground: 217 33% 43%;
-    --accent: 268 71% 75%;
-    --accent-foreground: 240 10% 16.5%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 60 9% 98%;
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 268 71% 75%;
+    --popover-foreground: 231 15% 18%;
+    --primary: 265 89% 78%;         /* #bd93f9 */
+    --primary-foreground: 231 15% 18%;
+    --secondary: 60 30% 90%;
+    --secondary-foreground: 231 15% 18%;
+    --muted: 60 30% 90%;
+    --muted-foreground: 225 27% 51%; /* #6272a4 */
+    --accent: 326 100% 74%;         /* #ff79c6 */
+    --accent-foreground: 231 15% 18%;
+    --destructive: 0 100% 67%;      /* #ff5555 */
+    --destructive-foreground: 60 30% 96%;
+    --border: 60 30% 88%;
+    --input: 60 30% 88%;
+    --ring: 265 89% 78%;
     --radius: 0.5rem;
   }
 
   .dark {
-    --background: 240 10% 16.5%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 20%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 20%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 268 71% 75%;
-    --primary-foreground: 240 10% 16.5%;
-    --secondary: 240 10% 27%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 10% 27%;
-    --muted-foreground: 217 33% 60%;
-    --accent: 268 71% 75%;
-    --accent-foreground: 240 10% 16.5%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 60 9% 98%;
-    --border: 240 10% 27%;
-    --input: 240 10% 27%;
-    --ring: 268 71% 75%;
+    --background: 231 15% 18%;      /* #282a36 */
+    --foreground: 60 30% 96%;       /* #f8f8f2 */
+    --card: 231 15% 16%;            /* #21222c */
+    --card-foreground: 60 30% 96%;
+    --popover: 231 15% 16%;
+    --popover-foreground: 60 30% 96%;
+    --primary: 265 89% 78%;         /* #bd93f9 */
+    --primary-foreground: 231 15% 18%;
+    --secondary: 231 14% 31%;       /* #44475a */
+    --secondary-foreground: 60 30% 96%;
+    --muted: 231 14% 31%;           /* #44475a */
+    --muted-foreground: 225 27% 51%; /* #6272a4 */
+    --accent: 326 100% 74%;         /* #ff79c6 */
+    --accent-foreground: 231 15% 18%;
+    --destructive: 0 100% 67%;      /* #ff5555 */
+    --destructive-foreground: 60 30% 96%;
+    --border: 231 14% 31%;          /* #44475a */
+    --input: 231 14% 31%;
+    --ring: 265 89% 78%;
   }
 
   /* ═════════════════════════════════════════════════════════════════════════════════════ */
@@ -187,12 +187,12 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: var(--color-border);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: var(--color-text-muted);
 }
 
 /* Monaco Editor customization */

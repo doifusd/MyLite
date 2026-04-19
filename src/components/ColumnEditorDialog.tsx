@@ -225,27 +225,27 @@ export const ColumnEditorDialog: React.FC<ColumnEditorDialogProps> = ({
                 type="checkbox"
                 checked={!formData.is_nullable}
                 onChange={(e) => setFormData({ ...formData, is_nullable: !e.target.checked })}
-                className="rounded border-gray-300"
+                className="rounded border-border bg-background"
               />
-              <span className="text-sm">Not Null</span>
+              <span className="text-sm text-foreground">Not Null</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
                 checked={formData.is_primary_key}
                 onChange={(e) => setFormData({ ...formData, is_primary_key: e.target.checked })}
-                className="rounded border-gray-300"
+                className="rounded border-border bg-background"
               />
-              <span className="text-sm">Primary Key</span>
+              <span className="text-sm text-foreground">Primary Key</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
                 checked={formData.is_auto_increment}
                 onChange={(e) => setFormData({ ...formData, is_auto_increment: e.target.checked })}
-                className="rounded border-gray-300"
+                className="rounded border-border bg-background"
               />
-              <span className="text-sm">Auto Inc</span>
+              <span className="text-sm text-foreground">Auto Inc</span>
             </label>
           </div>
         </div>

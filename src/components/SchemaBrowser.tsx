@@ -430,22 +430,22 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
 
   const getNodeIcon = (type: string, metadata?: Record<string, any>) => {
     if (metadata?.isQueryFolder) {
-      return <FileText className="w-4 h-4 text-indigo-500" />;
+      return <FileText className="w-4 h-4 text-primary" />;
     }
     if (metadata?.isQueryItem) {
-      return <FileText className="w-4 h-4 text-indigo-400" />;
+      return <FileText className="w-4 h-4 text-primary" />;
     }
     switch (type) {
       case 'database':
-        return <Database className="w-4 h-4 text-blue-500" />;
+        return <Database className="w-4 h-4 text-primary" />;
       case 'table':
-        return <Table className="w-4 h-4 text-amber-500" />;
+        return <Table className="w-4 h-4 text-[#f1fa8c]" />;
       case 'column':
-        return <Columns className="w-4 h-4 text-gray-500" />;
+        return <Columns className="w-4 h-4 text-muted-foreground" />;
       case 'index':
-        return <Key className="w-4 h-4 text-purple-500" />;
+        return <Key className="w-4 h-4 text-primary" />;
       case 'folder':
-        return <Columns className="w-4 h-4 text-gray-400" />;
+        return <Columns className="w-4 h-4 text-muted-foreground" />;
       default:
         return null;
     }
@@ -462,8 +462,8 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
         <div
           className={cn(
             'flex items-center justify-between gap-1 py-1 px-2 rounded-sm group',
-            !isQueryItem && 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800',
-            isQueryItem && 'cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-900/20',
+            !isQueryItem && 'cursor-pointer hover:bg-accent/20',
+            isQueryItem && 'cursor-pointer hover:bg-primary/20',
             node.type === 'table' && 'font-medium'
           )}
           style={{ paddingLeft }}
@@ -472,12 +472,12 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
         >
           <div className="flex items-center flex-1 min-w-0 gap-1">
             {node.isLoading ? (
-              <Loader2 className="flex-shrink-0 w-3 h-3 text-gray-400 animate-spin" />
+              <Loader2 className="flex-shrink-0 w-3 h-3 text-muted-foreground animate-spin" />
             ) : hasChildren ? (
               isExpanded ? (
-                <ChevronDown className="flex-shrink-0 w-3 h-3 text-gray-500" />
+                <ChevronDown className="flex-shrink-0 w-3 h-3 text-muted-foreground" />
               ) : (
-                <ChevronRight className="flex-shrink-0 w-3 h-3 text-gray-500" />
+                <ChevronRight className="flex-shrink-0 w-3 h-3 text-muted-foreground" />
               )
             ) : (
               <span className="flex-shrink-0 w-3" />
@@ -487,7 +487,7 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
 
             <span className={cn(
               'text-sm truncate',
-              isQueryItem && 'text-indigo-600 dark:text-indigo-400'
+              isQueryItem && 'text-primary'
             )}>
               {node.name}
             </span>
@@ -499,7 +499,7 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
                 e.stopPropagation();
                 deleteQuery(node.metadata!.queryId, node.metadata!.database);
               }}
-              className="flex-shrink-0 p-1 ml-1 text-red-500 transition-opacity rounded opacity-0 group-hover:opacity-100 hover:bg-red-100 dark:hover:bg-red-900/20"
+              className="flex-shrink-0 p-1 ml-1 text-destructive transition-opacity rounded opacity-0 group-hover:opacity-100 hover:bg-destructive/20"
               title="Delete query"
             >
               <X className="w-3 h-3" />
@@ -519,18 +519,18 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
   if (loading) {
     return (
       <div className={cn('flex items-center justify-center p-8', className)}>
-        <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
+        <Loader2 className="w-6 h-6 text-muted-foreground animate-spin" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className={cn('p-4 text-sm text-red-500', className)}>
+      <div className={cn('p-4 text-sm text-destructive', className)}>
         <p>{error}</p>
         <button
           onClick={fetchDatabases}
-          className="flex items-center gap-1 mt-2 text-blue-500 hover:text-blue-600"
+          className="flex items-center gap-1 mt-2 text-primary hover:underline"
         >
           <RefreshCw className="w-3 h-3" />
           {t('schema.browser.retry')}
@@ -545,7 +545,7 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
         <h3 className="text-sm font-medium">{t('schema.browser.title')}</h3>
         <button
           onClick={fetchDatabases}
-          className="p-1 rounded hover:bg-gray-100"
+          className="p-1 rounded hover:bg-accent/20"
           title={t('schema.browser.refresh')}
         >
           <RefreshCw className="w-3 h-3" />
@@ -554,7 +554,7 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
 
       <div className="p-2">
         {treeData.length === 0 ? (
-          <p className="py-4 text-sm text-center text-gray-500">
+          <p className="py-4 text-sm text-center text-muted-foreground">
             {t('schema.browser.noDatabasesFound')}
           </p>
         ) : (
@@ -564,11 +564,11 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
 
       {contextMenu && (
         <div
-          className="fixed z-50 w-48 py-1 text-sm bg-white border rounded shadow-lg dark:bg-gray-900"
+          className="fixed z-50 w-48 py-1 text-sm bg-popover text-popover-foreground border border-border shadow-lg rounded-md"
           style={{ top: contextMenu.y, left: contextMenu.x }}
         >
           <button
-            className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-800"
+            className="w-full px-4 py-2 text-left hover:bg-accent/20"
             onClick={() => {
               let database: string | undefined;
               if (contextMenu.node.type === 'database') {
@@ -592,7 +592,7 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
           </button>
           {contextMenu.node.type === 'table' && (
             <button
-              className="w-full px-4 py-2 font-medium text-left hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="w-full px-4 py-2 font-medium text-left hover:bg-accent/20"
               onClick={() => {
                 const parts = contextMenu.node.id.replace('table_', '').split('.');
                 if (parts.length === 2) {
@@ -606,7 +606,7 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
             </button>
           )}
           <button
-            className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-800"
+            className="w-full px-4 py-2 text-left hover:bg-accent/20"
             onClick={() => {
               const parts = contextMenu.node.id.replace('table_', '').split('.');
               if (parts.length === 2 && onTableSelect) {
@@ -619,7 +619,7 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
           </button>
           {contextMenu.node.type === 'table' && (
             <button
-              className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="w-full px-4 py-2 text-left hover:bg-accent/20"
               onClick={() => {
                 const parts = contextMenu.node.id.replace('table_', '').split('.');
                 if (parts.length === 2) {
@@ -634,7 +634,7 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
           )}
           {contextMenu.node.type === 'table' && (
             <button
-              className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="w-full px-4 py-2 text-left hover:bg-accent/20"
               onClick={() => {
                 const parts = contextMenu.node.id.replace('table_', '').split('.');
                 if (parts.length === 2) {
@@ -648,7 +648,7 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({
           )}
           {contextMenu.node.type === 'table' && (
             <button
-              className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="w-full px-4 py-2 text-left hover:bg-accent/20"
               onClick={() => {
                 const parts = contextMenu.node.id.replace('table_', '').split('.');
                 if (parts.length === 2) {

@@ -32,14 +32,14 @@ interface QuickConnectProps {
 }
 
 const colorClasses: Record<string, string> = {
-  blue: 'bg-blue-500',
-  green: 'bg-green-500',
-  purple: 'bg-purple-500',
-  orange: 'bg-orange-500',
-  red: 'bg-red-500',
-  cyan: 'bg-cyan-500',
-  pink: 'bg-pink-500',
-  indigo: 'bg-indigo-500',
+  blue: 'bg-[#8be9fd]',
+  green: 'bg-[#50fa7b]',
+  purple: 'bg-[#bd93f9]',
+  orange: 'bg-[#ffb86c]',
+  red: 'bg-[#ff5555]',
+  cyan: 'bg-[#8be9fd]',
+  pink: 'bg-[#ff79c6]',
+  indigo: 'bg-primary',
 };
 
 export const QuickConnect: React.FC<QuickConnectProps> = ({
@@ -135,7 +135,7 @@ export const QuickConnect: React.FC<QuickConnectProps> = ({
       {recentConnections.length > 0 && (
         <>
           <div className="p-3">
-            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
               Recent
             </h3>
             <div className="space-y-1">
@@ -150,31 +150,31 @@ export const QuickConnect: React.FC<QuickConnectProps> = ({
                     username: '',
                     tags: [],
                   })}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
+                   className="w-full flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-accent/20 rounded-md transition-colors"
                 >
-                  <Clock className="w-3.5 h-3.5 text-gray-400" />
+                  <Clock className="w-3.5 h-3.5 text-muted-foreground" />
                   <span className="flex-1 text-left truncate">{conn.name}</span>
-                  <span className="text-xs text-gray-400">
+                  <span className="text-xs text-muted-foreground">
                     {new Date(conn.lastConnected).toLocaleDateString()}
                   </span>
                 </button>
               ))}
             </div>
           </div>
-          <div className="border-t dark:border-gray-700 my-2" />
+          <div className="border-t border-border my-2" />
         </>
       )}
 
       {/* Quick Connect Templates */}
       <ScrollArea className="flex-1">
         <div className="p-3 space-y-2">
-          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
             Quick Connect Templates
           </h3>
 
           {templates.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <Zap className="w-8 h-8 mx-auto mb-2 opacity-50" />
+            <div className="text-center py-8 text-muted-foreground">
+              <Zap className="w-8 h-8 mx-auto mb-2 opacity-50 text-primary" />
               <p className="text-sm">No quick connect templates</p>
               <p className="text-xs mt-1">Create templates for frequently used connections</p>
             </div>
@@ -183,7 +183,7 @@ export const QuickConnect: React.FC<QuickConnectProps> = ({
               {templates.map((template) => (
                 <div
                   key={template.id}
-                  className="group relative p-3 border rounded-lg hover:border-blue-500 hover:shadow-sm transition-all cursor-pointer"
+                  className="group relative p-3 border rounded-lg hover:border-primary hover:shadow-sm transition-all cursor-pointer bg-card"
                   onClick={() => onConnect(template)}
                 >
                   <div className="flex items-start gap-3">
@@ -191,20 +191,20 @@ export const QuickConnect: React.FC<QuickConnectProps> = ({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="font-medium truncate">{template.name}</span>
-                        <ExternalLink className="w-3 h-3 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <ExternalLink className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                       </div>
-                      <p className="text-xs text-gray-500 truncate">
+                      <p className="text-xs text-muted-foreground truncate">
                         {template.username}@{template.host}:{template.port}
                       </p>
                       {template.database && (
-                        <p className="text-xs text-gray-400">/{template.database}</p>
+                        <p className="text-xs text-muted-foreground">/{template.database}</p>
                       )}
                       {template.tags.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-2">
                           {template.tags.map((tag) => (
                             <span
                               key={tag}
-                              className="px-1.5 py-0.5 text-xs bg-gray-100 dark:bg-gray-800 rounded"
+                              className="px-1.5 py-0.5 text-xs bg-muted rounded"
                             >
                               {tag}
                             </span>
@@ -221,7 +221,7 @@ export const QuickConnect: React.FC<QuickConnectProps> = ({
                         e.stopPropagation();
                         startEdit(template);
                       }}
-                      className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                      className="p-1 hover:bg-accent/20 rounded"
                     >
                       <Edit2 className="w-3 h-3" />
                     </button>
@@ -230,7 +230,7 @@ export const QuickConnect: React.FC<QuickConnectProps> = ({
                         e.stopPropagation();
                         handleDeleteTemplate(template.id);
                       }}
-                      className="p-1 hover:bg-red-100 dark:hover:bg-red-900 rounded text-red-500"
+                      className="p-1 hover:bg-destructive/20 rounded text-destructive"
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>
@@ -243,7 +243,7 @@ export const QuickConnect: React.FC<QuickConnectProps> = ({
       </ScrollArea>
 
       {/* Add Template Button */}
-      <div className="p-3 border-t dark:border-gray-700">
+      <div className="p-3 border-t border-border">
         <Button
           variant="outline"
           size="sm"
@@ -330,7 +330,7 @@ export const QuickConnect: React.FC<QuickConnectProps> = ({
                     className={cn(
                       'w-8 h-8 rounded-full transition-all',
                       className,
-                      templateColor === color ? 'ring-2 ring-offset-2 ring-gray-400 scale-110' : 'hover:scale-105'
+                      templateColor === color ? 'ring-2 ring-offset-2 ring-ring scale-110' : 'hover:scale-105'
                     )}
                   />
                 ))}
@@ -360,12 +360,12 @@ export const QuickConnect: React.FC<QuickConnectProps> = ({
                   {tags.map((tag) => (
                     <span
                       key={tag}
-                      className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded"
+                      className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-primary/10 text-primary border border-primary/20 rounded"
                     >
                       {tag}
                       <button
                         onClick={() => handleRemoveTag(tag)}
-                        className="hover:text-red-500"
+                        className="hover:text-destructive"
                       >
                         ×
                       </button>
