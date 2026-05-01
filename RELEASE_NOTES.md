@@ -1,5 +1,15 @@
 # MyLite v1.3.14
 
+## macOS Installation Note
+
+If you see "MyLite is damaged and can't be opened" on macOS:
+
+1. Open **Terminal**.
+2. Run: `sudo xattr -rd com.apple.quarantine /Applications/MyLite.app`
+3. Enter your password when prompted.
+
+---
+
 ## Highlights
 
 - Parameterized Queries with safe parameter injection and auto-escaping
