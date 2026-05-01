@@ -40,6 +40,7 @@ OPTIONS:
     -p, --patch              Bump patch version (e.g., 1.2.0 -> 1.2.1)
     -n, --minor              Bump minor version (e.g., 1.2.0 -> 1.3.0)
     -M, --major              Bump major version (e.g., 1.2.0 -> 2.0.0)
+    -f, --force              Skip confirmation prompts (fully automated)
     -h, --help               Show this help message
 
 EXAMPLES:
@@ -95,6 +96,7 @@ bump_version() {
 VERSION=""
 COMMIT_MESSAGE=""
 BUMP_STRATEGY=""
+FORCE_MODE=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -116,6 +118,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         -M|--major)
             BUMP_STRATEGY="major"
+            shift
+            ;;
+        -f|--force)
+            FORCE_MODE=true
             shift
             ;;
         -h|--help)
@@ -153,11 +159,16 @@ print_info "Starting release process for version $VERSION"
 if [ -n "$(git status --porcelain)" ]; then
     print_warning "Uncommitted changes detected"
     git status --short
-    read -p "Continue with release? (y/n) " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        print_error "Release cancelled"
-        exit 1
+    
+    if [ "$FORCE_MODE" = false ]; then
+        read -p "Continue with release? (y/n) " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            print_error "Release cancelled"
+            exit 1
+        fi
+    else
+        print_info "Force mode enabled - proceeding with release automatically"
     fi
 fi
 
