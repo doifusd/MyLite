@@ -41,26 +41,25 @@ jobs:
         include:
           - platform: 'macos-latest' # Apple Silicon (M1/M2/M3/M4)
             args: '--target aarch64-apple-darwin'
-          - platform: 'macos-13' # Intel Mac
-            args: '--target x86_64-apple-darwin'
           - platform: 'ubuntu-22.04' # Linux
             args: ''
           - platform: 'windows-latest' # Windows
             args: ''
 
     runs-on: ${{ matrix.platform }}
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin' || matrix.platform == 'macos-13' && 'x86_64-apple-darwin' || '' }}
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin' || '' }}
 
       - name: Install Linux dependencies
         if: matrix.platform == 'ubuntu-22.04'
