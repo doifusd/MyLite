@@ -245,6 +245,36 @@ We welcome contributions! Whether it's bug reports, feature requests, or code co
 - Update documentation as needed
 - Ensure all tests pass before submitting PR
 
+### Release Process
+
+We use an automated release script to manage versioning, commits, tags, and GitHub releases:
+
+```bash
+# Release with specific version
+./scripts/release.sh -v 1.3.0
+
+# Auto-bump patch version (1.2.0 → 1.2.1)
+./scripts/release.sh --patch
+
+# Auto-bump minor version (1.2.0 → 1.3.0)
+./scripts/release.sh --minor
+
+# Auto-bump major version (1.2.0 → 2.0.0)
+./scripts/release.sh --major
+
+# Custom commit message
+./scripts/release.sh -v 1.3.0 -m "feat: add new features"
+```
+
+The release script automatically:
+1. Updates version in `package.json` and `src-tauri/Cargo.toml`
+2. Creates a git commit with version bump
+3. Pushes to remote repository
+4. Creates an annotated git tag
+5. Triggers GitHub Actions for cross-platform builds
+
+**Note**: GitHub Actions will automatically build installers for macOS, Windows, and Linux, and create a GitHub Release with RELEASE_NOTES.md as the description.
+
 ## 📝 Documentation
 
 (Documentation is currently being updated. Please refer to this README for now.)
