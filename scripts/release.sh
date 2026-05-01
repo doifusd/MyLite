@@ -44,20 +44,29 @@ OPTIONS:
     -h, --help               Show this help message
 
 EXAMPLES:
-    # Release with specific version
-    $0 -v 1.3.0
-
-    # Release with custom message
-    $0 -v 1.3.0 -m "feat: add new features"
-
-    # Auto-bump patch version
+    # Auto-bump patch version (interactive)
     $0 --patch
 
-    # Auto-bump minor version
-    $0 --minor
+    # Auto-bump patch version (fully automated)
+    $0 --patch --force
 
-    # Auto-bump major version
-    $0 --major
+    # Auto-bump minor version (automated)
+    $0 --minor -f
+
+    # Release with specific version
+    $0 -v 1.3.0 -f
+
+    # Release with custom message (concise format recommended)
+    $0 -v 1.3.0 -m "feat(component): brief description" -f
+
+COMMIT MESSAGE FORMAT (Conventional Commits):
+    feat: new feature
+    fix: bug fix
+    docs: documentation
+    refactor: code refactoring
+    perf: performance improvement
+    test: test-related
+    chore: dependency or build changes
 EOF
     exit 1
 }
@@ -187,7 +196,8 @@ print_success "Updated src-tauri/Cargo.toml"
 # Stage version changes
 git add package.json src-tauri/Cargo.toml
 
-# Generate commit message if not provided
+# Generate concise commit message if not provided
+# Default: "chore: bump version to X.Y.Z"
 if [ -z "$COMMIT_MESSAGE" ]; then
     COMMIT_MESSAGE="chore: bump version to $VERSION"
 fi
