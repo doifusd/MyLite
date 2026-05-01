@@ -2,9 +2,9 @@ import { QueryResult } from '@/components/QueryResult';
 import { SaveQueryDialog } from '@/components/SaveQueryDialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { useConnectionStore } from '@/store/connectionStore';
+import Editor, { type OnMount } from '@monaco-editor/react';
 import { invoke } from '@tauri-apps/api/core';
 import {
   AlertCircle,
@@ -14,9 +14,105 @@ import {
   Play,
   Table2
 } from 'lucide-react';
+import type * as MonacoEditor from 'monaco-editor';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { format } from 'sql-formatter';
+
+// ─── Dracula Theme Definition for Monaco ───────────────────────────────────────
+const DRACULA_THEME: MonacoEditor.editor.IStandaloneThemeData = {
+  base: 'vs-dark',
+  inherit: true,
+  rules: [
+    { token: '', foreground: 'f8f8f2', background: '282a36' },
+    { token: 'comment', foreground: '6272a4', fontStyle: 'italic' },
+    { token: 'keyword', foreground: 'ff79c6' },
+    { token: 'keyword.sql', foreground: 'ff79c6' },
+    { token: 'operator.sql', foreground: 'ff79c6' },
+    { token: 'string', foreground: 'f1fa8c' },
+    { token: 'string.sql', foreground: 'f1fa8c' },
+    { token: 'number', foreground: 'bd93f9' },
+    { token: 'number.sql', foreground: 'bd93f9' },
+    { token: 'identifier', foreground: 'f8f8f2' },
+    { token: 'identifier.sql', foreground: 'f8f8f2' },
+    { token: 'type', foreground: '8be9fd', fontStyle: 'italic' },
+    { token: 'predefined.sql', foreground: '8be9fd' },
+    { token: 'delimiter', foreground: 'f8f8f2' },
+    { token: 'delimiter.parenthesis', foreground: 'f8f8f2' },
+    { token: 'operator', foreground: 'ff79c6' },
+  ],
+  colors: {
+    'editor.background': '#282a36',
+    'editor.foreground': '#f8f8f2',
+    'editor.lineHighlightBackground': '#44475a',
+    'editor.selectionBackground': '#44475a',
+    'editor.selectionHighlightBackground': '#44475a80',
+    'editorCursor.foreground': '#f8f8f2',
+    'editorIndentGuide.background': '#44475a',
+    'editorLineNumber.foreground': '#6272a4',
+    'editorLineNumber.activeForeground': '#f8f8f2',
+    'editorWhitespace.foreground': '#44475a',
+    'editor.findMatchBackground': '#ffb86c50',
+    'editor.findMatchHighlightBackground': '#ffb86c30',
+    'editorGutter.background': '#282a36',
+    'editorWidget.background': '#21222c',
+    'editorSuggestWidget.background': '#21222c',
+    'editorSuggestWidget.foreground': '#f8f8f2',
+    'editorSuggestWidget.selectedBackground': '#44475a',
+    'editorSuggestWidget.highlightForeground': '#8be9fd',
+    'editorSuggestWidget.border': '#44475a',
+    'input.background': '#21222c',
+    'input.foreground': '#f8f8f2',
+    'input.border': '#44475a',
+    'scrollbar.shadow': '#00000030',
+    'scrollbarSlider.background': '#44475a80',
+    'scrollbarSlider.hoverBackground': '#44475aaa',
+    'scrollbarSlider.activeBackground': '#6272a4',
+  },
+};
+
+const DRACULA_LIGHT_THEME: MonacoEditor.editor.IStandaloneThemeData = {
+  base: 'vs',
+  inherit: true,
+  rules: [
+    { token: '', foreground: '282a36', background: 'f8f8f2' },
+    { token: 'comment', foreground: '6272a4', fontStyle: 'italic' },
+    { token: 'keyword', foreground: 'd6336c' },
+    { token: 'keyword.sql', foreground: 'd6336c' },
+    { token: 'operator.sql', foreground: 'd6336c' },
+    { token: 'string', foreground: '2e7d32' },
+    { token: 'string.sql', foreground: '2e7d32' },
+    { token: 'number', foreground: '7c3aed' },
+    { token: 'number.sql', foreground: '7c3aed' },
+    { token: 'identifier', foreground: '282a36' },
+    { token: 'identifier.sql', foreground: '282a36' },
+    { token: 'type', foreground: '0277bd', fontStyle: 'italic' },
+    { token: 'predefined.sql', foreground: '0277bd' },
+    { token: 'delimiter', foreground: '282a36' },
+    { token: 'operator', foreground: 'd6336c' },
+  ],
+  colors: {
+    'editor.background': '#ffffff',
+    'editor.foreground': '#282a36',
+    'editor.lineHighlightBackground': '#f5f5f0',
+    'editor.selectionBackground': '#bd93f940',
+    'editor.selectionHighlightBackground': '#bd93f920',
+    'editorCursor.foreground': '#282a36',
+    'editorIndentGuide.background': '#e0dfd5',
+    'editorLineNumber.foreground': '#6272a4',
+    'editorLineNumber.activeForeground': '#282a36',
+    'editorGutter.background': '#ffffff',
+    'editorWidget.background': '#f8f8f2',
+    'editorSuggestWidget.background': '#ffffff',
+    'editorSuggestWidget.foreground': '#282a36',
+    'editorSuggestWidget.selectedBackground': '#f0efe9',
+    'editorSuggestWidget.highlightForeground': '#bd93f9',
+    'editorSuggestWidget.border': '#e0dfd5',
+  },
+};
+
+// Track if themes have been registered
+let themesRegistered = false;
 
 interface ColumnInfo {
   name: string;
@@ -80,9 +176,43 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
   const [selectedConnectionId, setSelectedConnectionId] = useState<string>(connectionId);
   const [selectedDatabase, setSelectedDatabase] = useState<string | undefined>(database);
   const [availableDatabases, setAvailableDatabases] = useState<string[]>([]);
-  // const editorRef = useRef<HTMLTextAreaElement>(null);
-  // const resultIdCounter = useRef(0);
+
+  // Parameterized queries state
+  const [parameters, setParameters] = useState<Record<string, string>>({});
+  const [showParameters, setShowParameters] = useState(false);
+
+  // Snippets state
+  const [showSnippets, setShowSnippets] = useState(false);
+  const [explainPlan, setExplainPlan] = useState<QueryResultData | null>(null);
+  const [showExplainPlan, setShowExplainPlan] = useState(false);
+
+  const editorRef = useRef<MonacoEditor.editor.IStandaloneCodeEditor | null>(null);
+  const monacoRef = useRef<typeof MonacoEditor | null>(null);
   const tablesInfoRef = useRef<DatabaseTablesInfo | null>(null);
+
+  // Detect dark mode from DOM
+  const [isDark, setIsDark] = useState(() =>
+    document.documentElement.classList.contains('dark')
+  );
+
+  // Watch for dark mode changes
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setIsDark(document.documentElement.classList.contains('dark'));
+    });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+    return () => observer.disconnect();
+  }, []);
+
+  // Update Monaco theme when dark mode changes
+  useEffect(() => {
+    if (monacoRef.current && themesRegistered) {
+      monacoRef.current.editor.setTheme(isDark ? 'dracula' : 'dracula-light');
+    }
+  }, [isDark]);
 
   // Get all connections from store
   const connections = useConnectionStore((state) => state.connections);
@@ -252,12 +382,80 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
     return statements;
   };
 
+  // Extract parameters from SQL
+  const extractParameters = (sqlText: string): string[] => {
+    const matches = sqlText.match(/\?/g) || [];
+    return matches.map((_, idx) => `param_${idx + 1}`);
+  };
+
+  // Replace parameters in SQL
+  const replaceSQLParameters = (sqlText: string): string => {
+    let result = sqlText;
+    let paramIdx = 0;
+    result = result.replace(/\?/g, () => {
+      const key = `param_${++paramIdx}`;
+      const value = parameters[key];
+      if (!value) return '?';
+      // Quote string values
+      return isNaN(Number(value)) ? `'${value.replace(/'/g, "''")}'` : value;
+    });
+    return result;
+  };
+
+  // Insert SQL snippet
+  const insertSnippet = (snippet: string) => {
+    const editor = editorRef.current;
+    if (!editor) return;
+
+    const selection = editor.getSelection();
+    if (selection) {
+      const range = {
+        startLineNumber: selection.startLineNumber,
+        startColumn: selection.startColumn,
+        endLineNumber: selection.endLineNumber,
+        endColumn: selection.endColumn,
+      };
+      editor.executeEdits('insert-snippet', [{
+        range: range as any,
+        text: snippet,
+      }]);
+      editor.focus();
+    }
+  };
+
+  // Execute EXPLAIN plan
+  const executeExplain = async () => {
+    if (!sql.trim()) return;
+
+    setIsExecuting(true);
+    try {
+      const explainSQL = `EXPLAIN ${sql}`;
+      const response = await invoke<QueryResultData>('execute_query', {
+        connectionId: selectedConnectionId || connectionId,
+        database: selectedDatabase,
+        sql: explainSQL,
+      });
+
+      if (response && response.rows) {
+        setExplainPlan(response as QueryResultData);
+        setShowExplainPlan(true);
+      }
+    } catch (err: any) {
+      alert(`Error executing EXPLAIN: ${err.toString()}`);
+    } finally {
+      setIsExecuting(false);
+    }
+  };
+
   const executeQuery = async () => {
     const currentSql = sql.trim();
     if (!currentSql) return;
 
+    // Replace parameters if needed
+    const finalSql = replaceSQLParameters(currentSql);
+
     setIsExecuting(true);
-    const statements = parseStatements(currentSql);
+    const statements = parseStatements(finalSql);
 
     // Clear previous results
     setResults(
@@ -472,6 +670,236 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
     }
   }, [connectionId, database, sql]);
 
+  // ─── Monaco Editor Mount Handler ─────────────────────────────────────────────
+  const handleEditorDidMount: OnMount = (editor, monaco) => {
+    editorRef.current = editor;
+    monacoRef.current = monaco as unknown as typeof MonacoEditor;
+
+    // Register Dracula themes (only once globally)
+    if (!themesRegistered) {
+      monaco.editor.defineTheme('dracula', DRACULA_THEME as any);
+      monaco.editor.defineTheme('dracula-light', DRACULA_LIGHT_THEME as any);
+      themesRegistered = true;
+    }
+
+    // Apply current theme
+    const currentIsDark = document.documentElement.classList.contains('dark');
+    monaco.editor.setTheme(currentIsDark ? 'dracula' : 'dracula-light');
+
+    // Register SQL error diagnostics provider
+    monaco.languages.registerCodeActionProvider('sql', {
+      provideCodeActions: () => {
+        return { actions: [], dispose: () => { } };
+      },
+    });
+
+    // Validate SQL syntax on content change
+    const validateSQL = (model: any) => {
+      const sqlText = model.getValue().trim();
+      const diagnostics: any[] = [];
+
+      if (!sqlText) return;
+
+      // Track line and column positions
+      const lines = sqlText.split('\n');
+      let bracketStack: Array<{ char: string; line: number; col: number }> = [];
+      let inString = false;
+      let stringChar = '';
+
+      for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
+        const line = lines[lineIdx];
+        for (let charIdx = 0; charIdx < line.length; charIdx++) {
+          const char = line[charIdx];
+          const prevChar = charIdx > 0 ? line[charIdx - 1] : '';
+
+          // Handle string boundaries
+          if ((char === "'" || char === '"' || char === '`') && prevChar !== '\\') {
+            if (!inString) {
+              inString = true;
+              stringChar = char;
+            } else if (char === stringChar) {
+              inString = false;
+            }
+          }
+
+          if (!inString) {
+            // Track brackets
+            if (char === '(') {
+              bracketStack.push({ char: '(', line: lineIdx, col: charIdx });
+            } else if (char === ')') {
+              const lastBracket = bracketStack[bracketStack.length - 1];
+              if (lastBracket?.char === '(') {
+                bracketStack.pop();
+              } else {
+                // Unmatched closing bracket
+                diagnostics.push({
+                  severity: monaco.MarkerSeverity.Error,
+                  startLineNumber: lineIdx + 1,
+                  startColumn: charIdx + 1,
+                  endLineNumber: lineIdx + 1,
+                  endColumn: charIdx + 2,
+                  message: 'Unmatched closing parenthesis',
+                });
+              }
+            }
+          }
+        }
+      }
+
+      // Check for unclosed brackets
+      bracketStack.forEach(bracket => {
+        diagnostics.push({
+          severity: monaco.MarkerSeverity.Error,
+          startLineNumber: bracket.line + 1,
+          startColumn: bracket.col + 1,
+          endLineNumber: bracket.line + 1,
+          endColumn: bracket.col + 2,
+          message: 'Unclosed parenthesis',
+        });
+      });
+
+      // Check for basic SQL syntax errors
+      const upperSQL = sqlText.toUpperCase();
+
+      // Check for common errors: missing FROM in SELECT
+      if (
+        /^\s*SELECT\s+/i.test(upperSQL) &&
+        !/\s+FROM\s+/i.test(upperSQL) &&
+        !/^\s*SELECT\s+(COUNT|SUM|AVG|MIN|MAX)\s*\(\s*[^)]*\s*\)/i.test(upperSQL) // Aggregate functions without FROM are valid
+      ) {
+        diagnostics.push({
+          severity: monaco.MarkerSeverity.Warning,
+          startLineNumber: 1,
+          startColumn: 1,
+          endLineNumber: 1,
+          endColumn: 6,
+          message: 'SELECT statement may be missing FROM clause',
+        });
+      }
+
+      // Check for INSERT without VALUES or SET
+      if (/^\s*INSERT\s+INTO\s+/i.test(upperSQL) && !/\s+(VALUES|SET)\s+/i.test(upperSQL)) {
+        diagnostics.push({
+          severity: monaco.MarkerSeverity.Warning,
+          startLineNumber: 1,
+          startColumn: 1,
+          endLineNumber: 1,
+          endColumn: 6,
+          message: 'INSERT statement may be missing VALUES or SET clause',
+        });
+      }
+
+      // Check for UPDATE without WHERE (warning only, not an error)
+      if (/^\s*UPDATE\s+/i.test(upperSQL) && !/\s+WHERE\s+/i.test(upperSQL)) {
+        diagnostics.push({
+          severity: monaco.MarkerSeverity.Warning,
+          startLineNumber: 1,
+          startColumn: 1,
+          endLineNumber: 1,
+          endColumn: 6,
+          message: 'UPDATE without WHERE will affect all rows',
+        });
+      }
+
+      // Set diagnostics
+      monaco.editor.setModelMarkers(model, 'sql-validator', diagnostics);
+    };
+
+    // Validate on initial content
+    validateSQL(editor.getModel());
+
+    // Validate on content change
+    editor.onDidChangeModelContent(() => {
+      const model = editor.getModel();
+      if (model) {
+        validateSQL(model);
+      }
+    });
+
+    // Register SQL autocomplete provider with schema-aware completions
+    monaco.languages.registerCompletionItemProvider('sql', {
+      provideCompletionItems: (model: any, position: any) => {
+        const word = model.getWordUntilPosition(position);
+        const range = {
+          startLineNumber: position.lineNumber,
+          endLineNumber: position.lineNumber,
+          startColumn: word.startColumn,
+          endColumn: word.endColumn,
+        };
+
+        const suggestions: MonacoEditor.languages.CompletionItem[] = [];
+
+        // Add SQL keywords
+        const keywords = [
+          'SELECT', 'FROM', 'WHERE', 'INSERT', 'INTO', 'VALUES', 'UPDATE', 'SET',
+          'DELETE', 'CREATE', 'TABLE', 'ALTER', 'DROP', 'INDEX', 'JOIN', 'INNER',
+          'LEFT', 'RIGHT', 'OUTER', 'ON', 'AND', 'OR', 'NOT', 'IN', 'LIKE',
+          'BETWEEN', 'IS', 'NULL', 'AS', 'ORDER', 'BY', 'GROUP', 'HAVING',
+          'LIMIT', 'OFFSET', 'UNION', 'ALL', 'DISTINCT', 'COUNT', 'SUM', 'AVG',
+          'MAX', 'MIN', 'CASE', 'WHEN', 'THEN', 'ELSE', 'END', 'EXISTS',
+          'PRIMARY', 'KEY', 'FOREIGN', 'REFERENCES', 'CONSTRAINT', 'DEFAULT',
+          'AUTO_INCREMENT', 'VARCHAR', 'INT', 'INTEGER', 'BIGINT', 'DECIMAL',
+          'FLOAT', 'DOUBLE', 'TEXT', 'BLOB', 'DATE', 'DATETIME', 'TIMESTAMP',
+          'BOOLEAN', 'CHAR', 'ENUM', 'IF', 'SHOW', 'DATABASES', 'TABLES',
+          'DESCRIBE', 'EXPLAIN', 'USE', 'TRUNCATE', 'REPLACE', 'GRANT',
+          'REVOKE', 'COMMIT', 'ROLLBACK', 'BEGIN', 'TRANSACTION', 'ASC', 'DESC',
+        ];
+
+        keywords.forEach(kw => {
+          suggestions.push({
+            label: kw,
+            kind: monaco.languages.CompletionItemKind.Keyword,
+            insertText: kw,
+            range,
+            detail: 'SQL Keyword',
+          } as any);
+        });
+
+        // Add table names and column names from schema
+        const tablesInfo = tablesInfoRef.current;
+        if (tablesInfo?.tables) {
+          tablesInfo.tables.forEach(table => {
+            suggestions.push({
+              label: table.table_name,
+              kind: monaco.languages.CompletionItemKind.Struct,
+              insertText: table.table_name,
+              range,
+              detail: 'Table',
+            } as any);
+
+            // Add columns
+            table.columns?.forEach(col => {
+              suggestions.push({
+                label: col,
+                kind: monaco.languages.CompletionItemKind.Field,
+                insertText: col,
+                range,
+                detail: `Column (${table.table_name})`,
+              } as any);
+            });
+          });
+        }
+
+        return { suggestions };
+      },
+    });
+
+    // Add Cmd/Ctrl+Enter shortcut to execute query
+    editor.addAction({
+      id: 'execute-query',
+      label: 'Execute Query',
+      keybindings: [
+        monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter,
+      ],
+      run: () => {
+        executeQuery();
+      },
+    });
+
+    // Focus editor
+    editor.focus();
+  };
+
   return (
     <div className={cn('flex flex-col h-full', className)}>
       {/* Toolbar */}
@@ -497,6 +925,34 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
           disabled={!sql.trim()}
         >
           {t('ui.format')}
+        </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={executeExplain}
+          disabled={!sql.trim()}
+          title="Execute EXPLAIN plan"
+        >
+          📊 Explain
+        </Button>
+
+        <Button
+          variant={showSnippets ? 'secondary' : 'outline'}
+          size="sm"
+          onClick={() => setShowSnippets(!showSnippets)}
+          title="SQL snippets"
+        >
+          📝 Snippets
+        </Button>
+
+        <Button
+          variant={showParameters ? 'secondary' : 'outline'}
+          size="sm"
+          onClick={() => setShowParameters(!showParameters)}
+          title="Query parameters"
+        >
+          ⚙️ Params
         </Button>
 
         <div className="flex-1" />
@@ -539,22 +995,141 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
         )}
       </div>
 
-      {/* SQL Input - Simple Textarea */}
-      <div className="relative flex-1 min-h-0 border rounded">
-        <Textarea
-          value={sql}
-          onChange={(e) => {
-            const newValue = e.target.value;
-            setSql(newValue);
-            onSqlChange?.(newValue);
-          }}
-          placeholder="Enter SQL query here... (SELECT, INSERT, UPDATE, DELETE, etc.)"
-          className="w-full h-full resize-none border-0 rounded font-mono text-sm focus:outline-none focus:ring-0"
-          style={{
-            fontFamily: 'JetBrains Mono, Fira Code, monospace',
-            fontSize: '14px',
-          }}
-        />
+      {/* SQL Input - Monaco Editor with Syntax Highlighting */}
+      <div className="relative flex-1 min-h-0 border rounded overflow-hidden flex flex-col">
+        {/* Parameters Panel */}
+        {showParameters && (
+          <div className="p-3 border-b bg-muted/20">
+            <h4 className="text-xs font-semibold mb-2">Query Parameters</h4>
+            <div className="grid grid-cols-auto gap-2" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+              {extractParameters(sql).length > 0 ? (
+                extractParameters(sql).map((param) => (
+                  <div key={param} className="flex flex-col gap-1">
+                    <label className="text-xs text-muted-foreground">{param}</label>
+                    <input
+                      type="text"
+                      value={parameters[param] || ''}
+                      onChange={(e) => setParameters({ ...parameters, [param]: e.target.value })}
+                      placeholder="Value"
+                      className="h-7 px-2 text-sm border border-input bg-background rounded"
+                    />
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-muted-foreground">No parameters detected (use ? in your query)</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Snippets Panel */}
+        {showSnippets && (
+          <div className="p-3 border-b bg-muted/20">
+            <h4 className="text-xs font-semibold mb-2">SQL Snippets</h4>
+            <div className="grid grid-cols-2 gap-1">
+              <button
+                onClick={() => insertSnippet('SELECT * FROM table_name WHERE condition;')}
+                className="text-left text-xs px-2 py-1 bg-background border border-input rounded hover:bg-muted"
+              >
+                SELECT...
+              </button>
+              <button
+                onClick={() => insertSnippet('INSERT INTO table_name (col1, col2) VALUES (?, ?);')}
+                className="text-left text-xs px-2 py-1 bg-background border border-input rounded hover:bg-muted"
+              >
+                INSERT
+              </button>
+              <button
+                onClick={() => insertSnippet('UPDATE table_name SET col1 = ? WHERE id = ?;')}
+                className="text-left text-xs px-2 py-1 bg-background border border-input rounded hover:bg-muted"
+              >
+                UPDATE
+              </button>
+              <button
+                onClick={() => insertSnippet('DELETE FROM table_name WHERE condition;')}
+                className="text-left text-xs px-2 py-1 bg-background border border-input rounded hover:bg-muted"
+              >
+                DELETE
+              </button>
+              <button
+                onClick={() => insertSnippet('SELECT COUNT(*) FROM table_name;')}
+                className="text-left text-xs px-2 py-1 bg-background border border-input rounded hover:bg-muted"
+              >
+                COUNT
+              </button>
+              <button
+                onClick={() => insertSnippet('SELECT * FROM table1 JOIN table2 ON table1.id = table2.id;')}
+                className="text-left text-xs px-2 py-1 bg-background border border-input rounded hover:bg-muted"
+              >
+                JOIN
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* EXPLAIN Plan Result */}
+        {showExplainPlan && explainPlan && (
+          <div className="p-3 border-b bg-muted/20 max-h-32 overflow-auto">
+            <h4 className="text-xs font-semibold mb-2">Execution Plan</h4>
+            <div className="text-xs font-mono bg-background p-2 rounded">
+              {explainPlan.rows?.slice(0, 5).map((row: any[], idx: number) => (
+                <div key={idx} className="text-muted-foreground">
+                  {JSON.stringify(row)}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Editor */}
+        <div className="flex-1 min-h-0">
+          <Editor
+            value={sql}
+            onChange={(value) => {
+              const newValue = value || '';
+              setSql(newValue);
+              onSqlChange?.(newValue);
+            }}
+            language="sql"
+            theme={isDark ? 'dracula' : 'dracula-light'}
+            onMount={handleEditorDidMount}
+            options={{
+              minimap: { enabled: false },
+              fontSize: 14,
+              fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
+              fontLigatures: true,
+              lineNumbers: 'on',
+              renderLineHighlight: 'line',
+              scrollBeyondLastLine: false,
+              wordWrap: 'on',
+              automaticLayout: true,
+              tabSize: 2,
+              suggestOnTriggerCharacters: true,
+              quickSuggestions: true,
+              bracketPairColorization: { enabled: true },
+              matchBrackets: 'always',
+              padding: { top: 8, bottom: 8 },
+              smoothScrolling: true,
+              cursorBlinking: 'smooth',
+              cursorSmoothCaretAnimation: 'on',
+              roundedSelection: true,
+              overviewRulerLanes: 0,
+              hideCursorInOverviewRuler: true,
+              scrollbar: {
+                verticalScrollbarSize: 8,
+                horizontalScrollbarSize: 8,
+                verticalSliderSize: 8,
+              },
+              placeholder: 'Enter SQL query here... (SELECT, INSERT, UPDATE, DELETE, etc.)' as any,
+            }}
+            loading={
+              <div className="flex items-center justify-center h-full text-muted-foreground">
+                <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                Loading editor...
+              </div>
+            }
+          />
+        </div>
       </div>
 
       {/* Results */}

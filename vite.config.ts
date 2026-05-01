@@ -24,9 +24,6 @@ export default defineConfig({
     minify: "terser",
     reportCompressedSize: false,
     rollupOptions: {
-      external: [
-        'monaco-editor',  // 从 CDN 加载，不打包
-      ],
       output: {
         manualChunks: {
           'vendor-react': ['react', 'react-dom'],
@@ -40,8 +37,7 @@ export default defineConfig({
     cssCodeSplit: false,
   },
   optimizeDeps: {
-    include: ['react', 'react-dom', '@tauri-apps/api'],
-    exclude: ['monaco-editor'],
+    include: ['react', 'react-dom', '@tauri-apps/api', 'monaco-editor'],
     esbuildOptions: {
       target: 'es2020',
     },

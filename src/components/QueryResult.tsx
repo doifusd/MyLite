@@ -19,16 +19,23 @@ import {
 import { cn } from '@/lib/utils';
 import { invoke } from '@tauri-apps/api/core';
 import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   Check,
   ChevronLeft,
   ChevronRight,
   Copy,
+  Download,
   FileJson,
+  FileSpreadsheet,
+  Filter,
   Maximize2,
   Minimize2,
   Plus,
   Save,
-  X
+  X,
+  XCircle,
 } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import { VirtualTable } from './VirtualTable';
@@ -150,6 +157,10 @@ export const QueryResult: React.FC<QueryResultProps> = ({
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'json'>('table');
+  const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [filters, setFilters] = useState<Record<string, string>>({});
+  const [showFilters, setShowFilters] = useState(false);
 
   const [editingCell, setEditingCell] = useState<{ rowIndex: number; colIndex: number } | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -273,19 +284,168 @@ export const QueryResult: React.FC<QueryResultProps> = ({
 
   const [insertDialogOpen, setInsertDialogOpen] = useState(false);
 
-  const totalPages = Math.ceil(data.rows.length / rowsPerPage);
+  // Sort and filter logic
+  const handleSort = (columnName: string) => {
+    if (sortColumn === columnName) {
+      // Toggle direction if same column
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // New column, default to asc
+      setSortColumn(columnName);
+      setSortDirection('asc');
+    }
+    setCurrentPage(1);
+  };
+
+  const handleFilterChange = (columnName: string, value: string) => {
+    setFilters(prev => ({
+      ...prev,
+      [columnName]: value
+    }));
+    setCurrentPage(1);
+  };
+
+  const clearFilters = () => {
+    setFilters({});
+    setCurrentPage(1);
+  };
+
+  const clearSort = () => {
+    setSortColumn(null);
+    setSortDirection('asc');
+    setCurrentPage(1);
+  };
+
+  // Apply filters
+  const filteredRows = data.rows.filter(row => {
+    for (const [colName, filterValue] of Object.entries(filters)) {
+      if (!filterValue) continue;
+      const colIndex = data.columns.findIndex(c => c.name === colName);
+      if (colIndex === -1) continue;
+      const cellValue = String(row[colIndex] ?? '').toLowerCase();
+      if (!cellValue.includes(filterValue.toLowerCase())) {
+        return false;
+      }
+    }
+    return true;
+  });
+
+  // Apply sort
+  const sortedRows = [...filteredRows].sort((a, b) => {
+    if (!sortColumn) return 0;
+    const colIndex = data.columns.findIndex(c => c.name === sortColumn);
+    if (colIndex === -1) return 0;
+
+    const aVal = a[colIndex];
+    const bVal = b[colIndex];
+
+    // Handle null values
+    if (aVal === null && bVal === null) return 0;
+    if (aVal === null) return sortDirection === 'asc' ? 1 : -1;
+    if (bVal === null) return sortDirection === 'asc' ? -1 : 1;
+
+    // Compare values
+    let comparison = 0;
+    if (typeof aVal === 'number' && typeof bVal === 'number') {
+      comparison = aVal - bVal;
+    } else {
+      comparison = String(aVal).localeCompare(String(bVal));
+    }
+
+    return sortDirection === 'asc' ? comparison : -comparison;
+  });
+
+  const totalPages = Math.ceil(sortedRows.length / rowsPerPage);
   const startIndex = (currentPage - 1) * rowsPerPage;
-  const endIndex = Math.min(startIndex + rowsPerPage, data.rows.length);
-  const currentRows = data.rows.slice(startIndex, endIndex);
+  const endIndex = Math.min(startIndex + rowsPerPage, sortedRows.length);
+  const currentRows = sortedRows.slice(startIndex, endIndex);
+
+  const getSortIcon = (columnName: string) => {
+    if (sortColumn !== columnName) return <ArrowUpDown className="h-4 w-4 opacity-40" />;
+    return sortDirection === 'asc'
+      ? <ArrowUp className="h-4 w-4" />
+      : <ArrowDown className="h-4 w-4" />;
+  };
 
   const handleCopy = () => {
     const text = [
       data.columns.map((c) => c.name).join('\t'),
-      ...data.rows.map((row) => row.join('\t')),
+      ...sortedRows.map((row) => row.join('\t')),
     ].join('\n');
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleExportCSV = () => {
+    const headers = data.columns.map((c) => c.name).join(',');
+    const rows = sortedRows
+      .map((row) =>
+        row
+          .map((cell) => {
+            if (cell === null) return '';
+            const str = String(cell);
+            if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+              return `"${str.replace(/"/g, '""')}"`;
+            }
+            return str;
+          })
+          .join(','),
+      )
+      .join('\n');
+    const content = `\ufeff${headers}\n${rows}`;
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `query_result_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportExcel = () => {
+    const headers = data.columns.map((c) => c.name).join('\t');
+    const rows = data.rows
+      .map((row) => row.map((cell) => (cell === null ? '' : String(cell))).join('\t'))
+      .join('\n');
+    const content = `${headers}\n${rows}`;
+    const blob = new Blob([content], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `query_result_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportSQL = () => {
+    const table = tableName || 'query_result';
+    const inserts = data.rows.map((row) => {
+      const cols: string[] = [];
+      const vals: string[] = [];
+      data.columns.forEach((col, idx) => {
+        cols.push(`\`${col.name}\``);
+        const val = row[idx];
+        if (val === null) {
+          vals.push('NULL');
+        } else if (typeof val === 'number' || typeof val === 'boolean') {
+          vals.push(String(val));
+        } else {
+          vals.push(`'${String(val).replace(/'/g, "''")}'`);
+        }
+      });
+      return `INSERT INTO \`${table}\` (${cols.join(', ')}) VALUES (${vals.join(', ')});`;
+    });
+    const content = inserts.join('\n');
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `query_result_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.sql`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleCopyRow = (row: any[]) => {
@@ -453,6 +613,67 @@ export const QueryResult: React.FC<QueryResultProps> = ({
             <FileJson className="h-4 w-4" />
             JSON
           </Button>
+          <div className="h-4 w-px bg-border mx-1" />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportCSV}
+            className="gap-1 h-8"
+            title="Export as CSV"
+          >
+            <FileSpreadsheet className="h-4 w-4" />
+            CSV
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportExcel}
+            className="gap-1 h-8"
+            title="Export as Excel"
+          >
+            <FileSpreadsheet className="h-4 w-4" />
+            Excel
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportSQL}
+            className="gap-1 h-8"
+            title="Export as SQL INSERT"
+          >
+            <Download className="h-4 w-4" />
+            SQL
+          </Button>
+
+          <div className="h-4 w-px bg-border mx-1" />
+
+          {/* Filter and Sort controls */}
+          <Button
+            variant={showFilters ? 'secondary' : 'outline'}
+            size="sm"
+            onClick={() => setShowFilters(!showFilters)}
+            className="gap-1 h-8"
+            title="Toggle filters"
+          >
+            <Filter className="h-4 w-4" />
+            Filter
+          </Button>
+
+          {(sortColumn || Object.values(filters).some(v => v)) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                clearSort();
+                clearFilters();
+              }}
+              className="gap-1 h-8"
+              title="Clear sort and filters"
+            >
+              <XCircle className="h-4 w-4 text-orange-500" />
+              Clear
+            </Button>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -532,134 +753,163 @@ export const QueryResult: React.FC<QueryResultProps> = ({
             />
           ) : (
             // Use regular table for small datasets
-            <div
-              className="overflow-auto border rounded-sm"
-              style={{ height: tableAreaHeight }}
-            >
-              <Table style={{ width: 'max-content', minWidth: '100%' }}>
-                <TableHeader className="sticky top-0 bg-muted/50 z-10">
-                  <TableRow>
-                    {data.columns.map((col) => (
-                      <TableHead
-                        key={col.name}
-                        className="font-semibold text-xs whitespace-nowrap bg-muted/50 h-9"
-                        title={col.data_type}
-                      >
-                        {col.name}
-                        <span className="text-muted-foreground font-normal ml-1">
-                          ({col.data_type})
-                        </span>
-                      </TableHead>
+            <div className="flex flex-col h-full">
+              {showFilters && (
+                <div className="p-3 border-b bg-muted/20">
+                  <div className="grid grid-cols-auto gap-2" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}>
+                    {data.columns.map(col => (
+                      <div key={col.name} className="flex flex-col gap-1">
+                        <label className="text-xs font-medium text-muted-foreground">{col.name}</label>
+                        <Input
+                          placeholder="Filter..."
+                          value={filters[col.name] || ''}
+                          onChange={(e) => handleFilterChange(col.name, e.target.value)}
+                          className="h-7 text-sm"
+                        />
+                      </div>
                     ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {currentRows.length > 0 ? (
-                    currentRows.map((row, rowIndex) => (
-                      <ContextMenu key={rowIndex}>
-                        <ContextMenuTrigger asChild>
-                          <TableRow className="hover:bg-muted/30 data-[state=open]:bg-accent">
-                            {row.map((cell, cellIndex) => (
-                              <TableCell
-                                key={cellIndex}
-                                className="text-sm font-mono whitespace-nowrap cursor-pointer hover:bg-accent/20 h-9"
-                                onClick={() => handleCellClick(rowIndex, cellIndex, cell)}
-                              >
-                                {editingCell?.rowIndex === rowIndex && editingCell?.colIndex === cellIndex ? (
-                                  <div className="flex items-center gap-1">
-                                    <Input
-                                      value={editValue}
-                                      onChange={(e) => setEditValue(e.target.value)}
-                                      className="h-7 w-32 text-xs"
-                                      onKeyDown={(e) => {
-                                        if (e.key === 'Enter') handleCellSave();
-                                        if (e.key === 'Escape') handleCellCancel();
-                                      }}
-                                      autoFocus
-                                    />
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-6 w-6"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleCellSave();
-                                      }}
-                                    >
-                                      <Save className="h-3 w-3 text-[#50fa7b]" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-6 w-6"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleCellCancel();
-                                      }}
-                                    >
-                                      <X className="h-3 w-3 text-[#ff5555]" />
-                                    </Button>
-                                  </div>
-                                ) : cell === null ? (
-                                  <span className="text-muted-foreground italic opacity-50">NULL</span>
-                                ) : typeof cell === 'object' ? (
-                                  JSON.stringify(cell)
-                                ) : (
-                                  String(cell)
-                                )}
-                              </TableCell>
-                            ))}
-                          </TableRow>
-                        </ContextMenuTrigger>
-                        <ContextMenuContent className="w-64">
-                          <ContextMenuItem onClick={() => handleCopyRow(row)}>
-                            Copy
-                          </ContextMenuItem>
-                          <ContextMenuItem onClick={() => handleCopyRowWithColumns(row)}>
-                            Copy with Column Names
-                          </ContextMenuItem>
-                          <ContextMenuItem onClick={() => handleCopyInsert(row, false)}>
-                            Copy as SQL INSERT
-                          </ContextMenuItem>
-                          <ContextMenuItem onClick={() => handleCopyInsert(row, true)}>
-                            Copy as SQL INSERT (no auto_inc)
-                          </ContextMenuItem>
-                          <ContextMenuSeparator />
-                          <ContextMenuItem
-                            onClick={() => setInsertDialogOpen(true)}
-                            disabled={!tableName}
-                          >
-                            <Plus className="h-3 w-3 mr-2" />
-                            Insert New Row
-                          </ContextMenuItem>
-                          <ContextMenuItem
-                            onClick={() => handleDuplicateRow(row)}
-                            disabled={!tableName}
-                          >
-                            Duplicate Row
-                          </ContextMenuItem>
-                          <ContextMenuItem
-                            onClick={() => handleDeleteRow(row)}
-                            disabled={!tableName}
-                            className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                          >
-                            Delete Row
-                          </ContextMenuItem>
-                        </ContextMenuContent>
-                      </ContextMenu>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell
-                        colSpan={data.columns.length}
-                        className="h-24 text-center text-muted-foreground"
-                      >
-                        No data in this table
-                      </TableCell>
-                    </TableRow>
+                  </div>
+                  {Object.values(filters).some(v => v) && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Showing {sortedRows.length} of {data.rows.length} rows
+                    </p>
                   )}
-                </TableBody>
-              </Table>
+                </div>
+              )}
+
+              <div
+                className="overflow-auto border-t rounded-sm flex-1"
+                style={{ minHeight: showFilters ? 'calc(100% - 120px)' : undefined }}
+              >
+                <Table style={{ width: 'max-content', minWidth: '100%' }}>
+                  <TableHeader className="sticky top-0 bg-muted/50 z-10">
+                    <TableRow>
+                      {data.columns.map((col) => (
+                        <TableHead
+                          key={col.name}
+                          className="font-semibold text-xs whitespace-nowrap bg-muted/50 h-9 cursor-pointer hover:bg-muted/70 transition-colors"
+                          onClick={() => handleSort(col.name)}
+                          title={`Click to sort by ${col.name}\n${col.data_type}`}
+                        >
+                          <div className="flex items-center gap-1">
+                            <span>{col.name}</span>
+                            {getSortIcon(col.name)}
+                            <span className="text-muted-foreground font-normal text-xs">
+                              ({col.data_type})
+                            </span>
+                          </div>
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {currentRows.length > 0 ? (
+                      currentRows.map((row, rowIndex) => (
+                        <ContextMenu key={rowIndex}>
+                          <ContextMenuTrigger asChild>
+                            <TableRow className="hover:bg-muted/30 data-[state=open]:bg-accent">
+                              {row.map((cell, cellIndex) => (
+                                <TableCell
+                                  key={cellIndex}
+                                  className="text-sm font-mono whitespace-nowrap cursor-pointer hover:bg-accent/20 h-9"
+                                  onClick={() => handleCellClick(rowIndex, cellIndex, cell)}
+                                >
+                                  {editingCell?.rowIndex === rowIndex && editingCell?.colIndex === cellIndex ? (
+                                    <div className="flex items-center gap-1">
+                                      <Input
+                                        value={editValue}
+                                        onChange={(e) => setEditValue(e.target.value)}
+                                        className="h-7 w-32 text-xs"
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') handleCellSave();
+                                          if (e.key === 'Escape') handleCellCancel();
+                                        }}
+                                        autoFocus
+                                      />
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleCellSave();
+                                        }}
+                                      >
+                                        <Save className="h-3 w-3 text-[#50fa7b]" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleCellCancel();
+                                        }}
+                                      >
+                                        <X className="h-3 w-3 text-[#ff5555]" />
+                                      </Button>
+                                    </div>
+                                  ) : cell === null ? (
+                                    <span className="text-muted-foreground italic opacity-50">NULL</span>
+                                  ) : typeof cell === 'object' ? (
+                                    JSON.stringify(cell)
+                                  ) : (
+                                    String(cell)
+                                  )}
+                                </TableCell>
+                              ))}
+                            </TableRow>
+                          </ContextMenuTrigger>
+                          <ContextMenuContent className="w-64">
+                            <ContextMenuItem onClick={() => handleCopyRow(row)}>
+                              Copy
+                            </ContextMenuItem>
+                            <ContextMenuItem onClick={() => handleCopyRowWithColumns(row)}>
+                              Copy with Column Names
+                            </ContextMenuItem>
+                            <ContextMenuItem onClick={() => handleCopyInsert(row, false)}>
+                              Copy as SQL INSERT
+                            </ContextMenuItem>
+                            <ContextMenuItem onClick={() => handleCopyInsert(row, true)}>
+                              Copy as SQL INSERT (no auto_inc)
+                            </ContextMenuItem>
+                            <ContextMenuSeparator />
+                            <ContextMenuItem
+                              onClick={() => setInsertDialogOpen(true)}
+                              disabled={!tableName}
+                            >
+                              <Plus className="h-3 w-3 mr-2" />
+                              Insert New Row
+                            </ContextMenuItem>
+                            <ContextMenuItem
+                              onClick={() => handleDuplicateRow(row)}
+                              disabled={!tableName}
+                            >
+                              Duplicate Row
+                            </ContextMenuItem>
+                            <ContextMenuItem
+                              onClick={() => handleDeleteRow(row)}
+                              disabled={!tableName}
+                              className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                            >
+                              Delete Row
+                            </ContextMenuItem>
+                          </ContextMenuContent>
+                        </ContextMenu>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell
+                          colSpan={data.columns.length}
+                          className="h-24 text-center text-muted-foreground"
+                        >
+                          No data in this table
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           )
         ) : (
