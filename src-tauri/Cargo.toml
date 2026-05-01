@@ -1,6 +1,6 @@
 [package]
 name = "mylite"
-version = "1.3.9"
+version = "1.3.10"
 description = "MyLite Desktop App"
 authors = ["sky"]
 license = "MIT"
