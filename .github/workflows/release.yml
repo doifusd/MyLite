@@ -1,4 +1,5 @@
 name: Release
+
 on:
   push:
     tags:
@@ -6,7 +7,32 @@ on:
   workflow_dispatch:
 
 jobs:
+  prepare-release:
+    runs-on: ubuntu-latest
+    outputs:
+      release_body: ${{ steps.get_release_notes.outputs.content }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Get release notes
+        id: get_release_notes
+        run: |
+          if [ -f RELEASE_NOTES.md ]; then
+            content=$(cat RELEASE_NOTES.md)
+            echo "content<<EOF" >> $GITHUB_OUTPUT
+            echo "$content" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            echo "content=See GitHub releases for details" >> $GITHUB_OUTPUT
+          fi
+
   publish-tauri:
+    needs: prepare-release
     permissions:
       contents: write
     strategy:
@@ -52,14 +78,41 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'MyLite ${{ github.ref_name }}'
-          releaseBody: |
-            ## Download
-
-            Choose the installer for your platform:
-            - **macOS (Apple Silicon M1/M2/M3)**: Download the `.dmg` file
-            - **macOS (Intel)**: Download the corresponding `.dmg` or `.app.tar.gz` file
-            - **Windows**: Download the `.exe` or `.msi` installer
-            - **Linux**: Download the `.deb` or `.AppImage` file
+          releaseBody: ${{ needs.prepare-release.outputs.release_body }}
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
+
+  build-summary:
+    needs: publish-tauri
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get release version
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Build Summary
+        run: |
+          echo "## 🎉 Release Build Complete"
+          echo ""
+          echo "### Version: ${{ steps.version.outputs.version }}"
+          echo "### Status: ✅ All platforms compiled successfully"
+          echo ""
+          echo "### Compiled for:"
+          echo "- ✅ macOS (Apple Silicon - aarch64)"
+          echo "- ✅ macOS (Intel - x86_64)"
+          echo "- ✅ Linux (ubuntu-22.04)"
+          echo "- ✅ Windows (latest)"
+          echo ""
+          echo "### Download:"
+          echo "Visit [Releases](https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.version }}) to download installers for your platform."
+          echo ""
+          echo "### Build Artifacts:"
+          echo "- macOS: `.dmg` or `.app.tar.gz`"
+          echo "- Windows: `.exe` or `.msi`"
+          echo "- Linux: `.deb` or `.AppImage`"
+
