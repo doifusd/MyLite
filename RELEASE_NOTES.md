@@ -2,23 +2,20 @@
 
 **Release Date:** May 1, 2026
 
-## ✨ What's New
+## What's Changed
 
-- Parameterized Queries - Safe parameter injection with auto-escaping
-- SQL Snippets - 6 built-in templates (SELECT, INSERT, UPDATE, DELETE, COUNT, JOIN)
-- EXPLAIN Analysis - View query execution plans
-- Dracula Theme - Custom dark/light themes for Monaco Editor
-- Advanced Sorting - Multi-column sorting with visual indicators
-- Column Filtering - Case-insensitive substring filtering
-- Visual Table Designer - Drag-to-reorder columns and configure types
-- SQL Preview - Real-time CREATE TABLE statement generation
-- Multi-Format Export - CSV, Excel, and SQL INSERT formats
-
-## 🐛 Bug Fixes
-
+- Parameterized Queries with safe parameter injection and auto-escaping
+- SQL Snippets with 6 built-in templates (SELECT, INSERT, UPDATE, DELETE, COUNT, JOIN)
+- EXPLAIN Analysis to view query execution plans
+- Dracula Theme with custom dark/light modes for Monaco Editor
+- Advanced Sorting with multi-column support and visual indicators
+- Column Filtering with case-insensitive substring matching
+- Visual Table Designer with drag-to-reorder and type configuration
+- SQL Preview for real-time CREATE TABLE statement generation
+- Multi-Format Export supporting CSV, Excel, and SQL INSERT formats
 - Fixed Monaco Editor syntax highlighting in production builds
 - Corrected TypeScript type definitions for query results
 - Fixed parameter replacement logic for edge cases
 - Resolved bracket matching validation issues
 
-See [README.md](README.md) for more information.
+See [README.md](README.md) for installation and detailed documentation.
