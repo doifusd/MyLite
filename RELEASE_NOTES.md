@@ -1,7 +1,5 @@
 # MyLite v1.3.13
 
-**Release Date:** May 1, 2026
-
 ## Highlights
 
 - Parameterized Queries with safe parameter injection and auto-escaping
