@@ -1,4 +1,4 @@
-# MyLite v1.2.0 Release Notes
+# MyLite v1.3.7 Release Notes
 
 **Release Date:** May 1, 2026
 
