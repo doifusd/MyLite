@@ -42,6 +42,15 @@ export const DatabaseWorkspace: React.FC<DatabaseWorkspaceProps> = ({
   const handleTableSelect = (database: string, table: string, tab?: string) => {
     setSelectedDatabase(database);
     setSelectedTable(table);
+
+    // When selecting a table/database in the sidebar, we want the current query tab 
+    // to automatically switch context to that database.
+    if (activeTab.startsWith('query-')) {
+      setQueryTabs(prev => prev.map(q =>
+        q.id === activeTab ? { ...q, database } : q
+      ));
+    }
+
     // When a table is selected, switch to the specified tab or default to 'data'
     setActiveTab(tab || 'data');
   };

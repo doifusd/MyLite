@@ -8,6 +8,7 @@ mod models;
 mod lib_test;
 
 use commands::connection::*;
+use commands::export::*;
 use commands::query::*;
 use commands::query_analyzer::*;
 use commands::query_history::*;
@@ -34,6 +35,7 @@ impl AppState {
 
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .setup(|app| {
             let handle = app.handle().clone();
@@ -76,6 +78,7 @@ fn main() {
             delete_connection,
             get_connection_detail,
             get_home_dir,
+            save_file,
             // Phase 4.1: Connection grouping and favorites
             toggle_connection_favorite,
             update_connection_group,

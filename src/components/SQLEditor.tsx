@@ -1,11 +1,21 @@
 import { QueryResult } from '@/components/QueryResult';
 import { SaveQueryDialog } from '@/components/SaveQueryDialog';
 import { Button } from '@/components/ui/button';
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { useConnectionStore } from '@/store/connectionStore';
-import Editor, { type OnMount } from '@monaco-editor/react';
+import Editor, { loader, type OnMount } from '@monaco-editor/react';
 import { invoke } from '@tauri-apps/api/core';
+
+// We use the cdnjs but with a specific version and fallback logic
+// to avoid the 'nosniff' issues which often happen on latest/unversioned links.
+loader.config({
+  paths: {
+    vs: 'https://cdn.staticfile.net/monaco-editor/0.43.0/min/vs'
+  }
+});
+
 import {
   AlertCircle,
   CheckCircle2,
@@ -234,14 +244,23 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
         });
         setAvailableDatabases(dbs || []);
 
-        // Reset and set first database as default when connection changes
-        // or if current database is not in the new list
-        if (!selectedDatabase || !dbs?.includes(selectedDatabase)) {
-          if (dbs && dbs.length > 0) {
-            setSelectedDatabase(dbs[0]);
-          } else {
-            setSelectedDatabase(undefined);
-          }
+        // MANDATORY: If 'database' prop is provided, it MUST take absolute priority
+        // to ensure the editor matches what the user clicked in the Schema Browser.
+        if (database && dbs?.includes(database)) {
+          setSelectedDatabase(database);
+          return;
+        }
+
+        // Priority 2: Keep current selection if valid
+        if (selectedDatabase && dbs?.includes(selectedDatabase)) {
+          return;
+        }
+
+        // Priority 3: Fallback to first available database
+        if (dbs && dbs.length > 0) {
+          setSelectedDatabase(dbs[0]);
+        } else {
+          setSelectedDatabase(undefined);
         }
       } catch (error) {
         console.error('Failed to fetch databases:', error);
@@ -251,7 +270,7 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
     };
 
     fetchDatabases();
-  }, [selectedConnectionId]);
+  }, [selectedConnectionId, database]); // Re-run whenever database prop changes
 
   // Sync selectedConnectionId with connectionId prop and immediately fetch databases
   useEffect(() => {
@@ -450,6 +469,9 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
   const executeQuery = async () => {
     const currentSql = sql.trim();
     if (!currentSql) return;
+
+    // Save for export reference
+    (window as any).__LAST_EXECUTED_SQL__ = currentSql;
 
     // Replace parameters if needed
     const finalSql = replaceSQLParameters(currentSql);
@@ -928,9 +950,15 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
         </Button>
 
         <Button
-          variant="outline"
+          variant={showExplainPlan ? 'secondary' : 'outline'}
           size="sm"
-          onClick={executeExplain}
+          onClick={() => {
+            if (showExplainPlan) {
+              setShowExplainPlan(false);
+            } else {
+              executeExplain();
+            }
+          }}
           disabled={!sql.trim()}
           title="Execute EXPLAIN plan"
         >
@@ -996,258 +1024,292 @@ export const SQLEditor: React.FC<SQLEditorProps> = ({
       </div>
 
       {/* SQL Input - Monaco Editor with Syntax Highlighting */}
-      <div className="relative flex-1 min-h-0 border rounded overflow-hidden flex flex-col">
-        {/* Parameters Panel */}
-        {showParameters && (
-          <div className="p-3 border-b bg-muted/20">
-            <h4 className="text-xs font-semibold mb-2">Query Parameters</h4>
-            <div className="grid grid-cols-auto gap-2" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
-              {extractParameters(sql).length > 0 ? (
-                extractParameters(sql).map((param) => (
-                  <div key={param} className="flex flex-col gap-1">
-                    <label className="text-xs text-muted-foreground">{param}</label>
-                    <input
-                      type="text"
-                      value={parameters[param] || ''}
-                      onChange={(e) => setParameters({ ...parameters, [param]: e.target.value })}
-                      placeholder="Value"
-                      className="h-7 px-2 text-sm border border-input bg-background rounded"
-                    />
-                  </div>
+      <ResizablePanelGroup direction="vertical" className="flex-1 min-h-0">
+        <ResizablePanel defaultSize={50} minSize={20} className="flex flex-col border rounded overflow-hidden">
+          {/* Parameters Panel */}
+          {showParameters && (
+            <div className="p-3 border-b bg-muted/20">
+              <h4 className="text-xs font-semibold mb-2">Query Parameters</h4>
+              <div className="grid grid-cols-auto gap-2" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+                {extractParameters(sql).length > 0 ? (
+                  extractParameters(sql).map((param) => (
+                    <div key={param} className="flex flex-col gap-1">
+                      <label className="text-xs text-muted-foreground">{param}</label>
+                      <input
+                        type="text"
+                        value={parameters[param] || ''}
+                        onChange={(e) => setParameters({ ...parameters, [param]: e.target.value })}
+                        placeholder="Value"
+                        className="h-7 px-2 text-sm border border-input bg-background rounded"
+                      />
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-muted-foreground">No parameters detected (use ? in your query)</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Snippets Panel */}
+          {showSnippets && (
+            <div className="p-3 border-b bg-muted/20">
+              <h4 className="text-xs font-semibold mb-2">SQL Snippets</h4>
+              <div className="grid grid-cols-2 gap-1">
+                <button
+                  onClick={() => insertSnippet('SELECT * FROM table_name WHERE condition;')}
+                  className="text-left text-xs px-2 py-1 bg-background border border-input rounded hover:bg-muted"
+                >
+                  SELECT...
+                </button>
+                <button
+                  onClick={() => insertSnippet('INSERT INTO table_name (col1, col2) VALUES (?, ?);')}
+                  className="text-left text-xs px-2 py-1 bg-background border border-input rounded hover:bg-muted"
+                >
+                  INSERT
+                </button>
+                <button
+                  onClick={() => insertSnippet('UPDATE table_name SET col1 = ? WHERE id = ?;')}
+                  className="text-left text-xs px-2 py-1 bg-background border border-input rounded hover:bg-muted"
+                >
+                  UPDATE
+                </button>
+                <button
+                  onClick={() => insertSnippet('DELETE FROM table_name WHERE condition;')}
+                  className="text-left text-xs px-2 py-1 bg-background border border-input rounded hover:bg-muted"
+                >
+                  DELETE
+                </button>
+                <button
+                  onClick={() => insertSnippet('SELECT COUNT(*) FROM table_name;')}
+                  className="text-left text-xs px-2 py-1 bg-background border border-input rounded hover:bg-muted"
+                >
+                  COUNT
+                </button>
+                <button
+                  onClick={() => insertSnippet('SELECT * FROM table1 JOIN table2 ON table1.id = table2.id;')}
+                  className="text-left text-xs px-2 py-1 bg-background border border-input rounded hover:bg-muted"
+                >
+                  JOIN
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* EXPLAIN Plan Result */}
+          {showExplainPlan && explainPlan && (
+            <div className="p-0 border-b bg-muted/20 max-h-[300px] overflow-auto">
+              <div className="flex items-center justify-between px-3 py-1.5 border-b bg-muted/40">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Execution Plan</h4>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowExplainPlan(false)}
+                    className="text-[10px] text-muted-foreground hover:text-foreground"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs font-mono border-collapse">
+                  <thead>
+                    <tr className="bg-muted/50 border-b border-border/50">
+                      {explainPlan.columns.map((col, idx) => (
+                        <th key={idx} className="px-3 py-1.5 text-left font-medium border-r border-border/20 last:border-r-0 whitespace-nowrap">
+                          {col.name}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {explainPlan.rows.map((row: any[], rowIdx: number) => (
+                      <tr key={rowIdx} className="border-b border-border/10 last:border-b-0 hover:bg-black/5 dark:hover:bg-white/5">
+                        {row.map((cell, cellIdx) => (
+                          <td key={cellIdx} className="px-3 py-1.5 border-r border-border/10 last:border-r-0 whitespace-nowrap">
+                            {cell === null ? (
+                              <span className="text-muted-foreground italic opacity-50">NULL</span>
+                            ) : (
+                              String(cell)
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Editor */}
+          <div className="flex-1 min-h-0">
+            <Editor
+              value={sql}
+              onChange={(value) => {
+                const newValue = value || '';
+                setSql(newValue);
+                onSqlChange?.(newValue);
+              }}
+              language="sql"
+              theme={isDark ? 'dracula' : 'dracula-light'}
+              onMount={handleEditorDidMount}
+              options={{
+                minimap: { enabled: false },
+                fontSize: 14,
+                fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
+                fontLigatures: true,
+                lineNumbers: 'on',
+                renderLineHighlight: 'line',
+                scrollBeyondLastLine: false,
+                wordWrap: 'on',
+                automaticLayout: true,
+                tabSize: 2,
+                suggestOnTriggerCharacters: true,
+                quickSuggestions: true,
+                bracketPairColorization: { enabled: true },
+                matchBrackets: 'always',
+                padding: { top: 8, bottom: 8 },
+                smoothScrolling: true,
+                cursorBlinking: 'smooth',
+                cursorSmoothCaretAnimation: 'on',
+                roundedSelection: true,
+                overviewRulerLanes: 0,
+                hideCursorInOverviewRuler: true,
+                scrollbar: {
+                  verticalScrollbarSize: 8,
+                  horizontalScrollbarSize: 8,
+                  verticalSliderSize: 8,
+                },
+                placeholder: 'Enter SQL query here... (SELECT, INSERT, UPDATE, DELETE, etc.)' as any,
+              }}
+              loading={
+                <div className="flex items-center justify-center h-full text-muted-foreground">
+                  <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                  Loading editor...
+                </div>
+              }
+            />
+          </div>
+        </ResizablePanel>
+
+        <ResizableHandle withHandle />
+
+        <ResizablePanel defaultSize={50} minSize={20} className="flex flex-col border-t">
+          <Tabs value={activeResultTab} onValueChange={setActiveResultTab} className="flex flex-col flex-1 overflow-hidden">
+            <TabsList className="justify-start w-full px-2 overflow-x-auto border-b rounded-none bg-muted/30 shrink-0">
+              {results.length > 0 ? (
+                results.map((res, index) => (
+                  <TabsTrigger
+                    key={res.id}
+                    value={res.id}
+                    className={cn(
+                      "gap-1 min-w-fit",
+                      res.error && "text-destructive"
+                    )}
+                  >
+                    <span className="text-xs">{index + 1}</span>
+                    {res.isExecuting ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : res.error ? (
+                      <AlertCircle className="w-3 h-3" />
+                    ) : (
+                      <Table2 className="w-3 h-3" />
+                    )}
+                    <span className="max-w-[100px] truncate text-xs">
+                      {res.sql.slice(0, 20)}...
+                    </span>
+                    {res.result && (
+                      <span className="text-xs text-muted-foreground">
+                        ({res.result.row_count || res.result.affected_rows || 0})
+                      </span>
+                    )}
+                  </TabsTrigger>
                 ))
               ) : (
-                <p className="text-xs text-muted-foreground">No parameters detected (use ? in your query)</p>
+                <TabsTrigger value="placeholder" disabled className="gap-1">
+                  <Table2 className="w-4 h-4" />
+                  Results
+                </TabsTrigger>
               )}
-            </div>
-          </div>
-        )}
+              <TabsTrigger value="history" className="gap-1 ml-auto">
+                <Clock className="w-4 h-4" />
+                History
+                {history.length > 0 && <span className="ml-1 text-xs">({history.length})</span>}
+              </TabsTrigger>
+            </TabsList>
 
-        {/* Snippets Panel */}
-        {showSnippets && (
-          <div className="p-3 border-b bg-muted/20">
-            <h4 className="text-xs font-semibold mb-2">SQL Snippets</h4>
-            <div className="grid grid-cols-2 gap-1">
-              <button
-                onClick={() => insertSnippet('SELECT * FROM table_name WHERE condition;')}
-                className="text-left text-xs px-2 py-1 bg-background border border-input rounded hover:bg-muted"
-              >
-                SELECT...
-              </button>
-              <button
-                onClick={() => insertSnippet('INSERT INTO table_name (col1, col2) VALUES (?, ?);')}
-                className="text-left text-xs px-2 py-1 bg-background border border-input rounded hover:bg-muted"
-              >
-                INSERT
-              </button>
-              <button
-                onClick={() => insertSnippet('UPDATE table_name SET col1 = ? WHERE id = ?;')}
-                className="text-left text-xs px-2 py-1 bg-background border border-input rounded hover:bg-muted"
-              >
-                UPDATE
-              </button>
-              <button
-                onClick={() => insertSnippet('DELETE FROM table_name WHERE condition;')}
-                className="text-left text-xs px-2 py-1 bg-background border border-input rounded hover:bg-muted"
-              >
-                DELETE
-              </button>
-              <button
-                onClick={() => insertSnippet('SELECT COUNT(*) FROM table_name;')}
-                className="text-left text-xs px-2 py-1 bg-background border border-input rounded hover:bg-muted"
-              >
-                COUNT
-              </button>
-              <button
-                onClick={() => insertSnippet('SELECT * FROM table1 JOIN table2 ON table1.id = table2.id;')}
-                className="text-left text-xs px-2 py-1 bg-background border border-input rounded hover:bg-muted"
-              >
-                JOIN
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* EXPLAIN Plan Result */}
-        {showExplainPlan && explainPlan && (
-          <div className="p-3 border-b bg-muted/20 max-h-32 overflow-auto">
-            <h4 className="text-xs font-semibold mb-2">Execution Plan</h4>
-            <div className="text-xs font-mono bg-background p-2 rounded">
-              {explainPlan.rows?.slice(0, 5).map((row: any[], idx: number) => (
-                <div key={idx} className="text-muted-foreground">
-                  {JSON.stringify(row)}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Editor */}
-        <div className="flex-1 min-h-0">
-          <Editor
-            value={sql}
-            onChange={(value) => {
-              const newValue = value || '';
-              setSql(newValue);
-              onSqlChange?.(newValue);
-            }}
-            language="sql"
-            theme={isDark ? 'dracula' : 'dracula-light'}
-            onMount={handleEditorDidMount}
-            options={{
-              minimap: { enabled: false },
-              fontSize: 14,
-              fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
-              fontLigatures: true,
-              lineNumbers: 'on',
-              renderLineHighlight: 'line',
-              scrollBeyondLastLine: false,
-              wordWrap: 'on',
-              automaticLayout: true,
-              tabSize: 2,
-              suggestOnTriggerCharacters: true,
-              quickSuggestions: true,
-              bracketPairColorization: { enabled: true },
-              matchBrackets: 'always',
-              padding: { top: 8, bottom: 8 },
-              smoothScrolling: true,
-              cursorBlinking: 'smooth',
-              cursorSmoothCaretAnimation: 'on',
-              roundedSelection: true,
-              overviewRulerLanes: 0,
-              hideCursorInOverviewRuler: true,
-              scrollbar: {
-                verticalScrollbarSize: 8,
-                horizontalScrollbarSize: 8,
-                verticalSliderSize: 8,
-              },
-              placeholder: 'Enter SQL query here... (SELECT, INSERT, UPDATE, DELETE, etc.)' as any,
-            }}
-            loading={
-              <div className="flex items-center justify-center h-full text-muted-foreground">
-                <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                Loading editor...
-              </div>
-            }
-          />
-        </div>
-      </div>
-
-      {/* Results */}
-      <div className="flex flex-col flex-1 min-h-0 border-t">
-        <Tabs value={activeResultTab} onValueChange={setActiveResultTab} className="flex flex-col flex-1 overflow-hidden">
-          <TabsList className="justify-start w-full px-2 overflow-x-auto border-b rounded-none bg-muted/30 shrink-0">
-            {results.length > 0 ? (
-              results.map((res, index) => (
-                <TabsTrigger
+            <div className="relative flex-1 overflow-hidden">
+              {results.map((res) => (
+                <TabsContent
                   key={res.id}
                   value={res.id}
-                  className={cn(
-                    "gap-1 min-w-fit",
-                    res.error && "text-destructive"
-                  )}
+                  className="absolute inset-0 m-0 data-[state=inactive]:hidden"
                 >
-                  <span className="text-xs">{index + 1}</span>
                   {res.isExecuting ? (
-                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <div className="flex items-center justify-center h-full">
+                      <Loader2 className="w-6 h-6 text-muted-foreground animate-spin" />
+                      <span className="ml-2 text-muted-foreground">Executing...</span>
+                    </div>
                   ) : res.error ? (
-                    <AlertCircle className="w-3 h-3" />
-                  ) : (
-                    <Table2 className="w-3 h-3" />
-                  )}
-                  <span className="max-w-[100px] truncate text-xs">
-                    {res.sql.slice(0, 20)}...
-                  </span>
-                  {res.result && (
-                    <span className="text-xs text-muted-foreground">
-                      ({res.result.row_count || res.result.affected_rows || 0})
-                    </span>
-                  )}
-                </TabsTrigger>
-              ))
-            ) : (
-              <TabsTrigger value="placeholder" disabled className="gap-1">
-                <Table2 className="w-4 h-4" />
-                Results
-              </TabsTrigger>
-            )}
-            <TabsTrigger value="history" className="gap-1 ml-auto">
-              <Clock className="w-4 h-4" />
-              History
-              {history.length > 0 && <span className="ml-1 text-xs">({history.length})</span>}
-            </TabsTrigger>
-          </TabsList>
-
-          <div className="relative flex-1 overflow-hidden">
-            {results.map((res) => (
-              <TabsContent
-                key={res.id}
-                value={res.id}
-                className="absolute inset-0 m-0 data-[state=inactive]:hidden"
-              >
-                {res.isExecuting ? (
-                  <div className="flex items-center justify-center h-full">
-                    <Loader2 className="w-6 h-6 text-muted-foreground animate-spin" />
-                    <span className="ml-2 text-muted-foreground">Executing...</span>
-                  </div>
-                ) : res.error ? (
-                  <div className="p-4">
-                    <div className="flex items-start gap-2 text-destructive">
-                      <AlertCircle className="h-5 w-5 mt-0.5" />
-                      <div>
-                        <p className="font-medium">Query Error</p>
-                        <p className="mt-1 text-sm">{res.error}</p>
-                        <code className="block p-2 mt-2 text-xs rounded bg-destructive/10">
-                          {res.sql}
-                        </code>
+                    <div className="p-4">
+                      <div className="flex items-start gap-2 text-destructive">
+                        <AlertCircle className="h-5 w-5 mt-0.5" />
+                        <div>
+                          <p className="font-medium">Query Error</p>
+                          <p className="mt-1 text-sm">{res.error}</p>
+                          <code className="block p-2 mt-2 text-xs rounded bg-destructive/10">
+                            {res.sql}
+                          </code>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ) : res.result ? (
-                  <QueryResult
-                    data={res.result}
-                    connectionId={connectionId}
-                    databaseName={database}
-                    onRefresh={executeQuery}
-                  />
-                ) : null}
-              </TabsContent>
-            ))}
+                  ) : res.result ? (
+                    <QueryResult
+                      data={res.result}
+                      connectionId={selectedConnectionId || connectionId}
+                      databaseName={selectedDatabase || database}
+                      onRefresh={executeQuery}
+                    />
+                  ) : null}
+                </TabsContent>
+              ))}
 
-            <TabsContent value="history" className="absolute inset-0 m-0 data-[state=inactive]:hidden overflow-auto">
-              {history.length === 0 ? (
+              <TabsContent value="history" className="absolute inset-0 m-0 data-[state=inactive]:hidden overflow-auto">
+                {history.length === 0 ? (
+                  <div className="flex items-center justify-center h-full text-muted-foreground">
+                    <p>{t('ui.noQueryHistory')}</p>
+                  </div>
+                ) : (
+                  <div className="divide-y border-border">
+                    {history.map((item, index) => (
+                      <div
+                        key={index}
+                        className="p-3 cursor-pointer hover:bg-accent/20"
+                        onClick={() => {
+                          setSql(item.sql);
+                        }}
+                      >
+                        <code className="block font-mono text-sm text-foreground truncate">
+                          {item.sql}
+                        </code>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {item.timestamp.toLocaleString()}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+
+              {results.length === 0 && activeResultTab !== 'history' && (
                 <div className="flex items-center justify-center h-full text-muted-foreground">
-                  <p>{t('ui.noQueryHistory')}</p>
-                </div>
-              ) : (
-                <div className="divide-y border-border">
-                  {history.map((item, index) => (
-                    <div
-                      key={index}
-                      className="p-3 cursor-pointer hover:bg-accent/20"
-                      onClick={() => {
-                        setSql(item.sql);
-                      }}
-                    >
-                      <code className="block font-mono text-sm text-foreground truncate">
-                        {item.sql}
-                      </code>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {item.timestamp.toLocaleString()}
-                      </p>
-                    </div>
-                  ))}
+                  <p>{t('ui.executeQueryToSeeResults')}</p>
                 </div>
               )}
-            </TabsContent>
-
-            {results.length === 0 && activeResultTab !== 'history' && (
-              <div className="flex items-center justify-center h-full text-muted-foreground">
-                <p>{t('ui.executeQueryToSeeResults')}</p>
-              </div>
-            )}
-          </div>
-        </Tabs>
-      </div>
+            </div>
+          </Tabs>
+        </ResizablePanel>
+      </ResizablePanelGroup>
 
       {/* Status Bar */}
       <div className="flex items-center gap-4 px-3 py-1.5 border-t bg-muted text-xs text-muted-foreground">

@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { invoke } from '@tauri-apps/api/core';
+import { save } from '@tauri-apps/plugin-dialog';
 import {
   ArrowDown,
   ArrowUp,
@@ -377,7 +378,10 @@ export const QueryResult: React.FC<QueryResultProps> = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleExportCSV = () => {
+  const handleExportCSV = async () => {
+    console.log('Exporting CSV via Rust...');
+    if (!data || !data.columns) return;
+
     const headers = data.columns.map((c) => c.name).join(',');
     const rows = sortedRows
       .map((row) =>
@@ -394,35 +398,79 @@ export const QueryResult: React.FC<QueryResultProps> = ({
       )
       .join('\n');
     const content = `\ufeff${headers}\n${rows}`;
-    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `query_result_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+
+    try {
+      const path = await save({
+        filters: [{ name: 'CSV', extensions: ['csv'] }],
+        defaultPath: `query_result_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`,
+      });
+
+      if (path) {
+        await invoke('save_file', { path, content });
+        console.log('CSV saved to:', path);
+      }
+    } catch (err) {
+      console.error('Failed to export CSV:', err);
+      alert('Export failed: ' + err);
+    }
   };
 
-  const handleExportExcel = () => {
-    const headers = data.columns.map((c) => c.name).join('\t');
-    const rows = data.rows
-      .map((row) => row.map((cell) => (cell === null ? '' : String(cell))).join('\t'))
-      .join('\n');
-    const content = `${headers}\n${rows}`;
-    const blob = new Blob([content], {
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `query_result_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.xlsx`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const handleExportExcel = async () => {
+    console.log('Exporting Excel via Rust...');
+    if (!data || !data.columns) return;
+
+    // Use HTML Table format which Excel handles much better than raw TSV
+    const tableHeader = `<tr>${data.columns.map(c => `<th style="background-color: #f2f2f2; border: 1px solid #000;">${c.name}</th>`).join('')}</tr>`;
+    const tableRows = sortedRows
+      .map((row) => `<tr>${row.map(cell => `<td style="border: 1px solid #000;">${cell === null ? '' : String(cell)}</td>`).join('')}</tr>`)
+      .join('');
+
+    const content = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta http-equiv="content-type" content="application/vnd.ms-excel; charset=UTF-8">
+        <!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Sheet1</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+      </head>
+      <body>
+        <table>${tableHeader}${tableRows}</table>
+      </body>
+      </html>
+    `;
+
+    try {
+      const path = await save({
+        filters: [{ name: 'Excel', extensions: ['xls'] }],
+        defaultPath: `query_result_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.xls`,
+      });
+
+      if (path) {
+        await invoke('save_file', { path, content });
+        console.log('Excel saved to:', path);
+      }
+    } catch (err) {
+      console.error('Failed to export Excel:', err);
+      alert('Export failed: ' + err);
+    }
   };
 
-  const handleExportSQL = () => {
-    const table = tableName || 'query_result';
-    const inserts = data.rows.map((row) => {
+  const handleExportSQL = async () => {
+    console.log('Exporting SQL via Rust...');
+    if (!data || !data.columns) return;
+
+    // Try to extract table name from SQL if tableName prop is not provided
+    let table = tableName || 'query_result';
+
+    // Simple regex to extract table name from common SQL patterns
+    // Matches: FROM `table`, FROM "table", FROM table (handles schema.table too)
+    if (!tableName && (window as any).__LAST_EXECUTED_SQL__) {
+      const sql = (window as any).__LAST_EXECUTED_SQL__.trim();
+      const match = sql.match(/FROM\s+([`"']?[\w.]+[`"']?)/i);
+      if (match && match[1]) {
+        table = match[1].replace(/[`"']/g, '').split('.').pop() || table;
+      }
+    }
+
+    const inserts = sortedRows.map((row) => {
       const cols: string[] = [];
       const vals: string[] = [];
       data.columns.forEach((col, idx) => {
@@ -439,13 +487,21 @@ export const QueryResult: React.FC<QueryResultProps> = ({
       return `INSERT INTO \`${table}\` (${cols.join(', ')}) VALUES (${vals.join(', ')});`;
     });
     const content = inserts.join('\n');
-    const blob = new Blob([content], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `query_result_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.sql`;
-    a.click();
-    URL.revokeObjectURL(url);
+
+    try {
+      const path = await save({
+        filters: [{ name: 'SQL', extensions: ['sql'] }],
+        defaultPath: `query_result_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.sql`,
+      });
+
+      if (path) {
+        await invoke('save_file', { path, content });
+        console.log('SQL saved to:', path);
+      }
+    } catch (err) {
+      console.error('Failed to export SQL:', err);
+      alert('Export failed: ' + err);
+    }
   };
 
   const handleCopyRow = (row: any[]) => {
@@ -607,7 +663,7 @@ export const QueryResult: React.FC<QueryResultProps> = ({
           <Button
             variant={viewMode === 'json' ? 'secondary' : 'outline'}
             size="sm"
-            onClick={() => setViewMode('json')}
+            onClick={() => setViewMode(viewMode === 'json' ? 'table' : 'json')}
             className="gap-1"
           >
             <FileJson className="h-4 w-4" />
