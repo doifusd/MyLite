@@ -22,6 +22,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import type { ConnectionColor, Connection as ConnectionConfig, HttpConfig, SshConfig, SslConfig } from '@/store/connectionStore';
 import { invoke } from '@tauri-apps/api/core';
+import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import {
   AlertCircle,
   CheckCircle2,
@@ -178,13 +179,9 @@ export function ConnectionDialog({
   const handlePickPrivateKeyFile = useCallback(async () => {
     try {
       // Check if we're in Tauri context
-      if (typeof window !== 'undefined' && (window as any).__TAURI__) {
-        // @ts-ignore - Tauri dialog API only available in Tauri
-        // Use string concatenation to avoid Vite's static analysis
-        const moduleName = '@tauri-apps/api/' + 'dialog';
-        const dialogModule = await import(/* @vite-ignore */ moduleName);
-        const { open } = dialogModule;
-
+      if (typeof window !== 'undefined' && ((window as any).__TAURI__ || (window as any).__TAURI_INTERNALS__)) {
+        // We import `open` at the top of the file now
+        
         // Get the home directory path
         const homeDir = await invoke<string>('get_home_dir').catch(() => {
           return '/home/user';
@@ -192,7 +189,8 @@ export function ConnectionDialog({
 
         const sshDir = `${homeDir}/.ssh`;
 
-        const selected = await open({
+        // The open function is imported from @tauri-apps/plugin-dialog at the top of the file
+        const selected = await openDialog({
           defaultPath: sshDir,
           multiple: false,
           directory: false,
@@ -210,6 +208,7 @@ export function ConnectionDialog({
       }
     } catch (err: any) {
       console.error('Error picking file:', err);
+      alert('Error opening file picker: ' + (err?.message || err));
     }
   }, []);
 
@@ -355,9 +354,9 @@ export function ConnectionDialog({
                   <Input
                     id="ssh_private_key"
                     type="text"
-                    placeholder="No key file selected"
+                    placeholder="No key file selected or paste path here"
                     value={config.ssh_config?.ssh_private_key || ''}
-                    readOnly
+                    onChange={(e) => updateSshConfig({ ssh_private_key: e.target.value })}
                     className="flex-1 font-mono text-xs"
                   />
                   <Button
