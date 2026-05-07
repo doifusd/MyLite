@@ -71,6 +71,10 @@ function App() {
   const [editingConnection, setEditingConnection] = useState<Connection | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  
+  // Drag and drop state
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
 
   // UI/UX features
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
@@ -245,13 +249,17 @@ function App() {
     return true;
   });
 
-  // Group connections for display
+  // Group connections for display and sort them by sort_order
   const groupedConnections = groups.map(group => ({
     group,
-    connections: filteredConnections.filter(c => c.group === group.id),
+    connections: filteredConnections
+      .filter(c => c.group === group.id)
+      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)),
   }));
 
-  const ungroupedConnections = filteredConnections.filter(c => !c.group);
+  const ungroupedConnections = filteredConnections
+    .filter(c => !c.group)
+    .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
 
   const toggleGroupExpanded = (groupId: string) => {
     setExpandedGroups(prev => {
@@ -263,6 +271,92 @@ function App() {
       }
       return next;
     });
+  };
+
+  // Drag and drop handlers
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    setDraggedId(id);
+    e.dataTransfer.effectAllowed = 'move';
+    // Small delay so the drag image doesn't show the ghost style immediately
+    setTimeout(() => {
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+    }, 0);
+  };
+
+  const handleDragOver = (e: React.DragEvent, id: string) => {
+    e.preventDefault(); // Necessary to allow dropping
+    e.dataTransfer.dropEffect = 'move';
+    if (id !== dragOverId) {
+      setDragOverId(id);
+    }
+  };
+
+  const handleDragLeave = () => {
+    setDragOverId(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedId(null);
+    setDragOverId(null);
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    const currentDraggedId = draggedId;
+    setDragOverId(null);
+    setDraggedId(null);
+    
+    if (!currentDraggedId || currentDraggedId === targetId) return;
+
+    const draggedConn = connections.find(c => c.id === currentDraggedId);
+    const targetConn = connections.find(c => c.id === targetId);
+    
+    if (!draggedConn || !targetConn) return;
+
+    // For now, only allow reordering within the same group
+    if (draggedConn.group !== targetConn.group) {
+      error('Cannot move', 'Moving between groups is not supported yet.');
+      return;
+    }
+
+    const groupConns = connections
+      .filter(c => c.group === draggedConn.group)
+      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+
+    const draggedIndex = groupConns.findIndex(c => c.id === currentDraggedId);
+    const targetIndex = groupConns.findIndex(c => c.id === targetId);
+
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    // Reorder array
+    const newGroupConns = [...groupConns];
+    const [removed] = newGroupConns.splice(draggedIndex, 1);
+    newGroupConns.splice(targetIndex, 0, removed);
+
+    // Update sort_order
+    const updatedConns = newGroupConns.map((c, index) => ({
+      ...c,
+      sort_order: index
+    }));
+
+    // Update local state optimistically
+    setConnections(prev => prev.map(c => {
+      const updated = updatedConns.find(uc => uc.id === c.id);
+      return updated ? updated : c;
+    }));
+
+    // Persist to backend
+    try {
+      for (const conn of updatedConns) {
+        await invoke('save_connection', { config: conn });
+      }
+    } catch (err) {
+      console.error('Failed to save order:', err);
+      error('Failed to save new order', String(err));
+      loadConnections(); // Revert on failure
+    }
   };
 
   return (
@@ -363,14 +457,21 @@ function App() {
                         {expandedGroups.has(group.id) && (
                           <div className="ml-4 space-y-1">
                             {groupConns.map(conn => (
-                              <ConnectionCard
-                                key={conn.id}
-                                conn={conn}
-                                isSelected={selectedConnection?.id === conn.id}
-                                onSelect={() => setSelectedConnection(conn as any)}
-                                onEdit={() => handleEditConnection(conn as any)}
-                                onDelete={() => deleteConnection(conn.id)}
-                              />
+                                <ConnectionCard
+                                  key={conn.id}
+                                  conn={conn}
+                                  isSelected={selectedConnection?.id === conn.id}
+                                  isDragging={draggedId === conn.id}
+                                  isDragOver={dragOverId === conn.id}
+                                  onSelect={() => setSelectedConnection(conn as any)}
+                                  onEdit={() => handleEditConnection(conn as any)}
+                                  onDelete={() => deleteConnection(conn.id)}
+                                  onDragStart={(e) => handleDragStart(e, conn.id)}
+                                  onDragOver={(e) => handleDragOver(e, conn.id)}
+                                  onDragLeave={handleDragLeave}
+                                  onDrop={(e) => handleDrop(e, conn.id)}
+                                  onDragEnd={handleDragEnd}
+                                />
                             ))}
                           </div>
                         )}
@@ -391,9 +492,16 @@ function App() {
                           key={conn.id}
                           conn={conn}
                           isSelected={selectedConnection?.id === conn.id}
+                          isDragging={draggedId === conn.id}
+                          isDragOver={dragOverId === conn.id}
                           onSelect={() => setSelectedConnection(conn as any)}
                           onEdit={() => handleEditConnection(conn as any)}
                           onDelete={() => deleteConnection(conn.id)}
+                          onDragStart={(e) => handleDragStart(e, conn.id)}
+                          onDragOver={(e) => handleDragOver(e, conn.id)}
+                          onDragLeave={handleDragLeave}
+                          onDrop={(e) => handleDrop(e, conn.id)}
+                          onDragEnd={handleDragEnd}
                         />
                       ))}
                     </div>
@@ -496,24 +604,57 @@ function App() {
 interface ConnectionCardProps {
   conn: ConnectionInfo;
   isSelected: boolean;
+  isDragging?: boolean;
+  isDragOver?: boolean;
   onSelect: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onDragStart?: (e: React.DragEvent) => void;
+  onDragOver?: (e: React.DragEvent) => void;
+  onDragLeave?: () => void;
+  onDrop?: (e: React.DragEvent) => void;
+  onDragEnd?: () => void;
 }
 
-function ConnectionCard({ conn, isSelected, onSelect, onEdit, onDelete }: ConnectionCardProps) {
+function ConnectionCard({ 
+  conn, 
+  isSelected, 
+  isDragging,
+  isDragOver,
+  onSelect, 
+  onEdit, 
+  onDelete,
+  onDragStart,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  onDragEnd
+}: ConnectionCardProps) {
   const connColor = (conn.color || 'blue') as ConnectionColor;
   const colorStyle = colorMap[connColor];
 
   return (
-    <Card
+    <div
+      draggable
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
       className={cn(
-        'cursor-pointer transition-all hover:shadow-md',
-        isSelected ? `ring-2 ring-primary ${colorStyle.border}` : 'border-border'
+        'transition-all duration-200',
+        isDragging && 'opacity-50 scale-95',
+        isDragOver && 'transform -translate-y-1 pb-1 border-t-2 border-primary pt-1'
       )}
-      style={{ backgroundColor: isSelected ? colorStyle.lightBg : undefined }}
-      onClick={onSelect}
     >
+      <Card
+        className={cn(
+          'cursor-pointer transition-all hover:shadow-md',
+          isSelected ? `ring-2 ring-primary ${colorStyle.border}` : 'border-border'
+        )}
+        style={{ backgroundColor: isSelected ? colorStyle.lightBg : undefined }}
+        onClick={onSelect}
+      >
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium flex items-center justify-between">
           <div className="flex items-center gap-2 min-w-0">
@@ -570,6 +711,7 @@ function ConnectionCard({ conn, isSelected, onSelect, onEdit, onDelete }: Connec
         )}
       </CardContent>
     </Card>
+    </div>
   );
 }
 
